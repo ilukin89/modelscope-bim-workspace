@@ -114,7 +114,7 @@ function App() {
             onViewChange={setView}
             projects={projects}
             selectedProject={selectedProject}
-            showExplorerTrigger={view === "workspace"}
+            showExplorerTrigger
             unresolvedIssues={selectedProject.issues.length}
             view={view}
           />

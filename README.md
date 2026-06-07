@@ -2,7 +2,7 @@
 
 ModelScope is a small code-first UI prototype for a professional BIM / 3D model review workspace. It is intentionally a product interface prototype, not a BIM renderer or model-processing engine.
 
-**Live demo:** coming soon
+**Live demo:** https://modelscope-bim-workspace.vercel.app/
 **Code:** https://github.com/ilukin89/modelscope-bim-workspace
 
 ## Why this prototype exists

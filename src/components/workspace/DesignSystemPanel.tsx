@@ -107,7 +107,7 @@ export function DesignSystemPanel() {
         </div>
       )}
 
-      <div className="mx-auto w-full max-w-[1240px] px-6 py-8 max-[680px]:px-4">
+      <div className="mx-auto w-full max-w-[1240px] px-6 py-8 max-[680px]:px-4 max-[460px]:py-5">
         <header className="relative overflow-hidden border-y border-foreground/20 bg-card shadow-sm dark:border-foreground/25">
           <div className="absolute inset-y-0 right-0 hidden w-[38%] border-l border-foreground/20 bg-canvas dark:border-foreground/25 lg:block">
             <div className="absolute inset-0 bg-[linear-gradient(var(--canvas-grid)_1px,transparent_1px),linear-gradient(90deg,var(--canvas-grid)_1px,transparent_1px)] bg-[size:28px_28px]" />
@@ -121,7 +121,7 @@ export function DesignSystemPanel() {
             </div>
           </div>
 
-          <div className="relative z-10 max-w-3xl px-6 py-7">
+          <div className="relative z-10 max-w-3xl px-6 py-7 max-[460px]:px-4 max-[460px]:py-5">
             <div className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
               <ScanLine className="size-3.5" />
               Product UI foundations · v0.1
@@ -235,7 +235,7 @@ export function DesignSystemPanel() {
             >
               <div className="relative overflow-hidden border border-foreground/20 bg-canvas p-5 shadow-sm dark:border-foreground/25">
                 <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(var(--canvas-grid)_1px,transparent_1px),linear-gradient(90deg,var(--canvas-grid)_1px,transparent_1px)] bg-[size:28px_28px]" />
-                <div className="relative inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-md border border-foreground/20 bg-card p-1 shadow-lg dark:border-foreground/25">
+                <div className="relative inline-flex max-w-full items-center gap-1 overflow-x-auto rounded-md border border-foreground/20 bg-card p-1 shadow-lg dark:border-foreground/25 max-[560px]:flex max-[560px]:flex-wrap max-[560px]:overflow-visible">
                   {viewportTools.map(({ label, icon: Icon }) => {
                     const active = activeExampleTool === label
                     return (

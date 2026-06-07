@@ -58,7 +58,7 @@ export function TopBar({
           <Box className="size-4" strokeWidth={2.2} />
         </div>
         <div className="flex min-w-0 items-baseline gap-2">
-          <span className="text-sm font-semibold tracking-tight">
+          <span className="text-sm font-semibold tracking-tight max-[380px]:hidden">
             ModelScope
           </span>
           <Separator
@@ -128,7 +128,7 @@ export function TopBar({
           </SheetTrigger>
         )}
         <div
-          className="flex h-8 items-center rounded-md border border-border bg-background p-0.5"
+          className="flex h-8 items-center rounded-md border border-border bg-background p-0.5 max-[380px]:h-7"
           role="group"
           aria-label="Application view"
         >
@@ -136,25 +136,27 @@ export function TopBar({
             type="button"
             onClick={() => onViewChange("workspace")}
             className={cn(
-              "h-6 rounded-sm px-2.5 text-[11px] font-medium transition-colors",
+              "h-6 rounded-sm px-2.5 text-[11px] font-medium transition-colors max-[380px]:h-5 max-[380px]:px-2 max-[380px]:text-[10px]",
               view === "workspace"
                 ? "bg-secondary text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
-            Workspace
+            <span className="max-[380px]:hidden">Workspace</span>
+            <span className="hidden max-[380px]:inline">Work</span>
           </button>
           <button
             type="button"
             onClick={() => onViewChange("design-system")}
             className={cn(
-              "h-6 rounded-sm px-2.5 text-[11px] font-medium transition-colors max-[520px]:hidden",
+              "h-6 rounded-sm px-2.5 text-[11px] font-medium transition-colors max-[380px]:h-5 max-[380px]:px-2 max-[380px]:text-[10px]",
               view === "design-system"
                 ? "bg-secondary text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
-            Design System
+            <span className="max-[380px]:hidden">Design System</span>
+            <span className="hidden max-[380px]:inline">System</span>
           </button>
         </div>
         <Tooltip>

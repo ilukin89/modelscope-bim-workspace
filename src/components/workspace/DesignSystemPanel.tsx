@@ -3,6 +3,7 @@ import {
   Bot,
   BoxSelect,
   Check,
+  ChevronRight,
   CircleAlert,
   EyeOff,
   Hand,
@@ -504,24 +505,38 @@ function AiReviewSpecimen({
       </div>
       <Button
         variant="outline"
+        aria-label="Open AI review findings"
+        aria-expanded={state === "active"}
         className={cn(
-          "h-auto w-full justify-start gap-2.5 border-ai/50 bg-card px-3 py-2 text-left shadow-md",
+          "group h-auto min-h-[76px] w-full justify-start gap-2 rounded-lg border border-ai/70 bg-[color-mix(in_oklab,var(--ai)_34%,var(--panel)_66%)] px-3 py-2 text-left shadow-[0_16px_42px_color-mix(in_oklab,var(--background)_72%,transparent)]",
           state === "focus" &&
-            "border-ai/60 bg-ai/8 ring-2 ring-ai ring-offset-2 ring-offset-canvas",
-          state === "active" && "border-ai/60 bg-ai/12",
+            "border-ai bg-[color-mix(in_oklab,var(--ai)_42%,var(--panel)_58%)] ring-2 ring-ai ring-offset-2 ring-offset-canvas",
+          state === "active" &&
+            "border-ai bg-[color-mix(in_oklab,var(--ai)_48%,var(--panel)_52%)] ring-2 ring-ai/35",
         )}
       >
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-sm border border-ai/25 bg-ai/12 text-ai-foreground">
-          <Bot className="size-4" strokeWidth={1.8} />
-        </span>
-        <span className="min-w-0">
-          <span className="block text-[11px] font-semibold leading-tight">
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-semibold leading-tight tracking-tight text-foreground">
             AI Review
           </span>
-          <span className="mt-1 block font-mono text-[10px] leading-none text-ai-foreground">
-            3 findings
+          <span className="mt-1.5 block text-[11px] font-semibold leading-none text-ai-foreground">
+            3 coordination findings
+          </span>
+          <span className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold">
+            <span className="text-destructive">1 critical</span>
+            <span className="size-1 rounded-full bg-muted-foreground/70" />
+            <span className="text-warning-foreground">1 warning</span>
+            <span className="size-1 rounded-full bg-muted-foreground/70" />
+            <span className="text-primary">1 info</span>
           </span>
         </span>
+        <ChevronRight
+          className={cn(
+            "ml-auto size-5 shrink-0 text-foreground/75",
+            state === "active" && "rotate-90 text-ai-foreground",
+          )}
+          aria-hidden="true"
+        />
       </Button>
       {state === "active" && (
         <div className="mt-2 border-t border-ai/40 pt-2 text-[10px] font-medium text-foreground/70">

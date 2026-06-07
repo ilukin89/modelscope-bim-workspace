@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react"
 import {
-  Bot,
   Box,
   BoxSelect,
+  ChevronRight,
   CircleAlert,
   EyeOff,
-  Focus,
   Hand,
   Layers3,
   MessageSquarePlus,
@@ -85,6 +84,28 @@ export function Viewport({
   const selectedObjectVisible = visibleLayerIds.includes(
     selectedIssue.discipline,
   )
+  const severityCounts = {
+    critical: issues.filter((issue) => issue.severity === "critical").length,
+    warning: issues.filter((issue) => issue.severity === "warning").length,
+    info: issues.filter((issue) => issue.severity === "info").length,
+  }
+  const severitySummary = [
+    {
+      count: severityCounts.critical,
+      label: "critical",
+      className: "text-destructive",
+    },
+    {
+      count: severityCounts.warning,
+      label: severityCounts.warning === 1 ? "warning" : "warnings",
+      className: "text-warning-foreground",
+    },
+    {
+      count: severityCounts.info,
+      label: "info",
+      className: "text-primary",
+    },
+  ].filter((item) => item.count > 0)
   const selectedDisciplineLabel =
     selectedIssue.discipline.charAt(0).toUpperCase() +
     selectedIssue.discipline.slice(1)
@@ -129,9 +150,7 @@ export function Viewport({
     )
   }
 
-  const frameSelectedObject = () => {
-    showViewportFeedback("View framed to selected object", "frame")
-  }
+
 
   const openAiReview = () => {
     onOpenAiReview()
@@ -149,7 +168,104 @@ export function Viewport({
 
   return (
     <section className="viewport-grid relative min-h-0 min-w-0 overflow-hidden">
-      <ViewportToolbar activeTool={activeTool} onToolChange={onToolChange} />
+      <div className="contents max-[1160px]:absolute max-[1160px]:left-1/2 max-[1160px]:top-3 max-[1160px]:z-20 max-[1160px]:flex max-[1160px]:w-max max-[1160px]:max-w-[calc(100%-24px)] max-[1160px]:-translate-x-1/2 max-[1160px]:flex-col max-[1160px]:items-stretch max-[1160px]:gap-2 max-[760px]:w-[min(288px,calc(100%-24px))]">
+        <ViewportToolbar activeTool={activeTool} onToolChange={onToolChange} />
+
+        <div className="absolute right-3 top-3 z-20 max-[1160px]:static max-[1160px]:w-0 max-[1160px]:min-w-full">
+          <Popover open={aiFindingsOpen} onOpenChange={setAiFindingsOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                onClick={openAiReview}
+                aria-label="Open AI review findings"
+                aria-expanded={aiFindingsOpen}
+                className={cn(
+                  "group h-auto min-h-[76px] w-[220px] justify-start gap-2 rounded-lg border border-ai/70 bg-[color-mix(in_oklab,var(--ai)_34%,var(--panel)_66%)] px-3 py-2 text-left shadow-[0_16px_42px_color-mix(in_oklab,var(--background)_72%,transparent)] transition-[border-color,background-color,box-shadow,transform] duration-200 hover:border-ai hover:bg-[color-mix(in_oklab,var(--ai)_42%,var(--panel)_58%)] hover:shadow-[0_18px_46px_color-mix(in_oklab,var(--background)_66%,transparent)] focus-visible:ring-ai max-[1160px]:w-full",
+                  aiFindingsOpen &&
+                    "border-ai bg-[color-mix(in_oklab,var(--ai)_48%,var(--panel)_52%)] ring-2 ring-ai/35",
+                )}
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[15px] font-semibold leading-tight tracking-tight text-foreground">
+                    AI Review
+                  </span>
+                  <span className="mt-1.5 block text-[11px] font-semibold leading-none text-ai-foreground">
+                    {issueCount} coordination findings
+                  </span>
+                  <span className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold">
+                    {severitySummary.map((item, index) => (
+                      <span key={item.label} className="flex items-center gap-2">
+                        {index > 0 && (
+                          <span className="size-1 rounded-full bg-muted-foreground/70" />
+                        )}
+                        <span className={item.className}>
+                          {item.count} {item.label}
+                        </span>
+                      </span>
+                    ))}
+                  </span>
+                </span>
+                <ChevronRight
+                  className={cn(
+                    "ml-auto size-5 shrink-0 text-foreground/75 transition-transform duration-200",
+                    aiFindingsOpen && "rotate-90 text-ai-foreground",
+                  )}
+                  aria-hidden="true"
+                />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              side="bottom"
+              sideOffset={8}
+              collisionPadding={12}
+              className="w-[min(360px,calc(100vw-24px))] border-ai/30 bg-panel p-0 shadow-xl"
+            >
+              <div className="border-b border-border px-3 py-2.5">
+                <div>
+                  <p className="text-[11px] font-semibold">AI findings</p>
+                  <p className="mt-0.5 text-[9px] text-muted-foreground">
+                    {issueCount} coordination items in this project
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-1 p-1.5">
+                {issues.map((issue) => (
+                  <AiFindingButton
+                    key={issue.id}
+                    issue={issue}
+                    selected={selectedIssue.id === issue.id}
+                    onSelect={() => selectAiFinding(issue)}
+                  />
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        <div
+          className="absolute left-1/2 top-16 z-20 -translate-x-1/2 rounded-md border border-border bg-panel/95 px-2.5 py-1.5 text-[10px] font-medium text-foreground shadow-md max-[1160px]:static max-[1160px]:self-center max-[1160px]:translate-x-0"
+          role="status"
+          data-testid="viewport-tool-feedback"
+          data-active-tool={activeTool}
+        >
+          <span className="flex items-center gap-1.5">
+            <ToolModeIcon className="size-3.5 text-primary" />
+            {toolMode.label}
+          </span>
+        </div>
+
+        {viewportFeedback && (
+          <div
+            className="absolute right-3 top-[108px] z-30 rounded-md border border-primary/30 bg-panel px-2.5 py-1.5 text-[10px] font-medium text-foreground shadow-md max-[1160px]:static max-[1160px]:self-center"
+            role="status"
+            aria-live="polite"
+            data-testid={`${viewportFeedback.type}-viewport-feedback`}
+          >
+            {viewportFeedback.message}
+          </div>
+        )}
+      </div>
 
       {showExplorerExpand && (
         <div className="absolute left-3 top-3 z-20 max-[680px]:hidden">
@@ -176,7 +292,7 @@ export function Viewport({
 
       <div
         className={cn(
-          "absolute top-3 z-10 max-[760px]:hidden",
+          "absolute top-3 z-10 max-[1160px]:hidden",
           showExplorerExpand ? "left-14" : "left-3",
         )}
       >
@@ -189,108 +305,6 @@ export function Viewport({
           Coordination · {selectedFloor}
         </Badge>
       </div>
-
-      <div className="absolute right-3 top-3 z-20">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon"
-              className="bg-panel"
-              aria-label="Frame selected object"
-              onClick={frameSelectedObject}
-            >
-              <Focus />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">Frame selection</TooltipContent>
-        </Tooltip>
-      </div>
-
-      <div className="absolute right-3 top-14 z-20">
-        <Popover open={aiFindingsOpen} onOpenChange={setAiFindingsOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              onClick={openAiReview}
-              aria-label="Open AI review findings"
-              aria-expanded={aiFindingsOpen}
-              className={cn(
-                "group h-auto w-[172px] justify-start gap-2.5 border-ai/35 bg-panel px-3 py-2 text-left shadow-md hover:border-ai/55 hover:bg-ai/8 focus-visible:ring-ai",
-                aiFindingsOpen && "border-ai/60 bg-ai/10",
-              )}
-            >
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-sm border border-ai/25 bg-ai/12 text-ai-foreground transition-colors duration-200 group-hover:bg-ai/18">
-                <Bot className="size-4" strokeWidth={1.8} />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-[11px] font-semibold leading-tight text-foreground">
-                  AI Review
-                </span>
-                <span className="mt-1 block font-mono text-[9px] leading-none text-ai-foreground">
-                  {issueCount} findings
-                </span>
-              </span>
-              <span
-                className={cn(
-                  "ml-auto size-1.5 rounded-full bg-ai/45",
-                  aiFindingsOpen &&
-                    "bg-ai shadow-[0_0_0_3px_color-mix(in_oklab,var(--ai)_18%,transparent)]",
-                )}
-              />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            align="end"
-            side="bottom"
-            sideOffset={8}
-            collisionPadding={12}
-            className="w-[min(360px,calc(100vw-24px))] border-ai/30 bg-panel p-0 shadow-xl"
-          >
-            <div className="border-b border-border px-3 py-2.5">
-              <div>
-                <p className="text-[11px] font-semibold">AI findings</p>
-                <p className="mt-0.5 text-[9px] text-muted-foreground">
-                  {issueCount} coordination items in this project
-                </p>
-              </div>
-            </div>
-            <div className="space-y-1 p-1.5">
-              {issues.map((issue) => (
-                <AiFindingButton
-                  key={issue.id}
-                  issue={issue}
-                  selected={selectedIssue.id === issue.id}
-                  onSelect={() => selectAiFinding(issue)}
-                />
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
-
-      <div
-        className="absolute left-1/2 top-16 z-20 -translate-x-1/2 rounded-md border border-border bg-panel/95 px-2.5 py-1.5 text-[10px] font-medium text-foreground shadow-md"
-        role="status"
-        data-testid="viewport-tool-feedback"
-        data-active-tool={activeTool}
-      >
-        <span className="flex items-center gap-1.5">
-          <ToolModeIcon className="size-3.5 text-primary" />
-          {toolMode.label}
-        </span>
-      </div>
-
-      {viewportFeedback && (
-        <div
-          className="absolute right-3 top-[108px] z-30 rounded-md border border-primary/30 bg-panel px-2.5 py-1.5 text-[10px] font-medium text-foreground shadow-md"
-          role="status"
-          aria-live="polite"
-          data-testid={`${viewportFeedback.type}-viewport-feedback`}
-        >
-          {viewportFeedback.message}
-        </div>
-      )}
 
       <div className="absolute inset-0 z-[1] flex items-center justify-center p-10 max-[680px]:p-4">
         <svg

@@ -1,0 +1,223 @@
+import { useEffect, useMemo, useState } from "react"
+import { X } from "lucide-react"
+import { DesignSystemPanel } from "@/components/workspace/DesignSystemPanel"
+import { ModelExplorer } from "@/components/workspace/ModelExplorer"
+import { ObjectInspector } from "@/components/workspace/ObjectInspector"
+import { StatusBar } from "@/components/workspace/StatusBar"
+import { TopBar } from "@/components/workspace/TopBar"
+import { Viewport } from "@/components/workspace/Viewport"
+import { TooltipProvider } from "@/components/ui/tooltip"
+import { Button } from "@/components/ui/button"
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
+import { getProject, projects } from "@/data/projects"
+import { cn } from "@/lib/utils"
+import type {
+  AppView,
+  FloorName,
+  InspectorTab,
+  LayerId,
+  LayerState,
+  ProjectId,
+  ReviewIssue,
+  ViewportTool,
+} from "@/types"
+
+const initialProject = projects[0]
+const cloneLayers = (layers: LayerState[]) =>
+  layers.map((layer) => ({ ...layer }))
+const getDefaultIssue = (project: typeof initialProject) =>
+  project.issues.find((issue) => issue.id === project.defaultIssueId) ??
+  project.issues[0]
+
+function App() {
+  const [view, setView] = useState<AppView>("workspace")
+  const [darkMode, setDarkMode] = useState(true)
+  const [selectedProjectId, setSelectedProjectId] = useState<ProjectId>(
+    initialProject.id,
+  )
+  const [activeTool, setActiveTool] = useState<ViewportTool>("Orbit")
+  const [explorerOpen, setExplorerOpen] = useState(false)
+  const [explorerCollapsed, setExplorerCollapsed] = useState(false)
+  const [activeInspectorTab, setActiveInspectorTab] =
+    useState<InspectorTab>("properties")
+  const [layers, setLayers] = useState<LayerState[]>(
+    cloneLayers(initialProject.layers),
+  )
+  const [selectedFloor, setSelectedFloor] = useState<FloorName>(
+    initialProject.defaultFloor,
+  )
+  const [selectedIssue, setSelectedIssue] = useState<ReviewIssue>(
+    getDefaultIssue(initialProject),
+  )
+  const selectedProject = getProject(selectedProjectId)
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", darkMode)
+  }, [darkMode])
+
+  const visibleObjects = useMemo(
+    () =>
+      layers
+        .filter((layer) => layer.visible)
+        .reduce((sum, layer) => sum + layer.count, 0),
+    [layers],
+  )
+  const visibleLayerIds = useMemo(
+    () =>
+      layers
+        .filter((layer) => layer.visible)
+        .map((layer) => layer.id),
+    [layers],
+  )
+  const selectedObjectVisible = visibleLayerIds.includes(
+    selectedIssue.discipline,
+  )
+
+  const toggleLayer = (layerId: LayerId) => {
+    setLayers((current) =>
+      current.map((layer) =>
+        layer.id === layerId
+          ? { ...layer, visible: !layer.visible }
+          : layer,
+      ),
+    )
+  }
+
+  const selectIssue = (issue: ReviewIssue) => {
+    setSelectedIssue(issue)
+    setSelectedFloor(issue.details.level)
+  }
+
+  const selectProject = (projectId: ProjectId) => {
+    const nextProject = getProject(projectId)
+    setSelectedProjectId(nextProject.id)
+    setLayers(cloneLayers(nextProject.layers))
+    setSelectedFloor(nextProject.defaultFloor)
+    setSelectedIssue(getDefaultIssue(nextProject))
+  }
+
+  return (
+    <TooltipProvider delayDuration={300}>
+      <div className="flex h-dvh min-h-[560px] w-full flex-col overflow-hidden bg-background text-foreground">
+        <Sheet open={explorerOpen} onOpenChange={setExplorerOpen}>
+          <TopBar
+            darkMode={darkMode}
+            onDarkModeChange={setDarkMode}
+            onProjectChange={selectProject}
+            onViewChange={setView}
+            projects={projects}
+            selectedProject={selectedProject}
+            showExplorerTrigger={view === "workspace"}
+            unresolvedIssues={selectedProject.issues.length}
+            view={view}
+          />
+          <SheetContent
+            side="left"
+            overlayClassName="bg-transparent"
+            className="w-[min(86vw,320px)] gap-0 overflow-hidden border-border bg-panel p-0 min-[681px]:hidden sm:max-w-[320px] [&>button]:hidden"
+          >
+            <div className="absolute right-3 top-3 z-20">
+              <SheetClose asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  aria-label="Close Model Explorer"
+                  onClick={() => setExplorerOpen(false)}
+                >
+                  <X className="size-4" />
+                </Button>
+              </SheetClose>
+            </div>
+            <SheetHeader className="sr-only">
+              <SheetTitle>Model Explorer</SheetTitle>
+              <SheetDescription>
+                Browse floors, disciplines, saved views, and open issues.
+              </SheetDescription>
+            </SheetHeader>
+            <ModelExplorer
+              presentation="sheet"
+              floors={selectedProject.floors}
+              modelLabel={selectedProject.modelLabel}
+              layers={layers}
+              issues={selectedProject.issues}
+              onFloorSelect={setSelectedFloor}
+              onIssueSelect={selectIssue}
+              onLayerToggle={toggleLayer}
+              savedViews={selectedProject.savedViews}
+              selectedFloor={selectedFloor}
+              selectedIssue={selectedIssue}
+            />
+          </SheetContent>
+        </Sheet>
+
+        {view === "workspace" ? (
+          <main
+            className={cn(
+              "grid min-h-0 flex-1 overflow-hidden max-[680px]:grid-cols-1",
+              explorerCollapsed
+                ? "grid-cols-[minmax(0,1fr)_316px] max-[1160px]:grid-cols-[minmax(0,1fr)_280px] max-[940px]:grid-cols-1"
+                : "grid-cols-[248px_minmax(0,1fr)_316px] max-[1160px]:grid-cols-[220px_minmax(0,1fr)_280px] max-[940px]:grid-cols-[210px_minmax(0,1fr)]",
+            )}
+          >
+            {!explorerCollapsed && (
+              <ModelExplorer
+                floors={selectedProject.floors}
+                modelLabel={selectedProject.modelLabel}
+                layers={layers}
+                issues={selectedProject.issues}
+                onFloorSelect={setSelectedFloor}
+                onIssueSelect={selectIssue}
+                onLayerToggle={toggleLayer}
+                onCollapse={() => setExplorerCollapsed(true)}
+                savedViews={selectedProject.savedViews}
+                selectedFloor={selectedFloor}
+                selectedIssue={selectedIssue}
+              />
+            )}
+            <Viewport
+              activeTool={activeTool}
+              floors={selectedProject.floors}
+              issueCount={selectedProject.issues.length}
+              issues={selectedProject.issues}
+              onOpenAiReview={() => setActiveInspectorTab("ai")}
+              onExpandExplorer={() => setExplorerCollapsed(false)}
+              onIssueSelect={selectIssue}
+              onToolChange={setActiveTool}
+              selectedFloor={selectedFloor}
+              selectedIssue={selectedIssue}
+              showExplorerExpand={explorerCollapsed}
+              visibleLayerIds={visibleLayerIds}
+            />
+            <ObjectInspector
+              activeTab={activeInspectorTab}
+              issues={selectedProject.issues}
+              onTabChange={setActiveInspectorTab}
+              onIssueSelect={selectIssue}
+              selectedObjectVisible={selectedObjectVisible}
+              selectedIssue={selectedIssue}
+            />
+          </main>
+        ) : (
+          <DesignSystemPanel />
+        )}
+
+        <StatusBar
+          activeTool={activeTool}
+          hiddenLayers={layers.filter((layer) => !layer.visible).length}
+          selectedFloor={selectedFloor}
+          visibleObjects={visibleObjects}
+        />
+      </div>
+    </TooltipProvider>
+  )
+}
+
+export default App

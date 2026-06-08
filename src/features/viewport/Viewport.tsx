@@ -30,7 +30,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { ViewportToolbar } from "@/components/workspace/ViewportToolbar"
+import { ViewportToolbar } from "@/features/viewport/ViewportToolbar"
 import type {
   FloorName,
   FloorState,

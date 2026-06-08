@@ -44,6 +44,7 @@ function App() {
   )
   const [activeTool, setActiveTool] = useState<ViewportTool>("Orbit")
   const [explorerOpen, setExplorerOpen] = useState(false)
+  const [inspectorOpen, setInspectorOpen] = useState(false)
   const [explorerCollapsed, setExplorerCollapsed] = useState(false)
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false)
   const [activeInspectorTab, setActiveInspectorTab] =
@@ -106,7 +107,11 @@ function App() {
 
   const openAiReview = () => {
     setActiveInspectorTab("ai")
-    setInspectorCollapsed(false)
+    if (window.matchMedia("(max-width: 680px)").matches) {
+      setInspectorOpen(true)
+    } else {
+      setInspectorCollapsed(false)
+    }
   }
 
   return (
@@ -120,7 +125,7 @@ function App() {
             onViewChange={setView}
             projects={projects}
             selectedProject={selectedProject}
-            showExplorerTrigger
+            showExplorerTrigger={false}
             unresolvedIssues={selectedProject.issues.length}
             view={view}
           />
@@ -164,6 +169,44 @@ function App() {
           </SheetContent>
         </Sheet>
 
+        <Sheet open={inspectorOpen} onOpenChange={setInspectorOpen}>
+          <SheetContent
+            side="right"
+            overlayClassName="bg-transparent"
+            className="w-[min(90vw,340px)] gap-0 overflow-hidden border-border bg-panel p-0 min-[681px]:hidden sm:max-w-[340px] [&>button]:hidden"
+          >
+            <div className="absolute right-3 top-3 z-20">
+              <SheetClose asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  aria-label="Close Object Inspector"
+                  onClick={() => setInspectorOpen(false)}
+                >
+                  <X className="size-4" />
+                </Button>
+              </SheetClose>
+            </div>
+            <SheetHeader className="sr-only">
+              <SheetTitle>Object Inspector</SheetTitle>
+              <SheetDescription>
+                Review object properties, issues, AI suggestions, and history.
+              </SheetDescription>
+            </SheetHeader>
+            <ObjectInspector
+              activeTab={activeInspectorTab}
+              issues={selectedProject.issues}
+              onCollapse={() => setInspectorOpen(false)}
+              onTabChange={setActiveInspectorTab}
+              onIssueSelect={selectIssue}
+              presentation="sheet"
+              selectedObjectVisible={selectedObjectVisible}
+              selectedIssue={selectedIssue}
+            />
+          </SheetContent>
+        </Sheet>
+
         {view === "workspace" ? (
           <main
             className={cn(
@@ -200,6 +243,8 @@ function App() {
               onOpenAiReview={openAiReview}
               onExpandExplorer={() => setExplorerCollapsed(false)}
               onExpandInspector={() => setInspectorCollapsed(false)}
+              onOpenExplorer={() => setExplorerOpen(true)}
+              onOpenInspector={() => setInspectorOpen(true)}
               onIssueSelect={selectIssue}
               onToolChange={setActiveTool}
               selectedFloor={selectedFloor}

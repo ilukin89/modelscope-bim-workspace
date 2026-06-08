@@ -49,6 +49,8 @@ interface ViewportProps {
   onOpenAiReview: () => void
   onExpandExplorer: () => void
   onExpandInspector: () => void
+  onOpenExplorer: () => void
+  onOpenInspector: () => void
   onIssueSelect: (issue: ReviewIssue) => void
   onToolChange: (tool: ViewportTool) => void
   selectedFloor: FloorName
@@ -66,6 +68,8 @@ export function Viewport({
   onOpenAiReview,
   onExpandExplorer,
   onExpandInspector,
+  onOpenExplorer,
+  onOpenInspector,
   onIssueSelect,
   onToolChange,
   selectedFloor,
@@ -277,7 +281,7 @@ export function Viewport({
       </div>
 
       {showExplorerExpand && (
-        <div className="absolute left-3 top-3 z-20 max-[680px]:hidden">
+        <div className="absolute left-3 top-3 z-20 max-[940px]:hidden">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -298,6 +302,26 @@ export function Viewport({
           </Tooltip>
         </div>
       )}
+
+      <div className="absolute left-3 top-3 z-20 min-[941px]:hidden">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="bg-panel"
+              aria-label="Open Model Explorer"
+              aria-expanded="false"
+              onClick={onOpenExplorer}
+            >
+              <PanelLeftOpen />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            Open Model Explorer
+          </TooltipContent>
+        </Tooltip>
+      </div>
 
       {showInspectorExpand && (
         <div className="absolute right-3 top-3 z-20 max-[680px]:hidden">
@@ -321,6 +345,26 @@ export function Viewport({
           </Tooltip>
         </div>
       )}
+
+      <div className="absolute right-3 top-3 z-20 min-[681px]:hidden">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="bg-panel"
+              aria-label="Open Object Inspector"
+              aria-expanded="false"
+              onClick={onOpenInspector}
+            >
+              <PanelRightOpen />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="left">
+            Open Object Inspector
+          </TooltipContent>
+        </Tooltip>
+      </div>
 
       <div
         className={cn(

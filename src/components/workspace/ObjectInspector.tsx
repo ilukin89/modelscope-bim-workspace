@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils"
 
 interface ObjectInspectorProps {
   activeTab: InspectorTab
+  presentation?: "sidebar" | "sheet"
   selectedIssue: ReviewIssue
   selectedObjectVisible: boolean
   issues: ReviewIssue[]
@@ -61,6 +62,7 @@ const reviewContent = {
 
 export function ObjectInspector({
   activeTab,
+  presentation = "sidebar",
   selectedIssue,
   selectedObjectVisible,
   issues,
@@ -116,8 +118,13 @@ export function ObjectInspector({
 
   return (
     <aside
-      id="object-inspector"
-      className="relative min-h-0 overflow-hidden border-l border-border bg-panel max-[680px]:hidden"
+      id={presentation === "sidebar" ? "object-inspector" : undefined}
+      className={cn(
+        "relative min-h-0 overflow-hidden bg-panel",
+        presentation === "sidebar"
+          ? "border-l border-border max-[680px]:hidden"
+          : "h-full w-full",
+      )}
     >
       <div className="border-b border-border p-3">
         <div className="flex items-start gap-2">
@@ -139,17 +146,19 @@ export function ObjectInspector({
                 : `Hidden by ${selectedDisciplineLabel} layer`}
             </p>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="ml-auto size-7"
-            aria-label="Collapse Object Inspector"
-            aria-controls="object-inspector"
-            aria-expanded="true"
-            onClick={onCollapse}
-          >
-            <PanelRightClose className="size-3.5" />
-          </Button>
+          {presentation === "sidebar" && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="ml-auto size-7"
+              aria-label="Collapse Object Inspector"
+              aria-controls="object-inspector"
+              aria-expanded="true"
+              onClick={onCollapse}
+            >
+              <PanelRightClose className="size-3.5" />
+            </Button>
+          )}
         </div>
       </div>
 

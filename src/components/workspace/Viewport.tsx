@@ -10,6 +10,7 @@ import {
   MessageSquarePlus,
   Orbit,
   PanelLeftOpen,
+  PanelRightOpen,
   Ruler,
   ScanLine,
   ShieldAlert,
@@ -47,11 +48,13 @@ interface ViewportProps {
   issues: ReviewIssue[]
   onOpenAiReview: () => void
   onExpandExplorer: () => void
+  onExpandInspector: () => void
   onIssueSelect: (issue: ReviewIssue) => void
   onToolChange: (tool: ViewportTool) => void
   selectedFloor: FloorName
   selectedIssue: ReviewIssue
   showExplorerExpand: boolean
+  showInspectorExpand: boolean
   visibleLayerIds: LayerId[]
 }
 
@@ -62,11 +65,13 @@ export function Viewport({
   issues,
   onOpenAiReview,
   onExpandExplorer,
+  onExpandInspector,
   onIssueSelect,
   onToolChange,
   selectedFloor,
   selectedIssue,
   showExplorerExpand,
+  showInspectorExpand,
   visibleLayerIds,
 }: ViewportProps) {
   const [aiFindingsOpen, setAiFindingsOpen] = useState(false)
@@ -153,7 +158,6 @@ export function Viewport({
 
 
   const openAiReview = () => {
-    onOpenAiReview()
     showViewportFeedback(
       `AI Review opened · ${issueCount} findings`,
       "ai",
@@ -171,7 +175,12 @@ export function Viewport({
       <div className="contents max-[1160px]:absolute max-[1160px]:left-1/2 max-[1160px]:top-3 max-[1160px]:z-20 max-[1160px]:flex max-[1160px]:w-max max-[1160px]:max-w-[calc(100%-24px)] max-[1160px]:-translate-x-1/2 max-[1160px]:flex-col max-[1160px]:items-stretch max-[1160px]:gap-2 max-[760px]:w-[min(288px,calc(100%-24px))]">
         <ViewportToolbar activeTool={activeTool} onToolChange={onToolChange} />
 
-        <div className="absolute right-3 top-3 z-20 max-[1160px]:static max-[1160px]:w-0 max-[1160px]:min-w-full">
+        <div
+          className={cn(
+            "absolute right-3 top-3 z-20 max-[1160px]:static max-[1160px]:w-0 max-[1160px]:min-w-full",
+            showInspectorExpand && "min-[1161px]:right-14",
+          )}
+        >
           <Popover open={aiFindingsOpen} onOpenChange={setAiFindingsOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -285,6 +294,29 @@ export function Viewport({
             </TooltipTrigger>
             <TooltipContent side="right">
               Expand Model Explorer
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      )}
+
+      {showInspectorExpand && (
+        <div className="absolute right-3 top-3 z-20 max-[680px]:hidden">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="bg-panel"
+                aria-label="Expand Object Inspector"
+                aria-controls="object-inspector"
+                aria-expanded="false"
+                onClick={onExpandInspector}
+              >
+                <PanelRightOpen />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+              Expand Object Inspector
             </TooltipContent>
           </Tooltip>
         </div>

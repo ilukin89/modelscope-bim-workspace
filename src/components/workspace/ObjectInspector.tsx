@@ -4,8 +4,8 @@ import {
   CheckCircle2,
   ChevronDown,
   Clock3,
-  ExternalLink,
   MessageSquare,
+  PanelRightClose,
   Sparkles,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -21,6 +21,7 @@ interface ObjectInspectorProps {
   selectedIssue: ReviewIssue
   selectedObjectVisible: boolean
   issues: ReviewIssue[]
+  onCollapse: () => void
   onIssueSelect: (issue: ReviewIssue) => void
   onTabChange: (tab: InspectorTab) => void
 }
@@ -63,6 +64,7 @@ export function ObjectInspector({
   selectedIssue,
   selectedObjectVisible,
   issues,
+  onCollapse,
   onIssueSelect,
   onTabChange,
 }: ObjectInspectorProps) {
@@ -113,7 +115,10 @@ export function ObjectInspector({
   }
 
   return (
-    <aside className="relative min-h-0 overflow-hidden border-l border-border bg-panel max-[940px]:hidden">
+    <aside
+      id="object-inspector"
+      className="relative min-h-0 overflow-hidden border-l border-border bg-panel max-[680px]:hidden"
+    >
       <div className="border-b border-border p-3">
         <div className="flex items-start gap-2">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
@@ -138,10 +143,12 @@ export function ObjectInspector({
             variant="ghost"
             size="icon"
             className="ml-auto size-7"
-            aria-label="Open object details"
-            onClick={() => showActionFeedback("Prototype action only")}
+            aria-label="Collapse Object Inspector"
+            aria-controls="object-inspector"
+            aria-expanded="true"
+            onClick={onCollapse}
           >
-            <ExternalLink className="size-3.5" />
+            <PanelRightClose className="size-3.5" />
           </Button>
         </div>
       </div>

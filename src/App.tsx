@@ -45,6 +45,7 @@ function App() {
   const [activeTool, setActiveTool] = useState<ViewportTool>("Orbit")
   const [explorerOpen, setExplorerOpen] = useState(false)
   const [explorerCollapsed, setExplorerCollapsed] = useState(false)
+  const [inspectorCollapsed, setInspectorCollapsed] = useState(false)
   const [activeInspectorTab, setActiveInspectorTab] =
     useState<InspectorTab>("properties")
   const [layers, setLayers] = useState<LayerState[]>(
@@ -103,6 +104,11 @@ function App() {
     setSelectedIssue(getDefaultIssue(nextProject))
   }
 
+  const openAiReview = () => {
+    setActiveInspectorTab("ai")
+    setInspectorCollapsed(false)
+  }
+
   return (
     <TooltipProvider delayDuration={300}>
       <div className="flex h-dvh min-h-[560px] w-full flex-col overflow-hidden bg-background text-foreground">
@@ -121,7 +127,7 @@ function App() {
           <SheetContent
             side="left"
             overlayClassName="bg-transparent"
-            className="w-[min(86vw,320px)] gap-0 overflow-hidden border-border bg-panel p-0 min-[681px]:hidden sm:max-w-[320px] [&>button]:hidden"
+            className="w-[min(86vw,320px)] gap-0 overflow-hidden border-border bg-panel p-0 min-[941px]:hidden sm:max-w-[320px] [&>button]:hidden"
           >
             <div className="absolute right-3 top-3 z-20">
               <SheetClose asChild>
@@ -162,9 +168,13 @@ function App() {
           <main
             className={cn(
               "grid min-h-0 flex-1 overflow-hidden max-[680px]:grid-cols-1",
-              explorerCollapsed
-                ? "grid-cols-[minmax(0,1fr)_316px] max-[1160px]:grid-cols-[minmax(0,1fr)_280px] max-[940px]:grid-cols-1"
-                : "grid-cols-[248px_minmax(0,1fr)_316px] max-[1160px]:grid-cols-[220px_minmax(0,1fr)_280px] max-[940px]:grid-cols-[210px_minmax(0,1fr)]",
+              explorerCollapsed && inspectorCollapsed
+                ? "grid-cols-1"
+                : explorerCollapsed
+                  ? "grid-cols-[minmax(0,1fr)_316px] max-[1160px]:grid-cols-[minmax(0,1fr)_280px] max-[680px]:grid-cols-1"
+                  : inspectorCollapsed
+                    ? "grid-cols-[248px_minmax(0,1fr)] max-[1160px]:grid-cols-[220px_minmax(0,1fr)] max-[940px]:grid-cols-1"
+                    : "grid-cols-[248px_minmax(0,1fr)_316px] max-[1160px]:grid-cols-[220px_minmax(0,1fr)_280px] max-[940px]:grid-cols-[minmax(0,1fr)_280px] max-[680px]:grid-cols-1",
             )}
           >
             {!explorerCollapsed && (
@@ -187,23 +197,28 @@ function App() {
               floors={selectedProject.floors}
               issueCount={selectedProject.issues.length}
               issues={selectedProject.issues}
-              onOpenAiReview={() => setActiveInspectorTab("ai")}
+              onOpenAiReview={openAiReview}
               onExpandExplorer={() => setExplorerCollapsed(false)}
+              onExpandInspector={() => setInspectorCollapsed(false)}
               onIssueSelect={selectIssue}
               onToolChange={setActiveTool}
               selectedFloor={selectedFloor}
               selectedIssue={selectedIssue}
               showExplorerExpand={explorerCollapsed}
+              showInspectorExpand={inspectorCollapsed}
               visibleLayerIds={visibleLayerIds}
             />
-            <ObjectInspector
-              activeTab={activeInspectorTab}
-              issues={selectedProject.issues}
-              onTabChange={setActiveInspectorTab}
-              onIssueSelect={selectIssue}
-              selectedObjectVisible={selectedObjectVisible}
-              selectedIssue={selectedIssue}
-            />
+            {!inspectorCollapsed && (
+              <ObjectInspector
+                activeTab={activeInspectorTab}
+                issues={selectedProject.issues}
+                onCollapse={() => setInspectorCollapsed(true)}
+                onTabChange={setActiveInspectorTab}
+                onIssueSelect={selectIssue}
+                selectedObjectVisible={selectedObjectVisible}
+                selectedIssue={selectedIssue}
+              />
+            )}
           </main>
         ) : (
           <DesignSystemPanel />

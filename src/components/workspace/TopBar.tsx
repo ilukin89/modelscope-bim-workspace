@@ -120,7 +120,7 @@ export function TopBar({
             <Button
               variant="outline"
               size="icon"
-              className="min-[681px]:hidden"
+              className="min-[941px]:hidden"
               aria-label="Open Model Explorer"
             >
               <PanelLeft />

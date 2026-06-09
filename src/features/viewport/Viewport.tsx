@@ -31,13 +31,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { ViewportToolbar } from "@/features/viewport/ViewportToolbar"
+import type { ViewportTool } from "@/features/viewport/types"
 import type {
   FloorName,
   FloorState,
   HighlightKind,
   LayerId,
   ReviewIssue,
-  ViewportTool,
 } from "@/types"
 import { cn } from "@/lib/utils"
 

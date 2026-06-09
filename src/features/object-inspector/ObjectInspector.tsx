@@ -13,8 +13,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import type { InspectorTab, ReviewIssue } from "@/types"
+import type { InspectorTab } from "@/features/object-inspector/types"
 import { cn } from "@/lib/utils"
+import type { ReviewIssue } from "@/types"
 
 interface ObjectInspectorProps {
   activeTab: InspectorTab

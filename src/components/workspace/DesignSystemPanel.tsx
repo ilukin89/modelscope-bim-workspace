@@ -17,8 +17,8 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
+import type { ViewportTool } from "@/features/viewport/types"
 import { cn } from "@/lib/utils"
-import type { ViewportTool } from "@/types"
 
 const tokens = [
   {

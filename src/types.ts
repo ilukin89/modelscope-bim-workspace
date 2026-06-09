@@ -1,17 +1,8 @@
 export type AppView = "workspace" | "design-system"
 
-export type InspectorTab = "properties" | "issues" | "ai" | "history"
-
 export type ProjectId = "residential-tower-a" | "civic-center-east" | "transit-hub-02"
 
 export type FloorName = string
-
-export type ViewportTool =
-  | "Orbit"
-  | "Pan"
-  | "Section"
-  | "Measure"
-  | "Comment"
 
 export type LayerId =
   | "architecture"

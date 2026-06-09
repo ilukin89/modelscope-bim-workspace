@@ -17,16 +17,16 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { getProject, projects } from "@/data/projects"
+import type { InspectorTab } from "@/features/object-inspector/types"
+import type { ViewportTool } from "@/features/viewport/types"
 import { cn } from "@/lib/utils"
 import type {
   AppView,
   FloorName,
-  InspectorTab,
   LayerId,
   LayerState,
   ProjectId,
   ReviewIssue,
-  ViewportTool,
 } from "@/types"
 
 const initialProject = projects[0]

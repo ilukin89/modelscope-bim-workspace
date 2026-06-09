@@ -13,28 +13,47 @@ The goal was not to build real BIM functionality, but to demonstrate product UI 
 
 ## What it demonstrates
 
-* Code-first product design workflow
-* React state for visible product interactions, not static mockups
-* shadcn/ui used as a design-system foundation
-* Semantic CSS variables and Tailwind theme tokens
-* Viewport tool modes with visible viewport feedback
-* Layer visibility affecting the viewport, not only row styling
-* Floor selection with a visible section/floor marker
-* Issue selection connected to viewport highlight, object label, and inspector content
-* AI Review as a floating findings entry point
-* Responsive Model Explorer access for narrower screens
-* Light and dark themes with semantic state colors
-* A practical in-product design-system reference
+- Code-first product design workflow
+- React state for visible product interactions, not static mockups
+- shadcn/ui used as a design-system foundation
+- Semantic CSS variables and Tailwind theme tokens
+- Viewport tool modes with visible viewport feedback
+- Layer visibility affecting the viewport, not only row styling
+- Floor selection with a visible section/floor marker
+- Issue selection connected to viewport highlight, object label, and inspector content
+- AI Review as a floating findings entry point
+- Responsive Model Explorer access for narrower screens
+- Light and dark themes with semantic state colors
+- A practical in-product design-system reference
+
+## V2 spec-driven architecture work
+
+The V2 branch introduces a spec-driven workflow for evolving the prototype beyond a simple single-page demo.
+
+The goal is not to claim that ModelScope is already a production BIM platform. It remains a frontend-only UX Engineering prototype. The V2 work documents and introduces the first structural boundaries needed if the project later grows toward real 3D model support, backend-backed review workflows, saved views, comments, permissions, or model upload.
+
+This includes:
+
+- project constitution and architecture guardrails
+- project structure inventory
+- feature-based source organization
+- implementation logs for AI-assisted refactor batches
+- domain/type inventory before splitting shared types
+- viewer adapter strategy and contract planning
+- TypeScript-only viewer adapter interfaces
+- an isolated prototype viewer adapter implementation
+
+The work is intentionally incremental: each architectural step is documented, reviewed in a small branch/PR, validated with `npm run build`, and kept separate from unrelated feature work.
 
 ## Tech stack
 
-* Vite
-* React
-* TypeScript
-* Tailwind CSS
-* shadcn/ui
-* Radix UI
-* lucide-react
+- Vite
+- React
+- TypeScript
+- Tailwind CSS
+- shadcn/ui
+- Radix UI
+- lucide-react
 
 The shadcn/ui component source in `src/components/ui/` was installed through the shadcn CLI:
 
@@ -46,20 +65,64 @@ ModelScope extends the generated Button and Badge variants with compact product 
 
 ## Project structure
 
+The V2 structure separates shared UI primitives, app/layout components, product feature areas, mock data, documentation, and spec-driven planning files.
+
 ```txt
 src/
   App.tsx
+  main.tsx
+  index.css
+  types.ts
+
   components/
     ui/
-    workspace/
+      shadcn/ui primitives and local UI variants
+    layout/
       TopBar.tsx
+
+  features/
+    model-explorer/
       ModelExplorer.tsx
+
+    object-inspector/
+      ObjectInspector.tsx
+      types.ts
+
+    viewport/
       Viewport.tsx
       ViewportToolbar.tsx
-      ObjectInspector.tsx
+      types.ts
+      viewer-adapter/
+        types.ts
+        ViewerAdapter.ts
+        adapters/
+          prototype/
+            PrototypeViewerAdapter.ts
+
+    workspace/
       StatusBar.tsx
-      DesignSystemPanel.tsx
+
+  data/
+    projects.ts
+
+  lib/
+    utils.ts
+
+docs/
+  01-project-structure-inventory.md
+  02-v2-implementation-log.md
+  03-domain-type-inventory.md
+  04-viewer-adapter-strategy.md
+  05-viewer-adapter-contract.md
+
+specs/
+  001-v2-structure-refactor/
+  002-viewer-adapter-boundary/
+  003-viewer-adapter-interfaces/
+  004-prototype-viewer-adapter/
 ```
+
+The current application still uses mock data and a simulated SVG viewport. The viewer adapter files prepare a future boundary for real viewer integration, but they do not add real 3D rendering.
 
 ## Design and implementation notes
 
@@ -69,11 +132,11 @@ The prototype treats the viewport as the source of truth. Tool changes, selected
 
 Examples:
 
-* Section mode strengthens the floor/section plane.
-* Measure mode displays a measurement annotation.
-* Comment mode displays a comment marker.
-* Floor selection moves the visible floor marker.
-* Issue selection updates the object label and model highlight.
+- Section mode strengthens the floor/section plane.
+- Measure mode displays a measurement annotation.
+- Comment mode displays a comment marker.
+- Floor selection moves the visible floor marker.
+- Issue selection updates the object label and model highlight.
 
 ### AI Review
 
@@ -113,22 +176,25 @@ npm run build
 
 ## Intentionally out of scope
 
-* Real IFC, Revit, or point-cloud parsing
-* WebGL or geometry rendering
-* Model upload and persistence
-* Authentication, permissions, and project administration
-* Real-time collaboration
-* Production issue tracking or BCF exchange
-* AI inference or automated clash detection
-* Mobile-first model review
+- Real IFC, Revit, or point-cloud parsing
+- WebGL or geometry rendering
+- Model upload and persistence
+- Authentication, permissions, and project administration
+- Real-time collaboration
+- Production issue tracking or BCF exchange
+- AI inference or automated clash detection
+- Mobile-first model review
 
 The fake viewport maps Architecture, Structure, Mechanical, and Electrical to separate SVG groups. Electrical is hidden by default and represented only by small cable/detail lines in this prototype.
 
 ## Next possible iterations
 
-* Replace the illustrative viewport with a Three.js scene and real selection states.
-* Add collapsible and resizable panels with persisted workspace preferences.
-* Introduce issue creation, threaded comments, assignments, and BCF import/export.
-* Add keyboard shortcuts and a command palette for expert workflows.
-* Connect design tokens to a broader component catalog and visual regression tests.
-* Prototype loading, empty, error, and permission states for real project data.
+- Wire the prototype viewer adapter into the existing viewport without changing visible behavior.
+- Add a small sample 3D viewer only after the adapter boundary is validated.
+- Introduce saved views, comments, and issue-status persistence as a minimal backend-backed workflow.
+- Add loading, empty, error, and saving states for real project data.
+- Add collapsible and resizable panels with persisted workspace preferences.
+- Introduce issue creation, threaded comments, assignments, and possible BCF import/export.
+- Add keyboard shortcuts and a command palette for expert workflows.
+- Expand the design-system reference into a broader component and interaction catalog.
+- Add visual regression tests or interaction smoke tests for viewport-related behavior.

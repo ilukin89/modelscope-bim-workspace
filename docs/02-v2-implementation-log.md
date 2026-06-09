@@ -135,3 +135,23 @@ This batch did not:
 `ViewportTool` and `InspectorTab` were moved first because they are small, dependency-free UI-state types with clear feature ownership.
 
 All interconnected domain and mock-data types remain in `src/types.ts` for later, separately planned batches.
+
+## Batch 3: App Shell and Workspace Status Ownership Decision
+
+### Goal
+
+Clarify ownership of remaining workspace shell components before future app-shell refactors.
+
+### Decision
+
+- `TopBar` belongs in `src/components/layout/` because it acts as app-level shell chrome shared across workspace and design-system views.
+- `StatusBar` belongs in `src/features/workspace/` because it depends on workspace-specific state such as viewport tool, floor, layer visibility, and model-object context.
+- `DesignSystemPanel` remains in its current location for now.
+
+### What Was Not Changed
+
+This decision does not change behavior. In particular, it does not change the fact that `StatusBar` currently renders during the design-system view while showing workspace state. That behavior requires a separate UX/state decision and is outside this batch.
+
+### Implementation Scope
+
+The implementation batch should only move files and update imports.

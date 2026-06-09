@@ -155,3 +155,44 @@ This decision does not change behavior. In particular, it does not change the fa
 ### Implementation Scope
 
 The implementation batch should only move files and update imports.
+
+## Batch 3: Shell and Workspace Status Component Refactor
+
+### Goal
+
+Move remaining shell/status components into clearer ownership locations.
+
+### Files Moved
+
+- `src/components/workspace/TopBar.tsx` → `src/components/layout/TopBar.tsx`
+- `src/components/workspace/StatusBar.tsx` → `src/features/workspace/StatusBar.tsx`
+
+### Files Updated
+
+- `src/App.tsx`
+
+Only import paths were updated.
+
+### Validation
+
+- `npm run build` passed.
+- No visible UI behavior was intentionally changed.
+
+### What Was Not Changed
+
+This batch did not:
+
+- move `App.tsx`
+- move `DesignSystemPanel.tsx`
+- change when `StatusBar` renders
+- create routing
+- create a new workspace wrapper
+- add backend logic
+- add real 3D rendering
+- add new product features
+
+### Reasoning
+
+`TopBar` was moved to `src/components/layout/` because it acts as app-level shell chrome shared across workspace and design-system views.
+
+`StatusBar` was moved to `src/features/workspace/` because it depends on workspace-specific state such as viewport tool, floor, layer visibility, and object context.

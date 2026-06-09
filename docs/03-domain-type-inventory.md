@@ -152,3 +152,65 @@ The AI task should return:
 6. safest first type-refactor batch
 
 The AI must not modify files during that inspection.
+
+## Inspection Result: `src/types.ts`
+
+### Exported Types
+
+Current exported types in `src/types.ts`:
+
+- `AppView`
+- `InspectorTab`
+- `ProjectId`
+- `FloorName`
+- `ViewportTool`
+- `LayerId`
+- `LayerState`
+- `FloorState`
+- `IssueSeverity`
+- `HighlightKind`
+- `ObjectGeometry`
+- `ObjectDetails`
+- `ReviewIssue`
+- `ProjectData`
+
+### Recommended Type Ownership
+
+| Type             | Suggested Future Location                                     | Move Timing  | Reason                                                                        |
+| ---------------- | ------------------------------------------------------------- | ------------ | ----------------------------------------------------------------------------- |
+| `AppView`        | `src/app/types.ts`                                            | Later        | App-level structure is not being refactored yet.                              |
+| `InspectorTab`   | `src/features/object-inspector/types.ts`                      | Move now     | Dependency-free and clearly owned by Object Inspector.                        |
+| `ProjectId`      | `src/domain/project/types.ts`                                 | Later        | Coupled to current mock-project fixtures.                                     |
+| `FloorName`      | `src/domain/model/types.ts`                                   | Later        | Shared by multiple model/object structures.                                   |
+| `ViewportTool`   | `src/features/viewport/types.ts`                              | Move now     | Dependency-free and clearly owned by Viewport.                                |
+| `LayerId`        | `src/domain/model/types.ts`                                   | Later        | Shared by explorer and issue data.                                            |
+| `LayerState`     | `src/features/model-explorer/types.ts`                        | Later        | Still embedded in `ProjectData`; mixes display and interaction state.         |
+| `FloorState`     | `src/features/model-explorer/types.ts`                        | Later        | Still embedded in `ProjectData`.                                              |
+| `IssueSeverity`  | `src/domain/issue/types.ts`                                   | Later        | Should move with a future issue-domain batch.                                 |
+| `HighlightKind`  | `src/features/viewport/types.ts`                              | Later        | Currently embedded in `ReviewIssue`, creating cross-feature dependency.       |
+| `ObjectGeometry` | `src/features/object-inspector/types.ts`                      | Later        | Should move together with `ObjectDetails`.                                    |
+| `ObjectDetails`  | `src/features/object-inspector/types.ts`                      | Later        | Currently embedded directly in `ReviewIssue`.                                 |
+| `ReviewIssue`    | `src/domain/issue/types.ts`                                   | Later        | Couples issue, model, viewport, and inspector concerns.                       |
+| `ProjectData`    | `src/features/workspace/types.ts` or remain in `src/types.ts` | Stay for now | It is an aggregate mock workspace shape, not a clean backend/domain contract. |
+
+### Main Risks
+
+Splitting `src/types.ts` too early could create:
+
+- circular dependencies between issue, viewport, inspector, model-explorer, and workspace types
+- misleading domain ownership for display-state types
+- a fake backend/API contract around `ProjectData`
+- unnecessary import churn
+- regressions in TypeScript types
+- weaker separation between current `ReviewIssue` and future AI Finding concepts
+
+### Safest First Type Batch
+
+Move only:
+
+- `ViewportTool` → `src/features/viewport/types.ts`
+- `InspectorTab` → `src/features/object-inspector/types.ts`
+
+Both are dependency-free UI-state unions and have clear feature ownership.
+
+All interconnected domain, mock-data, object, issue, floor, and layer types should remain in `src/types.ts` for now.

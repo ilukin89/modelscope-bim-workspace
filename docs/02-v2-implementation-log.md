@@ -85,3 +85,53 @@ Possible future batches:
 3. Split domain types from `src/types.ts` only after a separate type/domain refactor spec.
 4. Split mock project data from `src/data/projects.ts` only after a separate data/domain refactor spec.
 5. Introduce a documented viewport adapter boundary before adding any real 3D viewer.
+
+## Batch 2: Feature UI-State Type Refactor
+
+### Goal
+
+Move two dependency-free UI-state types into their owning feature folders.
+
+### Files Added
+
+- `src/features/viewport/types.ts`
+- `src/features/object-inspector/types.ts`
+
+### Types Moved
+
+- `ViewportTool` → `src/features/viewport/types.ts`
+- `InspectorTab` → `src/features/object-inspector/types.ts`
+
+### Files Updated
+
+Imports were updated in:
+
+- `src/App.tsx`
+- `src/components/workspace/DesignSystemPanel.tsx`
+- `src/components/workspace/StatusBar.tsx`
+- `src/features/object-inspector/ObjectInspector.tsx`
+- `src/features/viewport/Viewport.tsx`
+- `src/features/viewport/ViewportToolbar.tsx`
+
+### Validation
+
+- `npm run build` passed.
+- No visible UI behavior was intentionally changed.
+
+### What Was Not Changed
+
+This batch did not:
+
+- split `ReviewIssue`
+- split `ProjectData`
+- move model, issue, object, floor, layer, or highlight types
+- create domain folders
+- add backend logic
+- add real 3D rendering
+- add new product features
+
+### Reasoning
+
+`ViewportTool` and `InspectorTab` were moved first because they are small, dependency-free UI-state types with clear feature ownership.
+
+All interconnected domain and mock-data types remain in `src/types.ts` for later, separately planned batches.

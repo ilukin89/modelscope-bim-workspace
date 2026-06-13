@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/tooltip"
 import { ViewportToolbar } from "@/features/viewport/ViewportToolbar"
 import type { ViewportTool } from "@/features/viewport/types"
+import { usePrototypeViewerAdapterLifecycle } from "@/features/viewport/viewer-adapter/usePrototypeViewerAdapterLifecycle"
 import type {
   FloorName,
   FloorState,
@@ -86,6 +87,7 @@ export function Viewport({
   const viewportFeedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   )
+  const viewportHostRef = usePrototypeViewerAdapterLifecycle()
   const architectureVisible = visibleLayerIds.includes("architecture")
   const mechanicalVisible = visibleLayerIds.includes("mechanical")
   const structureVisible = visibleLayerIds.includes("structure")
@@ -382,7 +384,10 @@ export function Viewport({
         </Badge>
       </div>
 
-      <div className="absolute inset-0 z-[1] flex items-center justify-center p-10 max-[680px]:p-4">
+      <div
+        ref={viewportHostRef}
+        className="absolute inset-0 z-[1] flex items-center justify-center p-10 max-[680px]:p-4"
+      >
         <svg
           viewBox="0 0 760 620"
           className="h-[82%] max-h-[680px] w-[82%] max-w-[820px] drop-shadow-2xl"

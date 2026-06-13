@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react"
 import { X } from "lucide-react"
+import { TopBar } from "@/components/layout/TopBar"
 import { DesignSystemPanel } from "@/components/workspace/DesignSystemPanel"
-import { ModelExplorer } from "@/components/workspace/ModelExplorer"
-import { ObjectInspector } from "@/components/workspace/ObjectInspector"
-import { StatusBar } from "@/components/workspace/StatusBar"
-import { TopBar } from "@/components/workspace/TopBar"
-import { Viewport } from "@/components/workspace/Viewport"
+import { ModelExplorer } from "@/features/model-explorer/ModelExplorer"
+import { ObjectInspector } from "@/features/object-inspector/ObjectInspector"
+import { StatusBar } from "@/features/workspace/StatusBar"
+import { Viewport } from "@/features/viewport/Viewport"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
 import {
@@ -17,16 +17,16 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { getProject, projects } from "@/data/projects"
+import type { InspectorTab } from "@/features/object-inspector/types"
+import type { ViewportTool } from "@/features/viewport/types"
 import { cn } from "@/lib/utils"
 import type {
   AppView,
   FloorName,
-  InspectorTab,
   LayerId,
   LayerState,
   ProjectId,
   ReviewIssue,
-  ViewportTool,
 } from "@/types"
 
 const initialProject = projects[0]

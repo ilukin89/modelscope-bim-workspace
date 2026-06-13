@@ -30,14 +30,15 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { ViewportToolbar } from "@/components/workspace/ViewportToolbar"
+import { ViewportToolbar } from "@/features/viewport/ViewportToolbar"
+import type { ViewportTool } from "@/features/viewport/types"
+import { usePrototypeViewerAdapterLifecycle } from "@/features/viewport/viewer-adapter/usePrototypeViewerAdapterLifecycle"
 import type {
   FloorName,
   FloorState,
   HighlightKind,
   LayerId,
   ReviewIssue,
-  ViewportTool,
 } from "@/types"
 import { cn } from "@/lib/utils"
 
@@ -86,6 +87,13 @@ export function Viewport({
   const viewportFeedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   )
+  const selectedObjectId = selectedIssue.details.objectId
+  const viewportHostRef = usePrototypeViewerAdapterLifecycle({
+    activeTool,
+    selectedFloor,
+    selectedObjectId,
+    visibleLayerIds,
+  })
   const architectureVisible = visibleLayerIds.includes("architecture")
   const mechanicalVisible = visibleLayerIds.includes("mechanical")
   const structureVisible = visibleLayerIds.includes("structure")
@@ -382,7 +390,10 @@ export function Viewport({
         </Badge>
       </div>
 
-      <div className="absolute inset-0 z-[1] flex items-center justify-center p-10 max-[680px]:p-4">
+      <div
+        ref={viewportHostRef}
+        className="absolute inset-0 z-[1] flex items-center justify-center p-10 max-[680px]:p-4"
+      >
         <svg
           viewBox="0 0 760 620"
           className="h-[82%] max-h-[680px] w-[82%] max-w-[820px] drop-shadow-2xl"
@@ -394,6 +405,175 @@ export function Viewport({
           }
           data-selected-object-visible={selectedObjectVisible}
         >
+          <defs>
+            <linearGradient
+              id="viewport-roof-surface"
+              x1="245"
+              y1="105"
+              x2="570"
+              y2="190"
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop
+                offset="0"
+                stopColor="color-mix(in oklab, var(--panel) 76%, transparent)"
+              />
+              <stop
+                offset="1"
+                stopColor="color-mix(in oklab, var(--panel-subtle) 58%, transparent)"
+              />
+            </linearGradient>
+            <linearGradient
+              id="viewport-left-surface"
+              x1="235"
+              y1="155"
+              x2="390"
+              y2="505"
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop
+                offset="0"
+                stopColor="color-mix(in oklab, var(--panel) 62%, transparent)"
+              />
+              <stop
+                offset="1"
+                stopColor="color-mix(in oklab, var(--panel-subtle) 36%, transparent)"
+              />
+            </linearGradient>
+            <linearGradient
+              id="viewport-right-surface"
+              x1="405"
+              y1="205"
+              x2="590"
+              y2="470"
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop
+                offset="0"
+                stopColor="color-mix(in oklab, var(--panel-subtle) 52%, transparent)"
+              />
+              <stop
+                offset="1"
+                stopColor="color-mix(in oklab, var(--panel) 28%, transparent)"
+              />
+            </linearGradient>
+            <linearGradient
+              id="viewport-core-surface"
+              x1="330"
+              y1="150"
+              x2="485"
+              y2="445"
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop
+                offset="0"
+                stopColor="color-mix(in oklab, var(--panel-subtle) 88%, var(--foreground))"
+              />
+              <stop
+                offset="1"
+                stopColor="color-mix(in oklab, var(--panel) 72%, var(--canvas))"
+              />
+            </linearGradient>
+            <linearGradient
+              id="viewport-base-surface"
+              x1="205"
+              y1="410"
+              x2="625"
+              y2="510"
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop
+                offset="0"
+                stopColor="color-mix(in oklab, var(--panel-subtle) 68%, var(--canvas))"
+              />
+              <stop
+                offset="1"
+                stopColor="color-mix(in oklab, var(--panel) 42%, var(--canvas))"
+              />
+            </linearGradient>
+            <linearGradient
+              id="viewport-slab-edge"
+              x1="235"
+              y1="0"
+              x2="598"
+              y2="0"
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop
+                offset="0"
+                stopColor="color-mix(in oklab, var(--panel-subtle) 82%, var(--canvas))"
+              />
+              <stop
+                offset="0.48"
+                stopColor="color-mix(in oklab, var(--panel) 76%, var(--canvas))"
+              />
+              <stop
+                offset="1"
+                stopColor="color-mix(in oklab, var(--panel) 58%, var(--canvas))"
+              />
+            </linearGradient>
+            <linearGradient
+              id="viewport-duct-top"
+              x1="305"
+              y1="300"
+              x2="535"
+              y2="300"
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop
+                offset="0"
+                stopColor="color-mix(in oklab, var(--ai) 64%, var(--panel))"
+              />
+              <stop
+                offset="1"
+                stopColor="color-mix(in oklab, var(--ai) 42%, var(--panel))"
+              />
+            </linearGradient>
+            <linearGradient
+              id="viewport-duct-side"
+              x1="349"
+              y1="330"
+              x2="535"
+              y2="330"
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop
+                offset="0"
+                stopColor="color-mix(in oklab, var(--ai) 42%, var(--panel))"
+              />
+              <stop
+                offset="1"
+                stopColor="color-mix(in oklab, var(--ai) 27%, var(--canvas))"
+              />
+            </linearGradient>
+            <filter
+              id="viewport-ground-shadow"
+              x="-20%"
+              y="-40%"
+              width="140%"
+              height="180%"
+              colorInterpolationFilters="sRGB"
+            >
+              <feGaussianBlur stdDeviation="10" />
+            </filter>
+            <filter
+              id="viewport-object-shadow"
+              x="-20%"
+              y="-30%"
+              width="150%"
+              height="170%"
+              colorInterpolationFilters="sRGB"
+            >
+              <feDropShadow
+                dx="0"
+                dy="7"
+                stdDeviation="6"
+                floodColor="oklch(0.12 0.012 220)"
+                floodOpacity="0.22"
+              />
+            </filter>
+          </defs>
+
           <g
             opacity={activeTool === "Pan" ? 0.36 : 0.22}
             fill="none"
@@ -414,6 +594,14 @@ export function Viewport({
             <path d="M126 506 428 585M191 484 493 566M258 463 559 546M324 442 625 525" />
           </g>
 
+          <path
+            d="M211 478 382 563 631 486 455 403Z"
+            fill="oklch(0.12 0.012 220)"
+            opacity="0.24"
+            filter="url(#viewport-ground-shadow)"
+            pointerEvents="none"
+          />
+
           <g stroke="var(--border)" strokeWidth="2" strokeLinejoin="round">
             <g
               data-viewport-layer="architecture"
@@ -421,26 +609,125 @@ export function Viewport({
               opacity={architectureVisible ? 1 : 0.08}
               className="transition-opacity duration-200"
             >
-              <path
-                d="M235 142 444 84 598 157 390 220Z"
-                fill="var(--panel-subtle)"
-              />
-              <path
-                d="M235 142 390 220 390 520 235 438Z"
-                fill="color-mix(in oklab, var(--panel) 78%, var(--canvas))"
-              />
-              <path
-                d="M390 220 598 157 598 458 390 520Z"
-                fill="var(--panel)"
-              />
+              <g filter="url(#viewport-object-shadow)">
+                <path
+                  d="M192 438 380 536 638 458 449 365Z"
+                  fill="url(#viewport-base-surface)"
+                  stroke="color-mix(in oklab, var(--border) 72%, var(--foreground))"
+                  strokeWidth="1.5"
+                />
+                <path
+                  d="M192 438 380 536 638 458v12L380 549 192 451Z"
+                  fill="color-mix(in oklab, var(--panel) 44%, var(--canvas))"
+                  stroke="color-mix(in oklab, var(--border) 72%, var(--foreground))"
+                  strokeWidth="1.5"
+                />
+              </g>
+
+              <g opacity="0.72">
+                {[0, 1, 2, 3, 4, 5].map((floor) => {
+                  const frontY = 220 + floor * 47
+                  const leftY = 142 + floor * 49
+                  const rightY = 157 + floor * 50
+                  const backY = 84 + floor * 49
+                  return (
+                    <path
+                      key={floor}
+                      d={`M235 ${leftY} 444 ${backY} 598 ${rightY} 390 ${frontY}Z`}
+                      fill="color-mix(in oklab, var(--panel-subtle) 52%, transparent)"
+                      stroke="color-mix(in oklab, var(--border) 72%, var(--foreground))"
+                      strokeWidth="1"
+                    />
+                  )
+                })}
+              </g>
+
+              <g
+                fill="url(#viewport-core-surface)"
+                stroke="color-mix(in oklab, var(--border) 66%, var(--foreground))"
+                strokeWidth="1.4"
+                opacity="0.9"
+              >
+                <path d="M326 158 424 130 488 161 390 191Z" />
+                <path d="M326 158 390 191 390 447 326 413Z" />
+                <path d="M390 191 488 161 488 416 390 447Z" />
+                <path
+                  d="M350 151 350 119 397 106 431 122 431 158Z"
+                  fill="color-mix(in oklab, var(--panel-subtle) 78%, var(--canvas))"
+                />
+                <path
+                  d="M410 136 410 105 454 93 481 106 481 164Z"
+                  fill="color-mix(in oklab, var(--panel) 72%, var(--canvas))"
+                />
+              </g>
+
+              <g filter="url(#viewport-object-shadow)">
+                <path
+                  d="M235 142 444 84 598 157 390 220Z"
+                  fill="url(#viewport-roof-surface)"
+                />
+                <path
+                  d="M235 142 390 220 390 520 235 438Z"
+                  fill="url(#viewport-left-surface)"
+                />
+                <path
+                  d="M390 220 598 157 598 458 390 520Z"
+                  fill="url(#viewport-right-surface)"
+                />
+              </g>
+
+              <g
+                fill="none"
+                stroke="color-mix(in oklab, var(--border) 58%, var(--foreground))"
+                strokeWidth="1.25"
+                opacity="0.82"
+              >
+                <path d="M235 142v-12L444 72l154 73v12" />
+                <path d="M235 130 390 208 598 145" />
+                <path d="M272 132v-18l54-15 40 19v18" />
+                <path d="M493 112v-17l42 20v18" />
+                <path d="M306 122 390 164l76-23" />
+              </g>
+
+              <g
+                fill="none"
+                stroke="color-mix(in oklab, var(--border) 76%, var(--foreground))"
+                strokeWidth="1.25"
+                opacity="0.62"
+              >
+                <path d="M274 162v297M314 182v298M352 201v298" />
+                <path d="M432 207v301M474 195v300M516 182v300M558 169v300" />
+              </g>
+
+              <g
+                fill="none"
+                stroke="color-mix(in oklab, var(--foreground) 24%, transparent)"
+                strokeWidth="0.8"
+                opacity="0.58"
+              >
+                <path d="M255 152v296M294 172v297M333 191v298M371 210v298" />
+                <path d="M411 214v300M453 201v300M495 189v299M537 176v300M578 164v298" />
+              </g>
 
               {[0, 1, 2, 3, 4, 5].map((floor) => {
                 const y = 220 + floor * 47
+                const leftY = 142 + floor * 49
+                const rightY = 157 + floor * 50
                 return (
                   <g key={floor}>
                     <path
-                      d={`M235 ${142 + floor * 49} 390 ${y} 598 ${157 + floor * 50}`}
+                      d={`M235 ${leftY} 390 ${y} 598 ${rightY} 598 ${
+                        rightY + 6
+                      } 390 ${y + 6} 235 ${leftY + 6}Z`}
+                      fill="url(#viewport-slab-edge)"
+                      stroke="color-mix(in oklab, var(--border) 84%, var(--foreground))"
+                      strokeWidth="1.4"
+                    />
+                    <path
+                      d={`M235 ${leftY} 390 ${y} 598 ${rightY}`}
                       fill="none"
+                      stroke="color-mix(in oklab, var(--border) 72%, var(--foreground))"
+                      strokeWidth="1.4"
                     />
                     <path
                       d={`M390 ${y} 390 ${y + 47}`}
@@ -451,11 +738,36 @@ export function Viewport({
                 )
               })}
 
-              <g fill="var(--canvas)" strokeWidth="1.5">
+              <g
+                fill="color-mix(in oklab, var(--canvas) 76%, transparent)"
+                strokeWidth="1.5"
+              >
                 <path d="M257 241 373 299 373 332 257 273Z" />
                 <path d="M257 337 373 396 373 427 257 369Z" />
                 <path d="M411 276 575 227 575 261 411 309Z" />
                 <path d="M411 370 575 322 575 355 411 403Z" />
+                <g
+                  fill="none"
+                  stroke="color-mix(in oklab, var(--border) 68%, var(--foreground))"
+                  strokeWidth="1"
+                  opacity="0.72"
+                >
+                  <path d="M296 260v33M335 280v33M450 264v34M492 252v34M534 239v34" />
+                  <path d="M296 357v32M335 377v31M450 358v34M492 346v33M534 333v34" />
+                </g>
+              </g>
+
+              <g
+                fill="color-mix(in oklab, var(--panel-subtle) 56%, transparent)"
+                stroke="color-mix(in oklab, var(--border) 64%, var(--foreground))"
+                strokeWidth="1"
+                opacity="0.82"
+              >
+                <path d="M253 404 286 421v39l-33-18Z" />
+                <path d="M298 427 333 445v39l-35-18Z" />
+                <path d="M421 434 455 424v50l-34 10Z" />
+                <path d="M469 420 503 410v50l-34 10Z" />
+                <path d="M517 405 552 395v50l-35 10Z" />
               </g>
             </g>
 
@@ -464,18 +776,37 @@ export function Viewport({
               data-visible={structureVisible}
               opacity={structureVisible ? 0.58 : 0}
               fill="none"
-              stroke="var(--muted-foreground)"
-              strokeWidth="4"
               className="transition-opacity duration-200"
             >
-              <path d="M275 165v294M348 201v296M460 199v288M548 172v289" />
-              <path d="M244 344 392 420 591 362" />
-              {[0, 1, 2, 3].map((column) => (
-                <path
-                  key={column}
-                  d={`M${432 + column * 43} ${207 - column * 13}v299`}
-                />
-              ))}
+              <g
+                stroke="color-mix(in oklab, var(--muted-foreground) 76%, var(--canvas))"
+                strokeWidth="6"
+                strokeLinecap="square"
+              >
+                <path d="M275 165v294M348 201v296M460 199v288M548 172v289" />
+                <path d="M244 344 392 420 591 362" />
+                {[0, 1, 2, 3].map((column) => (
+                  <path
+                    key={column}
+                    d={`M${432 + column * 43} ${207 - column * 13}v299`}
+                  />
+                ))}
+              </g>
+              <g
+                stroke="color-mix(in oklab, var(--muted-foreground) 64%, var(--panel))"
+                strokeWidth="2"
+                strokeLinecap="square"
+                opacity="0.9"
+              >
+                <path d="M273 164v294M346 200v296M458 198v288M546 171v289" />
+                <path d="M244 341 392 417 591 359" />
+                {[0, 1, 2, 3].map((column) => (
+                  <path
+                    key={column}
+                    d={`M${430 + column * 43} ${206 - column * 13}v299`}
+                  />
+                ))}
+              </g>
             </g>
 
             <g
@@ -490,24 +821,36 @@ export function Viewport({
               }
               className="transition-opacity duration-200"
             >
+              <g filter="url(#viewport-object-shadow)">
                 <path
                   d="M305 319 492 268 535 287 349 341Z"
-                  fill="color-mix(in oklab, var(--ai) 58%, var(--panel))"
+                  fill="url(#viewport-duct-top)"
                   stroke="var(--ai)"
                   strokeWidth="3"
                 />
                 <path
                   d="M349 341 535 287v21L349 362Z"
-                  fill="color-mix(in oklab, var(--ai) 38%, var(--panel))"
+                  fill="url(#viewport-duct-side)"
                   stroke="var(--ai)"
                   strokeWidth="3"
                 />
                 <path
                   d="M305 319 349 341v21l-44-21Z"
-                  fill="color-mix(in oklab, var(--ai) 45%, var(--panel))"
+                  fill="color-mix(in oklab, var(--ai) 35%, var(--canvas))"
                   stroke="var(--ai)"
                   strokeWidth="3"
                 />
+              </g>
+              <g
+                fill="none"
+                stroke="color-mix(in oklab, var(--ai) 55%, var(--foreground))"
+                strokeWidth="1.2"
+                opacity="0.72"
+              >
+                <path d="M350 307 394 329M443 281 487 303" />
+                <path d="M394 329v21M487 303v21" />
+                <path d="M311 317 492 270 528 286" />
+              </g>
             </g>
 
             <g

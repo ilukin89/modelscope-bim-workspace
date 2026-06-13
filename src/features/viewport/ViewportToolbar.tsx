@@ -10,8 +10,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import type { ViewportTool } from "@/features/viewport/types"
 import { cn } from "@/lib/utils"
-import type { ViewportTool } from "@/types"
 
 interface ViewportToolbarProps {
   activeTool: ViewportTool

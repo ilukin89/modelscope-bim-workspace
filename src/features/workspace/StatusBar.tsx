@@ -1,6 +1,7 @@
 import { Circle, Eye, Layers3, MousePointer2, Users } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
-import type { FloorName, ViewportTool } from "@/types"
+import type { ViewportTool } from "@/features/viewport/types"
+import type { FloorName } from "@/types"
 
 interface StatusBarProps {
   activeTool: ViewportTool

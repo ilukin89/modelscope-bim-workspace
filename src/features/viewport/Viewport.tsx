@@ -87,7 +87,13 @@ export function Viewport({
   const viewportFeedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   )
-  const viewportHostRef = usePrototypeViewerAdapterLifecycle()
+  const selectedObjectId = selectedIssue.details.objectId
+  const viewportHostRef = usePrototypeViewerAdapterLifecycle({
+    activeTool,
+    selectedFloor,
+    selectedObjectId,
+    visibleLayerIds,
+  })
   const architectureVisible = visibleLayerIds.includes("architecture")
   const mechanicalVisible = visibleLayerIds.includes("mechanical")
   const structureVisible = visibleLayerIds.includes("structure")

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { X } from "lucide-react"
 import { TopBar } from "@/components/layout/TopBar"
 import { DesignSystemPanel } from "@/components/workspace/DesignSystemPanel"
+import { DrawingTriagePlaceholder } from "@/features/drawing-triage/DrawingTriagePlaceholder"
 import { ModelExplorer } from "@/features/model-explorer/ModelExplorer"
 import { ObjectInspector } from "@/features/object-inspector/ObjectInspector"
 import { StatusBar } from "@/features/workspace/StatusBar"
@@ -27,6 +28,7 @@ import type {
   LayerState,
   ProjectId,
   ReviewIssue,
+  WorkspaceMode,
 } from "@/types"
 
 const initialProject = projects[0]
@@ -38,6 +40,8 @@ const getDefaultIssue = (project: typeof initialProject) =>
 
 function App() {
   const [view, setView] = useState<AppView>("workspace")
+  const [workspaceMode, setWorkspaceMode] =
+    useState<WorkspaceMode>("model-review")
   const [darkMode, setDarkMode] = useState(true)
   const [selectedProjectId, setSelectedProjectId] = useState<ProjectId>(
     initialProject.id,
@@ -123,11 +127,13 @@ function App() {
             onDarkModeChange={setDarkMode}
             onProjectChange={selectProject}
             onViewChange={setView}
+            onWorkspaceModeChange={setWorkspaceMode}
             projects={projects}
             selectedProject={selectedProject}
             showExplorerTrigger={false}
             unresolvedIssues={selectedProject.issues.length}
             view={view}
+            workspaceMode={workspaceMode}
           />
           <SheetContent
             side="left"
@@ -207,8 +213,10 @@ function App() {
           </SheetContent>
         </Sheet>
 
-        {view === "workspace" ? (
+        {view === "workspace" && workspaceMode === "model-review" ? (
           <main
+            id="workspace-content"
+            aria-label="Model Review workspace"
             className={cn(
               "grid min-h-0 flex-1 overflow-hidden max-[680px]:grid-cols-1",
               explorerCollapsed && inspectorCollapsed
@@ -265,6 +273,8 @@ function App() {
               />
             )}
           </main>
+        ) : view === "workspace" ? (
+          <DrawingTriagePlaceholder />
         ) : (
           <DesignSystemPanel />
         )}

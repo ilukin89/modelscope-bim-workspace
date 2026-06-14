@@ -72,6 +72,7 @@ ModelScope extends the generated Button and Badge variants with compact product 
 The V2 structure separates shared UI primitives, app/layout components, product feature areas, mock data, documentation, and spec-driven planning files.
 
 ```txt
+```txt
 src/
   App.tsx
   main.tsx
@@ -81,10 +82,14 @@ src/
   components/
     ui/
       shadcn/ui primitives and local UI variants
+
     layout/
       TopBar.tsx
 
   features/
+    drawing-triage/
+      DrawingTriagePlaceholder.tsx
+
     model-explorer/
       ModelExplorer.tsx
 
@@ -96,9 +101,11 @@ src/
       Viewport.tsx
       ViewportToolbar.tsx
       types.ts
+
       viewer-adapter/
         types.ts
         ViewerAdapter.ts
+
         adapters/
           prototype/
             PrototypeViewerAdapter.ts
@@ -126,11 +133,6 @@ specs/
   003-viewer-adapter-interfaces/
   004-prototype-viewer-adapter/
   010-workspace-mode-navigation-strategy/
-
-features/
-  drawing-triage/
-    DrawingTriagePlaceholder.tsx
-
 ```
 
 The current application still uses mock data and a simulated SVG viewport. The viewer adapter files prepare a future boundary for real viewer integration, but they do not add real 3D rendering.
@@ -155,11 +157,9 @@ AI Review is represented as a floating findings control rather than a small tool
 
 No real AI inference is implemented. The AI Review flow uses local mock data to demonstrate interaction patterns.
 
-### Model Explorer on smaller screens
+### Side panels on smaller screens
 
-On desktop, the Model Explorer is shown as a left sidebar. On tablet and mobile widths, it is accessible through a responsive Sheet/Drawer so floors, disciplines, saved views, and open issues remain reachable.
-
-The Sheet overlay was adjusted for this product context: the viewport remains visible while the Model Explorer is open, because users need to see model changes after selecting floors, layers, issues, or AI findings.
+On compact screens up to 900px, Model Explorer and Object Inspector use sheet-style access with close affordances. At 901px and above, the workspace uses persistent or retractable side panels. This keeps the interaction model aligned with the available viewport space.
 
 ### Design system view
 

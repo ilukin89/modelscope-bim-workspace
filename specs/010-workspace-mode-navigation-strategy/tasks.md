@@ -30,10 +30,10 @@ The current PR is planning-only.
 
 - [x] T005 Define the three navigation levels in `specs/010-workspace-mode-navigation-strategy/spec.md`.
 - [x] T006 Define the primary desktop topbar recommendation in `specs/010-workspace-mode-navigation-strategy/plan.md`.
-- [x] T007 Define the collapsed mobile mode selector in `specs/010-workspace-mode-navigation-strategy/plan.md`.
+- [x] T007 Define the compact topbar-anchored mobile mode selector in `specs/010-workspace-mode-navigation-strategy/plan.md`.
 - [x] T008 Define explicit planning-only exclusions in `specs/010-workspace-mode-navigation-strategy/spec.md`.
 - [x] T009 Define light/dark theme-adaptive navigation constraints in `specs/010-workspace-mode-navigation-strategy/spec.md` and `specs/010-workspace-mode-navigation-strategy/plan.md`.
-- [x] T010 Define responsive closed-trigger and open-panel affordance rules without changing tablet panel widths in `specs/010-workspace-mode-navigation-strategy/spec.md` and `specs/010-workspace-mode-navigation-strategy/plan.md`.
+- [x] T010 Define separate mode-navigation and side-panel responsive decisions, four starting breakpoint bands, and unchanged tablet panel widths in `specs/010-workspace-mode-navigation-strategy/spec.md` and `specs/010-workspace-mode-navigation-strategy/plan.md`.
 
 ## Phase 3: User Story 1 - Choose a Desktop Mode (Priority: P1)
 
@@ -75,9 +75,10 @@ documented content responsibilities.
 **Goal**: Provide mode access without crowding the current mobile hierarchy.
 
 **Independent Test**: The documentation specifies one closed active-mode control
-and an accessible overlay containing both options.
+and a preferred compact topbar-anchored dropdown or popover containing both
+options.
 
-- [x] T021 [P] [US4] Define the active-mode disclosure behavior in `docs/09-workspace-mode-navigation.md`.
+- [x] T021 [P] [US4] Define the active-mode topbar dropdown/popover behavior in `docs/09-workspace-mode-navigation.md`.
 - [x] T022 [P] [US4] Define focus, active-state, and overlay-close behavior in `specs/010-workspace-mode-navigation-strategy/plan.md`.
 - [x] T023 [US4] Define mobile viewport and side-panel preservation rules in `specs/010-workspace-mode-navigation-strategy/spec.md`.
 
@@ -94,12 +95,12 @@ These tasks are not authorized in this planning PR.
 
 - [ ] T028 [US1] Add local default `Model Review` mode state in `src/App.tsx`.
 - [ ] T029 [US1] Add centered desktop text navigation without changing the utility control in `src/components/layout/TopBar.tsx`.
-- [ ] T030 [US4] Add one mobile active-mode dropdown or sheet using existing UI primitives in `src/components/layout/TopBar.tsx`.
+- [ ] T030 [US4] Add one compact topbar-anchored active-mode dropdown or popover using existing UI primitives in `src/components/layout/TopBar.tsx`.
 - [ ] T031 [US2] Preserve the existing Model Review render path and interactions in `src/App.tsx`.
 - [ ] T032 [US3] Add a bounded Drawing Triage workspace placeholder that replaces left, center, and right content in `src/App.tsx`.
 - [ ] T033 [US1] Add active, hover, focus, and keyboard semantics for workspace modes in `src/components/layout/TopBar.tsx`.
 - [ ] T034 [US4] Verify mobile mode selection closes its overlay and restores focus in `src/components/layout/TopBar.tsx`.
-- [ ] T035 [US1] Verify long project names and compact widths do not overlap mode or utility controls in `src/components/layout/TopBar.tsx`.
+- [ ] T035 [US1] Validate the four starting breakpoint bands with the longest project name, visible utility switch, theme toggle, status badges, and both mode labels; collapse before topbar groups overlap in `src/components/layout/TopBar.tsx`.
 - [ ] T036 [US2] Regression-test current Model Review desktop and mobile interactions against `specs/010-workspace-mode-navigation-strategy/spec.md`.
 - [ ] T037 [US1] Verify theme-adaptive mode styling in light and dark mode without duplicating `Workspace / Design` in `src/components/layout/TopBar.tsx`.
 - [ ] T038 [US2] Verify closed triggers remain available, mobile sheets may use `X`, tablet/desktop retractable panels use collapse affordances consistently, and current tablet widths remain unchanged in `src/App.tsx`, `src/features/model-explorer/ModelExplorer.tsx`, and `src/features/object-inspector/ObjectInspector.tsx`.
@@ -139,6 +140,9 @@ The later navigation MVP is:
 
 - the four requested documentation files exist
 - desktop and mobile navigation behavior is unambiguous
+- workspace mode collapse and side-panel modality are separate responsive
+  decisions with an explicit starting breakpoint matrix
+- the mobile mode selector prefers a compact topbar-anchored dropdown or popover
 - light and dark theme behavior is explicit and adaptive
 - mobile, tablet, and desktop panel affordances distinguish closed triggers from
   open-panel close behavior

@@ -22,8 +22,9 @@ On mobile, show one active-mode control:
 Model Review  v
 ```
 
-It opens a dropdown or sheet containing both modes. This keeps the current
-mobile topbar and viewport controls from becoming crowded.
+It preferably opens a compact topbar-anchored dropdown or popover containing
+both modes. This keeps the current mobile topbar and viewport controls from
+becoming crowded without introducing a large modal action surface.
 
 ## Navigation Hierarchy
 
@@ -215,16 +216,27 @@ preview, AI, file, storage, or decision implementation.
 
 ## Mobile Behavior
 
-At the current mobile breakpoint, do not show two persistent workspace tabs.
-Use one compact active-mode control with a chevron.
+At `680px` or below, do not show two persistent workspace tabs. Use one compact
+active-mode control with a chevron.
 
-When opened, the dropdown or sheet shows:
+The closed control remains inside the topbar and shows the active mode, for
+example `Model Review`, plus a chevron. It should feel like a continuation of
+the topbar navigation vocabulary, not a floating pill.
+
+The preferred open behavior is a compact dropdown or popover anchored to that
+topbar control. It shows:
 
 - `Model Review`
 - `Drawing Triage`
-- a visible and programmatic active indicator
+- a checkmark or equivalent visible and programmatic active indicator
 
 After selection, the overlay closes and focus returns predictably.
+
+Avoid a large bottom sheet unless implementation constraints require one. If a
+sheet is necessary, it should remain visually connected to the topbar selector
+and should not behave like a heavy modal action surface.
+
+The selector must be theme-adaptive in both light and dark mode.
 
 The selector must not replace or obstruct:
 
@@ -281,19 +293,54 @@ viewport width:
 Keep the current tablet panel widths. This navigation strategy does not
 recommend changing side-panel dimensions.
 
+## Separate Responsive Decisions
+
+Two related responsive decisions must be evaluated independently:
+
+1. **Workspace mode navigation**: when both labels are visible and when they
+   collapse into one active-mode selector.
+2. **Side-panel affordance**: when panels remain retractable and when open panels
+   become mobile modal sheets or overlays with `X` close buttons.
+
+The mode selector may collapse on compact tablet while side panels remain
+retractable. The two changes do not have to occur at the same breakpoint.
+
+## Breakpoint Starting Contract
+
+| Width | Workspace mode navigation | Side-panel behavior |
+| --- | --- | --- |
+| `<= 680px` | Single active-mode selector | Closed triggers; open modal sheets/overlays may use `X` |
+| `681px-900px` | Keep both labels if they fit; otherwise collapse before collision | Prefer retractable side panels and current widths |
+| `901px-1199px` | Prefer both labels and perform collision testing | Persistent or retractable side panels |
+| `>= 1200px` | Show both labels | Persistent or retractable side panels |
+
+These values are an implementation starting contract, not a permanent design
+law.
+
+Confirm the final mode-navigation collapse point through browser testing with:
+
+- the longest supported project name
+- visible `Workspace / Design`
+- theme toggle
+- status badges where available
+- both workspace mode labels
+
+Collapse the mode navigation before it overlaps either the project/status group
+or the right-side utility controls.
+
 ## Responsive Rules
 
-- Wide desktop: show both mode labels.
-- Compact desktop/tablet: keep both labels while the three topbar regions fit.
-- Mobile or collision threshold: show one active-mode disclosure.
+- Compact-tablet mode navigation may collapse before side panels adopt mobile
+  modal behavior.
+- Compact-tablet side panels should prefer retractable affordances and current
+  widths unless the viewport becomes too constrained.
 - Do not allow wrapping into a second topbar row.
 - Do not shorten mode labels to unclear abbreviations.
 - Do not solve collisions by hiding `Workspace / Design`; its secondary status
   should be communicated visually, not by making it inaccessible.
 
-The exact collapse threshold should be confirmed by browser testing with the
-longest project name and both utility controls visible. The existing `680px`
-mobile breakpoint is the starting contract.
+The exact collapse threshold is determined by the collision rule, using the
+breakpoint bands above as the initial implementation contract.
 
 ## Accessibility
 
@@ -314,22 +361,26 @@ mobile breakpoint is the starting contract.
 2. Existing Model Review UI remains unchanged.
 3. Desktop visibly shows both modes.
 4. Mobile shows one active-mode selector and keeps the topbar uncrowded.
-5. Workspace mode navigation is visually distinct from `Workspace / Design`.
-6. `Workspace / Design` remains secondary and available.
-7. Workspace mode navigation is readable and restrained in both existing light
+5. The selector opens as a compact topbar-anchored dropdown or popover unless a
+   documented constraint requires a connected lightweight sheet.
+6. Workspace mode navigation is visually distinct from `Workspace / Design`.
+7. `Workspace / Design` remains secondary and available.
+8. Workspace mode navigation is readable and restrained in both existing light
    and dark themes.
-8. Switching to Drawing Triage changes left, center, and right workspace
+9. Switching to Drawing Triage changes left, center, and right workspace
    content.
-9. Closed side-panel triggers may retain the current retracted icon on mobile,
+10. Closed side-panel triggers may retain the current retracted icon on mobile,
    tablet, and desktop.
-10. Open mobile modal sheets may use an `X` close button.
-11. Open retractable panels at tablet and desktop widths use retract or collapse
+11. Open mobile modal sheets may use an `X` close button.
+12. Open retractable panels at tablet and desktop widths use retract or collapse
     affordances consistently.
-12. Current tablet panel widths remain unchanged.
-13. The navigation PR adds no routes, backend, upload, storage, file handling, AI
+13. Mode-navigation collapse and side-panel modality may occur at different
+    breakpoints.
+14. Current tablet panel widths remain unchanged.
+15. The navigation PR adds no routes, backend, upload, storage, file handling, AI
    calls, drawing preview implementation, or packages.
-14. `npm run lint` passes.
-15. `npm run build` passes.
+16. `npm run lint` passes.
+17. `npm run build` passes.
 
 ## Explicit Out of Scope
 

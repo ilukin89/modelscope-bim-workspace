@@ -34,9 +34,9 @@ sync + issues           | Drawing Triage         | theme
 ```
 
 On desktop, use visible text navigation with a restrained active underline in
-the topbar center. On mobile, show one active-mode disclosure that opens a
-dropdown or sheet. Do not create a second segmented control and do not add a
-heavy navigation row.
+the topbar center. On mobile, show one active-mode disclosure that preferably
+opens a compact topbar-anchored dropdown or popover. Do not create a second
+segmented control and do not add a heavy navigation row.
 
 `Model Review` stays the default and retains the current workspace unchanged.
 `Drawing Triage` later replaces all three workspace regions with drawing
@@ -127,6 +127,15 @@ theme may turn it into a bordered or filled duplicate of the right-side
 
 ### Responsive Collision Policy
 
+There are two related but separate responsive decisions:
+
+1. workspace mode navigation decides whether both mode labels remain visible or
+   collapse into one active-mode selector
+2. side-panel behavior decides whether panels remain retractable or open as
+   mobile modal sheets/overlays
+
+These decisions do not need to change at the same breakpoint.
+
 The implementation should prioritize content in this order:
 
 1. retain the active workspace mode
@@ -136,9 +145,27 @@ The implementation should prioritize content in this order:
 5. truncate long project names
 6. hide existing status badges at their current compact breakpoint
 
-At the current mobile breakpoint (`680px`), replace the two visible labels with
-one active-mode control. Compact tablet widths may use the desktop treatment
-while it fits, but must adopt the active-mode control before any group overlaps.
+Use this initial breakpoint contract:
+
+| Width | Mode navigation | Side-panel behavior |
+| --- | --- | --- |
+| `<= 680px` | Collapse to one active-mode selector | Mobile closed triggers; open overlays may use `X` |
+| `681px-900px` | Keep labels if they fit; collapse before collision | Prefer retractable panels at current widths |
+| `901px-1199px` | Prefer visible labels; collision-test the full topbar | Persistent or retractable panels |
+| `>= 1200px` | Show both visible labels | Persistent or retractable panels |
+
+These bands are an implementation starting contract, not a permanent design
+law. Confirm the final mode-navigation collapse point in a browser with:
+
+- the longest supported project name
+- the visible `Workspace / Design` utility switch
+- the theme toggle
+- status badges where available
+- both workspace mode labels
+
+Collapse mode navigation before it overlaps the project/status group or the
+right-side utilities. A compact tablet may therefore use the single active-mode
+selector while retaining retractable side panels and current panel widths.
 
 ### Mobile Composition
 
@@ -150,10 +177,15 @@ Use one compact control:
 Model Review  v
 ```
 
-The control opens an accessible dropdown or bottom/side sheet containing both
-modes, with a checkmark or equivalent semantic active indicator. The component
-choice should follow available space and existing shadcn/Radix primitives; it
-does not require a new package.
+The preferred open behavior is a compact topbar-anchored dropdown or popover
+containing both modes, with a checkmark or equivalent semantic active indicator.
+It should feel like a continuation of the topbar navigation vocabulary, not a
+floating pill or a separate modal action surface. The component choice should
+use existing shadcn/Radix primitives and requires no new package.
+
+Avoid a bottom sheet unless implementation constraints require it. If a sheet
+is necessary, keep it visually connected to the topbar selector and lightweight
+rather than presenting it as a large, heavy modal action surface.
 
 The closed selector must remain lightweight. It must not replace:
 
@@ -163,6 +195,9 @@ The closed selector must remain lightweight. It must not replace:
 - viewport toolbar
 - AI Review card
 - center viewport dominance
+
+The selector must use theme-adaptive surfaces, borders, text, focus, and active
+indicators in both light and dark mode.
 
 This planning PR leaves existing Model Review side-panel behavior unchanged. In
 a later implementation, panel content, trigger positions, and current widths
@@ -257,6 +292,10 @@ spec authorizes URLs, deep links, or persistence.
   surfaces.
 - The mobile disclosure must expose its expanded state and active mode.
 - Selecting a mobile mode must close the overlay and return focus predictably.
+- The preferred mode-selector overlay is anchored to its topbar trigger and
+  remains compact.
+- The active mode must have a checkmark or equivalent semantic indicator.
+- Avoid a large bottom sheet and floating-pill treatment for mode selection.
 - Closed side-panel triggers may keep their existing retracted icons at every
   supported width.
 - An open mobile modal sheet may use an `X` close button.
@@ -319,6 +358,14 @@ in separate future work before implementation.
 
 - compare Model Review before and after at desktop and mobile widths
 - review navigation styling in both light and dark themes
+- test the four starting breakpoint bands separately for mode-navigation and
+  side-panel behavior
+- test the longest project name with `Workspace / Design`, theme toggle, status
+  badges, and both mode labels visible
+- confirm mode navigation collapses before either edge group is overlapped
+- confirm compact-tablet mode collapse does not force mobile panel modality
+- confirm the mobile selector is a compact topbar-anchored dropdown or popover
+  unless a documented constraint requires a connected lightweight sheet
 - verify mobile closed triggers and open-sheet `X` behavior remain valid
 - verify compact-tablet open panels use consistent retract/collapse affordances
 - verify current tablet panel widths are unchanged

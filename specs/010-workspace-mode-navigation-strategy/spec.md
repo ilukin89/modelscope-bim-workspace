@@ -187,6 +187,10 @@ losing access to existing viewport controls.
   Model Review content.
 - Mode changes must not be represented as changes to the current Object
   Inspector tab, Model Explorer section, or AI Review panel alone.
+- At compact desktop, tablet, and mobile widths, floating viewport overlays
+  must remain inside the central workspace safe area and must not overlap side
+  panels, inspector regions, panel triggers, mode navigation, or primary model
+  or preview content.
 
 ## Requirements
 
@@ -287,6 +291,15 @@ losing access to existing viewport controls.
 - **FR-038**: The mode selector MUST identify the active option with a checkmark
   or equivalent semantic active indicator and remain theme-adaptive in light
   and dark mode.
+- **FR-039**: Floating viewport overlays, including the AI Review card,
+  tooltips, labels, selected-object callouts, and future Drawing Triage
+  candidate evidence or review overlays, MUST remain inside the available
+  central workspace or 2D preview safe area. Persistent side panels, Model
+  Explorer, Object Inspector, and mode navigation controls have layout priority.
+  On compact desktop or large tablet, overlays MUST clamp or reposition to a
+  safer location such as below or near the viewport toolbar. On tablet or
+  mobile, they MAY become more compact or stack, but MUST NOT obscure panel
+  triggers, open panels, or primary model/preview content.
 
 ### Responsive Starting Contract
 
@@ -419,3 +432,5 @@ side-panel presentation breakpoint.
    routing unless separately specified.
 15. No packages are added.
 16. `npm run lint` and `npm run build` pass.
+17. AI Review and future Drawing Triage viewport overlays do not overlap side
+    panels or inspector regions at compact desktop, tablet, or mobile widths.

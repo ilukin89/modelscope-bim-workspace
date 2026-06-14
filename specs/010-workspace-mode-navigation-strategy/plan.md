@@ -312,6 +312,21 @@ spec authorizes URLs, deep links, or persistence.
   active-state update so keyboard and screen-reader users can identify that the
   workspace content changed without relying on the topbar alone.
 
+### Viewport Overlay Collision
+
+Floating viewport overlays must stay inside the central workspace safe area.
+This includes the AI Review card, tooltips, labels, selected-object callouts,
+and future Drawing Triage candidate evidence, review cards, or annotations.
+
+Persistent side panels, Model Explorer, Object Inspector, and mode navigation
+controls have layout priority over floating overlays. On wide desktop, the AI
+Review card may remain near the viewport's top-right. On compact desktop or
+large tablet, it should clamp within the available center area or move below or
+near the viewport toolbar. On tablet or mobile, overlays may become more compact
+or stack, but must not obscure side-panel triggers, open panels, or primary
+model/preview content. Drawing Triage overlays follow the same rule inside the
+2D preview safe area.
+
 ## Constitution Check
 
 - **Spec-driven development**: Pass. Product goal, UX hierarchy, responsive
@@ -380,6 +395,9 @@ in separate future work before implementation.
 - verify mode changes replace left, center, and right content
 - test long project names and compact topbar widths for collisions
 - test keyboard order, focus, active semantics, and overlay focus return
+- verify AI Review and future Drawing Triage overlays remain inside the central
+  safe area and do not overlap side panels or inspector regions at compact
+  desktop, tablet, and mobile widths
 - verify no route, network, upload, file, storage, AI, or package change exists
 - run `npm run lint`
 - run `npm run build`

@@ -358,6 +358,25 @@ or the right-side utility controls.
 The exact collapse threshold is determined by the collision rule, using the
 breakpoint bands above as the initial implementation contract.
 
+## Viewport Overlay Collision
+
+Floating viewport overlays must remain inside the central workspace safe area.
+This includes the AI Review card, tooltips, labels, selected-object callouts,
+and future Drawing Triage candidate evidence, review cards, or annotations.
+
+- They must not overlap persistent side panels, Object Inspector, Model
+  Explorer, side-panel triggers, or mode navigation controls.
+- Side-panel and inspector regions have layout priority over floating overlays.
+- On wide desktop, the AI Review card may remain near the top-right of the
+  central viewport.
+- On compact desktop or large tablet, the card should clamp within the available
+  center area or move to a safer location below or near the viewport toolbar.
+- On tablet or mobile, overlays may become more compact or stack within the
+  central workspace, but must not obscure triggers, open panels, or primary
+  model/preview content.
+- Future Drawing Triage evidence and review overlays must follow the same rule
+  inside the 2D preview safe area.
+
 ## Accessibility
 
 - Use real buttons or an established tabs/menu pattern.
@@ -401,6 +420,8 @@ breakpoint bands above as the initial implementation contract.
    calls, drawing preview implementation, or packages.
 16. `npm run lint` passes.
 17. `npm run build` passes.
+18. AI Review and future Drawing Triage viewport overlays do not overlap side
+    panels or inspector regions at compact desktop, tablet, or mobile widths.
 
 ## Explicit Out of Scope
 

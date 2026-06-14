@@ -106,6 +106,7 @@ These tasks are not authorized in this planning PR.
 - [ ] T038b [US2] Verify open mobile modal sheets may use an `X` close button at `680px` or below in `src/App.tsx`, `src/features/model-explorer/ModelExplorer.tsx`, and `src/features/object-inspector/ObjectInspector.tsx`.
 - [ ] T038c [US2] Verify open compact-tablet side panels use consistent retract or collapse affordances on both sides at the same breakpoint in `src/App.tsx`, `src/features/model-explorer/ModelExplorer.tsx`, and `src/features/object-inspector/ObjectInspector.tsx`.
 - [ ] T038d [US2] Verify current tablet panel widths remain unchanged after navigation is added in `src/App.tsx`, `src/features/model-explorer/ModelExplorer.tsx`, and `src/features/object-inspector/ObjectInspector.tsx`.
+- [ ] T038e [US2] Verify AI Review and future Drawing Triage viewport overlays remain inside the central safe area and do not overlap side panels, inspector regions, panel triggers, or primary content at compact desktop, tablet, and mobile widths in `src/App.tsx`, `src/features/viewport/Viewport.tsx`, and future `src/features/drawing-triage/` modules.
 - [ ] T039 Run `npm run lint` and `npm run build` from the repository root.
 
 ## Separate Future PR: Drawing Triage Workspace Shell

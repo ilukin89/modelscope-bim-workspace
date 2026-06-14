@@ -4,6 +4,8 @@ ModelScope is a small code-first UI prototype for a professional BIM / 3D model 
 
 [![Slika-zaslona-2026-06-14-u-23-37-56.png](https://i.postimg.cc/4N0HGKsj/Slika-zaslona-2026-06-14-u-23-37-56.png)](https://postimg.cc/N51j7jyx)
 
+[![Slika-zaslona-2026-06-15-u-01-54-04.png](https://i.postimg.cc/pTWC50ym/Slika-zaslona-2026-06-15-u-01-54-04.png)](https://postimg.cc/jW1PG4HT)
+
 **Live demo:** https://modelscope-bim-workspace.vercel.app/
 **Code:** https://github.com/ilukin89/modelscope-bim-workspace
 

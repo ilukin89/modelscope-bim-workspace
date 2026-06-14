@@ -27,10 +27,12 @@ The goal was not to build real BIM functionality, but to demonstrate product UI 
 - Responsive Model Explorer access for narrower screens
 - Light and dark themes with semantic state colors
 - A practical in-product design-system reference
+- Workspace mode navigation for Model Review and Drawing Triage
+- Responsive side-panel behavior aligned across mobile, compact tablet, large tablet, and desktop
 
 ## V2 spec-driven architecture work
 
-The V2 branch introduces a spec-driven workflow for evolving the prototype beyond a simple single-page demo.
+The current V2 architecture introduces a spec-driven workflow for evolving the prototype beyond a simple single-page demo.
 
 The goal is not to claim that ModelScope is already a production BIM platform. It remains a frontend-only UX Engineering prototype. The V2 work documents and introduces the first structural boundaries needed if the project later grows toward real 3D model support, backend-backed review workflows, saved views, comments, permissions, or model upload.
 
@@ -116,12 +118,19 @@ docs/
   03-domain-type-inventory.md
   04-viewer-adapter-strategy.md
   05-viewer-adapter-contract.md
+  09-workspace-mode-navigation.md
 
 specs/
   001-v2-structure-refactor/
   002-viewer-adapter-boundary/
   003-viewer-adapter-interfaces/
   004-prototype-viewer-adapter/
+  010-workspace-mode-navigation-strategy/
+
+features/
+  drawing-triage/
+    DrawingTriagePlaceholder.tsx
+
 ```
 
 The current application still uses mock data and a simulated SVG viewport. The viewer adapter files prepare a future boundary for real viewer integration, but they do not add real 3D rendering.
@@ -186,6 +195,8 @@ npm run build
 - Production issue tracking or BCF exchange
 - AI inference or automated clash detection
 - Mobile-first model review
+- Real 2D drawing upload and storage
+- AI-generated drawing triage candidates
 
 The fake viewport maps Architecture, Structure, Mechanical, and Electrical to separate SVG groups. Electrical is hidden by default and represented only by small cable/detail lines in this prototype.
 

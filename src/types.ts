@@ -1,5 +1,7 @@
 export type AppView = "workspace" | "design-system"
 
+export type WorkspaceMode = "model-review" | "drawing-triage"
+
 export type ProjectId = "residential-tower-a" | "civic-center-east" | "transit-hub-02"
 
 export type FloorName = string

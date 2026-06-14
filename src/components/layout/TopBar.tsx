@@ -130,70 +130,76 @@ export function TopBar({
         </div>
       </div>
 
-      <nav
-        className="hidden h-full items-center min-[901px]:flex"
-        aria-label="Workspace mode"
-        role="tablist"
-      >
-        {workspaceModes.map((mode) => {
-          const active = mode.id === workspaceMode
-
-          return (
-            <button
-              key={mode.id}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              aria-controls="workspace-content"
-              onClick={() => onWorkspaceModeChange(mode.id)}
-              className={cn(
-                "relative flex h-full items-center px-3 text-[11px] font-medium outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-                active
-                  ? "text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-primary"
-                  : "text-muted-foreground",
-              )}
-            >
-              {mode.label}
-            </button>
-          )
-        })}
-      </nav>
-
-      <div className="flex min-w-0 justify-center min-[901px]:hidden">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              aria-label={`Workspace mode: ${activeWorkspaceMode.label}`}
-              className="flex h-8 min-w-0 max-w-[132px] items-center gap-1.5 px-2 text-[11px] font-medium text-foreground outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <span className="truncate">{activeWorkspaceMode.label}</span>
-              <ChevronDown className="size-3 shrink-0" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="center" className="w-44">
-            <DropdownMenuLabel className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
-              Workspace mode
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
+      {view === "workspace" ? (
+        <>
+          <nav
+            className="hidden h-full items-center min-[901px]:flex"
+            aria-label="Workspace mode"
+            role="tablist"
+          >
             {workspaceModes.map((mode) => {
               const active = mode.id === workspaceMode
 
               return (
-                <DropdownMenuItem
+                <button
                   key={mode.id}
-                  aria-current={active ? "page" : undefined}
-                  className="text-xs"
-                  onSelect={() => onWorkspaceModeChange(mode.id)}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  aria-controls="workspace-content"
+                  onClick={() => onWorkspaceModeChange(mode.id)}
+                  className={cn(
+                    "relative flex h-full items-center px-3 text-[11px] font-medium outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                    active
+                      ? "text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-primary"
+                      : "text-muted-foreground",
+                  )}
                 >
                   {mode.label}
-                  {active && <Check className="ml-auto size-3.5" />}
-                </DropdownMenuItem>
+                </button>
               )
             })}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+          </nav>
+
+          <div className="flex min-w-0 justify-center min-[901px]:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={`Workspace mode: ${activeWorkspaceMode.label}`}
+                  className="flex h-8 min-w-0 max-w-[132px] items-center gap-1.5 px-2 text-[11px] font-medium text-foreground outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <span className="truncate">{activeWorkspaceMode.label}</span>
+                  <ChevronDown className="size-3 shrink-0" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-44">
+                <DropdownMenuLabel className="text-[10px] uppercase tracking-[0.08em] text-muted-foreground">
+                  Workspace mode
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {workspaceModes.map((mode) => {
+                  const active = mode.id === workspaceMode
+
+                  return (
+                    <DropdownMenuItem
+                      key={mode.id}
+                      aria-current={active ? "page" : undefined}
+                      className="text-xs"
+                      onSelect={() => onWorkspaceModeChange(mode.id)}
+                    >
+                      {mode.label}
+                      {active && <Check className="ml-auto size-3.5" />}
+                    </DropdownMenuItem>
+                  )
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </>
+      ) : (
+        <div aria-hidden="true" />
+      )}
 
       <div className="flex min-w-0 shrink-0 items-center justify-end gap-1.5">
         {showExplorerTrigger && (

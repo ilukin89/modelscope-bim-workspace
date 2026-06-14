@@ -33,7 +33,7 @@ The current PR is planning-only.
 - [x] T007 Define the compact topbar-anchored mobile mode selector in `specs/010-workspace-mode-navigation-strategy/plan.md`.
 - [x] T008 Define explicit planning-only exclusions in `specs/010-workspace-mode-navigation-strategy/spec.md`.
 - [x] T009 Define light/dark theme-adaptive navigation constraints in `specs/010-workspace-mode-navigation-strategy/spec.md` and `specs/010-workspace-mode-navigation-strategy/plan.md`.
-- [x] T010 Define separate mode-navigation and side-panel responsive decisions, four starting breakpoint bands, and unchanged tablet panel widths in `specs/010-workspace-mode-navigation-strategy/spec.md` and `specs/010-workspace-mode-navigation-strategy/plan.md`.
+- [x] T010 Define the aligned `900/901px` mode-navigation and side-panel threshold and unchanged tablet panel widths in `specs/010-workspace-mode-navigation-strategy/spec.md` and `specs/010-workspace-mode-navigation-strategy/plan.md`.
 
 ## Phase 3: User Story 1 - Choose a Desktop Mode (Priority: P1)
 
@@ -99,12 +99,12 @@ These tasks are not authorized in this planning PR.
 - [ ] T032 [US3] Add a bounded Drawing Triage workspace placeholder that replaces left, center, and right content in `src/App.tsx`.
 - [ ] T033 [US1] Add active, hover, focus, and keyboard semantics for workspace modes in `src/components/layout/TopBar.tsx`.
 - [ ] T034 [US4] Verify mobile mode selection closes its dropdown or popover and restores focus to the trigger in `src/components/layout/TopBar.tsx`.
-- [ ] T035 [US1] Validate the four starting breakpoint bands with the longest project name, visible utility switch, theme toggle, status badges, and both mode labels; collapse before topbar groups overlap in `src/components/layout/TopBar.tsx`.
+- [ ] T035 [US1] Validate the `900/901px` breakpoint with the longest project name, visible utility switch, theme toggle, status badges, and both mode labels; collapse before topbar groups overlap in `src/components/layout/TopBar.tsx`.
 - [ ] T036 [US2] Regression-test current Model Review desktop and mobile interactions against `specs/010-workspace-mode-navigation-strategy/spec.md`.
 - [ ] T037 [US1] Verify theme-adaptive mode styling in light and dark mode without duplicating `Workspace / Design` in `src/components/layout/TopBar.tsx`.
 - [ ] T038a [US2] Verify closed side-panel triggers remain available on mobile, compact tablet, and desktop at all supported widths in `src/App.tsx`, `src/features/model-explorer/ModelExplorer.tsx`, and `src/features/object-inspector/ObjectInspector.tsx`.
-- [ ] T038b [US2] Verify open mobile modal sheets may use an `X` close button at `680px` or below in `src/App.tsx`, `src/features/model-explorer/ModelExplorer.tsx`, and `src/features/object-inspector/ObjectInspector.tsx`.
-- [ ] T038c [US2] Verify open compact-tablet side panels use consistent retract or collapse affordances on both sides at the same breakpoint in `src/App.tsx`, `src/features/model-explorer/ModelExplorer.tsx`, and `src/features/object-inspector/ObjectInspector.tsx`.
+- [ ] T038b [US2] Verify open compact modal sheets use an `X` close button at `900px` or below in `src/App.tsx`, `src/features/model-explorer/ModelExplorer.tsx`, and `src/features/object-inspector/ObjectInspector.tsx`.
+- [ ] T038c [US2] Verify large-tablet and desktop side panels use consistent retract or collapse affordances at `901px` or above in `src/App.tsx`, `src/features/model-explorer/ModelExplorer.tsx`, and `src/features/object-inspector/ObjectInspector.tsx`.
 - [ ] T038d [US2] Verify current tablet panel widths remain unchanged after navigation is added in `src/App.tsx`, `src/features/model-explorer/ModelExplorer.tsx`, and `src/features/object-inspector/ObjectInspector.tsx`.
 - [ ] T038e [US2] Verify AI Review and future Drawing Triage viewport overlays remain inside the central safe area and do not overlap side panels, inspector regions, panel triggers, or primary content at compact desktop, tablet, and mobile widths in `src/App.tsx`, `src/features/viewport/Viewport.tsx`, and future `src/features/drawing-triage/` modules.
 - [ ] T039 Run `npm run lint` and `npm run build` from the repository root.
@@ -143,8 +143,8 @@ The later navigation MVP is:
 
 - the four requested documentation files exist
 - desktop and mobile navigation behavior is unambiguous
-- workspace mode collapse and side-panel modality are separate responsive
-  decisions with an explicit starting breakpoint matrix
+- workspace mode collapse and side-panel modality align at the explicit
+  `900/901px` implementation threshold
 - the mobile mode selector prefers a compact topbar-anchored dropdown or popover
 - light and dark theme behavior is explicit and adaptive
 - mobile, tablet, and desktop panel affordances distinguish closed triggers from

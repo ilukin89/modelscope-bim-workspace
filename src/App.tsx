@@ -68,6 +68,19 @@ function App() {
     document.documentElement.classList.toggle("dark", darkMode)
   }, [darkMode])
 
+  useEffect(() => {
+    const largeLayout = window.matchMedia("(min-width: 901px)")
+    const closeCompactSheets = (event: MediaQueryListEvent) => {
+      if (event.matches) {
+        setExplorerOpen(false)
+        setInspectorOpen(false)
+      }
+    }
+
+    largeLayout.addEventListener("change", closeCompactSheets)
+    return () => largeLayout.removeEventListener("change", closeCompactSheets)
+  }, [])
+
   const visibleObjects = useMemo(
     () =>
       layers
@@ -111,11 +124,22 @@ function App() {
 
   const openAiReview = () => {
     setActiveInspectorTab("ai")
-    if (window.matchMedia("(max-width: 680px)").matches) {
+    if (window.matchMedia("(max-width: 900px)").matches) {
+      setExplorerOpen(false)
       setInspectorOpen(true)
     } else {
       setInspectorCollapsed(false)
     }
+  }
+
+  const openExplorer = () => {
+    setInspectorOpen(false)
+    setExplorerOpen(true)
+  }
+
+  const openInspector = () => {
+    setExplorerOpen(false)
+    setInspectorOpen(true)
   }
 
   return (
@@ -138,7 +162,7 @@ function App() {
           <SheetContent
             side="left"
             overlayClassName="bg-transparent"
-            className="w-[min(86vw,320px)] gap-0 overflow-hidden border-border bg-panel p-0 min-[941px]:hidden sm:max-w-[320px] [&>button]:hidden"
+            className="w-[min(86vw,320px)] gap-0 overflow-hidden border-border bg-panel p-0 min-[901px]:hidden sm:max-w-[320px] [&>button]:hidden"
           >
             <div className="absolute right-3 top-3 z-20">
               <SheetClose asChild>
@@ -179,7 +203,7 @@ function App() {
           <SheetContent
             side="right"
             overlayClassName="bg-transparent"
-            className="w-[min(90vw,340px)] gap-0 overflow-hidden border-border bg-panel p-0 min-[681px]:hidden sm:max-w-[340px] [&>button]:hidden"
+            className="w-[min(90vw,340px)] gap-0 overflow-hidden border-border bg-panel p-0 min-[901px]:hidden sm:max-w-[340px] [&>button]:hidden"
           >
             <div className="absolute right-3 top-3 z-20">
               <SheetClose asChild>
@@ -218,14 +242,14 @@ function App() {
             id="workspace-content"
             aria-label="Model Review workspace"
             className={cn(
-              "grid min-h-0 flex-1 overflow-hidden max-[680px]:grid-cols-1",
+              "grid min-h-0 flex-1 overflow-hidden max-[901px]:grid-cols-1",
               explorerCollapsed && inspectorCollapsed
                 ? "grid-cols-1"
                 : explorerCollapsed
-                  ? "grid-cols-[minmax(0,1fr)_316px] max-[1160px]:grid-cols-[minmax(0,1fr)_280px] max-[680px]:grid-cols-1"
+                  ? "grid-cols-[minmax(0,1fr)_316px] max-[1160px]:grid-cols-[minmax(0,1fr)_280px] max-[901px]:grid-cols-1"
                   : inspectorCollapsed
-                    ? "grid-cols-[248px_minmax(0,1fr)] max-[1160px]:grid-cols-[220px_minmax(0,1fr)] max-[940px]:grid-cols-1"
-                    : "grid-cols-[248px_minmax(0,1fr)_316px] max-[1160px]:grid-cols-[220px_minmax(0,1fr)_280px] max-[940px]:grid-cols-[minmax(0,1fr)_280px] max-[680px]:grid-cols-1",
+                    ? "grid-cols-[248px_minmax(0,1fr)] max-[1160px]:grid-cols-[220px_minmax(0,1fr)] max-[901px]:grid-cols-1"
+                    : "grid-cols-[248px_minmax(0,1fr)_316px] max-[1160px]:grid-cols-[220px_minmax(0,1fr)_280px] max-[901px]:grid-cols-1",
             )}
           >
             {!explorerCollapsed && (
@@ -251,8 +275,8 @@ function App() {
               onOpenAiReview={openAiReview}
               onExpandExplorer={() => setExplorerCollapsed(false)}
               onExpandInspector={() => setInspectorCollapsed(false)}
-              onOpenExplorer={() => setExplorerOpen(true)}
-              onOpenInspector={() => setInspectorOpen(true)}
+              onOpenExplorer={openExplorer}
+              onOpenInspector={openInspector}
               onIssueSelect={selectIssue}
               onToolChange={setActiveTool}
               selectedFloor={selectedFloor}

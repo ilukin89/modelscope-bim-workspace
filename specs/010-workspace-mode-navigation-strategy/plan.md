@@ -51,10 +51,12 @@ The current topbar has two clear edge groups:
 
 The current Workspace content is a responsive three-region grid:
 
-- left: Model Explorer, hidden into a sheet below its desktop breakpoint
-- center: viewport, toolbar, AI Review card, issue feedback, and mobile panel
-  triggers
-- right: Object Inspector, hidden into a sheet at the mobile breakpoint
+- left: Model Explorer, shown as a compact sheet at `900px` and below, and as a
+  retractable side panel at `901px` and above
+- center: viewport, toolbar, AI Review card, issue feedback, and compact
+  side-panel triggers
+- right: Object Inspector, shown as a compact sheet at `900px` and below, and as
+  a retractable side panel at `901px` and above
 
 The existing hierarchy is compact and viewport-first. A new persistent row
 would consume vertical space and imply a heavier application shell than this
@@ -127,14 +129,16 @@ theme may turn it into a bordered or filled duplicate of the right-side
 
 ### Responsive Collision Policy
 
-There are two related but separate responsive decisions:
+Workspace mode navigation and side-panel presentation remain separate product
+concepts, but this implementation aligns their breakpoint:
 
 1. workspace mode navigation decides whether both mode labels remain visible or
    collapse into one active-mode selector
 2. side-panel behavior decides whether panels remain retractable or open as
-   mobile modal sheets/overlays
+   compact modal sheets/overlays
 
-These decisions do not need to change at the same breakpoint.
+Both changes occur between `900px` and `901px` so the visual affordance matches
+the actual spatial interaction model.
 
 The implementation should prioritize content in this order:
 
@@ -145,17 +149,15 @@ The implementation should prioritize content in this order:
 5. truncate long project names
 6. hide existing status badges at their current compact breakpoint
 
-Use this initial breakpoint contract:
+Use this breakpoint contract:
 
 | Width | Mode navigation | Side-panel behavior |
 | --- | --- | --- |
-| `<= 680px` | Collapse to one active-mode selector | Mobile closed triggers; open overlays may use `X` |
-| `681px-900px` | Keep labels if they fit; collapse before collision | Prefer retractable panels at current widths |
+| `<= 900px` | Collapse to one active-mode selector | Compact closed triggers; open sheets use `X` |
 | `901px-1199px` | Prefer visible labels; collision-test the full topbar | Persistent or retractable panels |
 | `>= 1200px` | Show both visible labels | Persistent or retractable panels |
 
-These bands are an implementation starting contract, not a permanent design
-law. Confirm the final mode-navigation collapse point in a browser with:
+Validate the shared `900/901px` threshold in a browser with:
 
 - the longest supported project name
 - the visible `Workspace / Design` utility switch
@@ -163,13 +165,13 @@ law. Confirm the final mode-navigation collapse point in a browser with:
 - status badges where available
 - both workspace mode labels
 
-Collapse mode navigation before it overlaps the project/status group or the
-right-side utilities. A compact tablet may therefore use the single active-mode
-selector while retaining retractable side panels and current panel widths.
+At `901px` and above, visible mode tabs must not overlap the project/status
+group or right-side utilities. Compact tablets use the single active-mode
+selector and modal side sheets while retaining current panel widths.
 
-### Mobile Composition
+### Compact Composition
 
-Do not place two persistent mode tabs in the mobile topbar.
+Do not place two persistent mode tabs in the topbar at `900px` or below.
 
 Use one compact control:
 
@@ -212,15 +214,12 @@ Closed and open panel affordances have different responsibilities:
 
 - **Closed state, all widths**: The existing side trigger or retracted
   side-panel icon remains appropriate on mobile, tablet, and desktop.
-- **Open mobile state (`680px` or below)**: A panel may behave as a modal sheet
-  or overlay and use an `X` close button. At this width, preserving the entire
-  workspace beside the open panel is not required.
-- **Open compact-tablet state (for example, iPad Mini portrait around `768px`
-  CSS viewport width)**: Retractable side-panel behavior is preferred. If an
-  open panel is presented as retractable, use its retract or collapse affordance
-  rather than a modal `X`.
-- **Open desktop and large-tablet state**: Persistent or retractable panels may
-  use the existing side-panel collapse affordances.
+- **Open compact state (`900px` or below)**: Both panels behave as modal sheets
+  or overlays and use `X` close buttons. This includes phones and iPad Mini
+  portrait around `768px`. Only one side sheet needs to be open at a time.
+- **Open desktop and large-tablet state (`901px` or above)**: Persistent or
+  retractable panels use the existing side-panel collapse affordances. This
+  includes iPad Pro-style widths around `1024px`.
 
 At any shared tablet breakpoint, do not present one open panel as modal with an
 `X` while presenting the other as retractable with a side-panel affordance.
@@ -301,11 +300,11 @@ spec authorizes URLs, deep links, or persistence.
 - Avoid a large bottom sheet and floating-pill treatment for mode selection.
 - Closed side-panel triggers may keep their existing retracted icons at every
   supported width.
-- An open mobile modal sheet may use an `X` close button.
-- An open retractable side panel at tablet or desktop widths should use a
-  retract or collapse affordance instead of a modal `X`.
-- Left and right open-panel affordances should remain consistent at the same
-  compact-tablet breakpoint.
+- An open compact sheet at `900px` or below uses an `X` close button.
+- An open retractable side panel at `901px` or above uses a retract or collapse
+  affordance instead of a modal `X`.
+- Left and right open-panel affordances remain consistent across the shared
+  `900/901px` breakpoint.
 - Mode labels should remain full words; avoid unexplained icon-only navigation.
 - Reduced motion is sufficient; no decorative transition is needed.
 - The changed workspace must expose a clear heading, landmark, or programmatic
@@ -377,16 +376,16 @@ in separate future work before implementation.
 
 - compare Model Review before and after at desktop and mobile widths
 - review navigation styling in both light and dark themes
-- test the four starting breakpoint bands separately for mode-navigation and
-  side-panel behavior
+- test compact and large-layout behavior around the shared `900/901px`
+  breakpoint
 - test the longest project name with `Workspace / Design`, theme toggle, status
   badges, and both mode labels visible
 - confirm mode navigation collapses before either edge group is overlapped
-- confirm compact-tablet mode collapse does not force mobile panel modality
+- confirm compact-tablet mode selection and side sheets align through `900px`
 - confirm the mobile selector is a compact topbar-anchored dropdown or popover
   unless a documented constraint requires a connected lightweight sheet
-- verify mobile closed triggers and open-sheet `X` behavior remain valid
-- verify compact-tablet open panels use consistent retract/collapse affordances
+- verify compact closed triggers and open-sheet `X` behavior through `900px`
+- verify large-tablet open panels use retract/collapse affordances from `901px`
 - verify current tablet panel widths are unchanged
 - confirm both mode labels are visible on desktop
 - confirm one active-mode control is visible on mobile

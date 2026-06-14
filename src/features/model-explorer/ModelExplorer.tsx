@@ -74,7 +74,7 @@ export function ModelExplorer({
       className={cn(
         "scrollbar-thin min-h-0 overflow-y-auto bg-panel",
         presentation === "sidebar"
-          ? "border-r border-border max-[940px]:hidden"
+          ? "border-r border-border max-[901px]:hidden"
           : "h-full w-full",
       )}
     >

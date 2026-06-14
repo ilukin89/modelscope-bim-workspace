@@ -214,6 +214,13 @@ clashes or issues.
 This document defines future placement only. It does not authorize UI, upload,
 preview, AI, file, storage, or decision implementation.
 
+In the first navigation implementation, `Drawing Triage` must be selectable if
+it appears as a workspace mode. Selecting it must replace the left, center, and
+right regions with a bounded, honest placeholder or empty-state workspace. It
+must not be hidden, visually disabled, inert, or presented as a finished upload
+or AI workflow. The placeholder must clearly state that upload, storage, drawing
+preview, and AI candidate generation are not implemented in this phase.
+
 ## Mobile Behavior
 
 At `680px` or below, do not show two persistent workspace tabs. Use one compact
@@ -223,7 +230,7 @@ The closed control remains inside the topbar and shows the active mode, for
 example `Model Review`, plus a chevron. It should feel like a continuation of
 the topbar navigation vocabulary, not a floating pill.
 
-The preferred open behavior is a compact dropdown or popover anchored to that
+The selector preferably opens as a compact dropdown or popover anchored to that
 topbar control. It shows:
 
 - `Model Review`
@@ -280,8 +287,13 @@ viewport width:
 - Open state: retractable side-panel behavior is preferred.
 - If an open panel is presented as retractable, use its retract or collapse
   affordance rather than a modal `X`.
+- Do not add an `X` as a secondary or additive close affordance to a retractable
+  panel. The panel uses either the mobile modal/sheet close model or the
+  retractable-panel model, not both at once.
 - Do not mix an open modal panel with an `X` on one side and an open retractable
   panel with a collapse affordance on the other at the same breakpoint.
+- Only an explicit future specification may intentionally change the panel
+  model.
 
 ### Desktop and Large Tablet
 
@@ -289,6 +301,10 @@ viewport width:
 - Closed panels may use the existing retracted side-panel trigger.
 - Open retractable panels should use side-panel retract or collapse
   affordances, not a modal `X`.
+- Do not add an `X` as a secondary or additive close affordance to a retractable
+  panel. An `X` belongs only to the mobile modal sheet or overlay model.
+- Only an explicit future specification may intentionally change the panel
+  model.
 
 Keep the current tablet panel widths. This navigation strategy does not
 recommend changing side-panel dimensions.
@@ -351,9 +367,13 @@ breakpoint bands above as the initial implementation contract.
   semantics.
 - Give the mobile trigger an accessible name that includes the active mode.
 - Expose expanded/collapsed state for the mobile selector.
-- Return focus to the trigger when the menu or sheet closes.
-- Ensure the changed center workspace has a clear heading or landmark so the
-  new mode is apparent beyond the topbar.
+- After selecting a mode on desktop, keep focus on or return it to the mode
+  control rather than automatically moving focus into the new workspace.
+- On mobile, close the dropdown or popover after selection and return focus to
+  the trigger control.
+- Ensure the changed workspace exposes a clear heading, landmark, or
+  programmatic active-state update so keyboard and screen-reader users can
+  identify the content change without relying on the topbar alone.
 
 ## Future Navigation Acceptance Criteria
 

@@ -124,6 +124,14 @@ AI, storage, or routing behavior.
 3. **Given** the Drawing Triage direction is documented in this phase, **When**
    repository changes are reviewed, **Then** no Drawing Triage runtime UI,
    upload behavior, file handling, storage, backend, or AI behavior exists.
+4. **Given** `Drawing Triage` appears as a selectable mode in the first
+   navigation implementation, **When** the user selects it, **Then** a bounded,
+   honest placeholder or empty-state workspace replaces the left, center, and
+   right regions.
+5. **Given** the Drawing Triage placeholder is shown, **When** the user reviews
+   it, **Then** it clearly states that upload, storage, drawing preview, and AI
+   candidate generation are not implemented, and it is not hidden, disabled,
+   inert, or presented as a finished workflow.
 
 ---
 
@@ -244,6 +252,11 @@ losing access to existing viewport controls.
 - **FR-027**: At tablet and desktop widths, an open panel presented as a
   retractable side panel MUST use retract or collapse affordances rather than a
   modal `X` close button.
+- **FR-027A**: An `X` close button belongs only to the mobile modal sheet or
+  overlay model. It MUST NOT be added as a secondary close affordance to a
+  retractable tablet or desktop panel. The panel uses either a modal/sheet close
+  model or a retractable-panel model, not both at once. Only an explicit future
+  specification may intentionally change that panel model.
 - **FR-028**: At a shared compact-tablet breakpoint, the two open side panels
   MUST NOT mix modal and retractable close models.
 - **FR-029**: This strategy MUST preserve the current tablet panel widths and
@@ -332,8 +345,10 @@ side-panel presentation breakpoint.
 
 ### Measurable Outcomes
 
-- **SC-001**: In a later usability review, at least 90% of target users correctly
-  distinguish workspace modes from the `Workspace / Design` prototype utility.
+- **SC-001 (Future Usability Validation Target)**: In a later usability review,
+  at least 90% of target users should correctly distinguish workspace modes from
+  the Workspace / Design prototype utility. This target is not checkable in
+  the current planning phase and will be validated after implementation.
 - **SC-002**: On desktop, 100% of reviewed target layouts show both workspace
   mode labels without overlap with the left or right topbar groups.
 - **SC-003**: On mobile, the closed topbar uses exactly one workspace-mode
@@ -362,8 +377,11 @@ side-panel presentation breakpoint.
 
 ## Assumptions
 
-- Workspace mode is project-scoped UI state in the first implementation and
-  does not require a route or persistent preference.
+- The first implementation uses project-scoped local UI state for workspace
+  mode. Routing, URL persistence, browser back-button behavior, shareable links,
+  and session persistence are deferred to a future routing and persistence
+  specification. This keeps the first navigation implementation small and
+  avoids implying backend or route behavior that has not been specified.
 - The existing `Workspace / Design` switch remains available in both workspace
   modes because it controls the prototype surface, not product workflow.
 - The four breakpoint bands are a starting contract. The exact

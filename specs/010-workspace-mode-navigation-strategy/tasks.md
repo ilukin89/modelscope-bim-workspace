@@ -86,8 +86,7 @@ options.
 
 - [x] T024 Run `npm run lint` from the repository root.
 - [x] T025 Run `npm run build` from the repository root.
-- [x] T026 Confirm only the four requested documentation files changed with `git status --short`.
-- [x] T027 Confirm no package or runtime source file changed with `git diff --name-only`.
+- [x] T026 Confirm the changed-file scope with `git status --short` and verify that only the four permitted documentation files were modified.
 
 ## Separate Future PR: Workspace Mode Navigation
 
@@ -99,11 +98,14 @@ These tasks are not authorized in this planning PR.
 - [ ] T031 [US2] Preserve the existing Model Review render path and interactions in `src/App.tsx`.
 - [ ] T032 [US3] Add a bounded Drawing Triage workspace placeholder that replaces left, center, and right content in `src/App.tsx`.
 - [ ] T033 [US1] Add active, hover, focus, and keyboard semantics for workspace modes in `src/components/layout/TopBar.tsx`.
-- [ ] T034 [US4] Verify mobile mode selection closes its overlay and restores focus in `src/components/layout/TopBar.tsx`.
+- [ ] T034 [US4] Verify mobile mode selection closes its dropdown or popover and restores focus to the trigger in `src/components/layout/TopBar.tsx`.
 - [ ] T035 [US1] Validate the four starting breakpoint bands with the longest project name, visible utility switch, theme toggle, status badges, and both mode labels; collapse before topbar groups overlap in `src/components/layout/TopBar.tsx`.
 - [ ] T036 [US2] Regression-test current Model Review desktop and mobile interactions against `specs/010-workspace-mode-navigation-strategy/spec.md`.
 - [ ] T037 [US1] Verify theme-adaptive mode styling in light and dark mode without duplicating `Workspace / Design` in `src/components/layout/TopBar.tsx`.
-- [ ] T038 [US2] Verify closed triggers remain available, mobile sheets may use `X`, tablet/desktop retractable panels use collapse affordances consistently, and current tablet widths remain unchanged in `src/App.tsx`, `src/features/model-explorer/ModelExplorer.tsx`, and `src/features/object-inspector/ObjectInspector.tsx`.
+- [ ] T038a [US2] Verify closed side-panel triggers remain available on mobile, compact tablet, and desktop at all supported widths in `src/App.tsx`, `src/features/model-explorer/ModelExplorer.tsx`, and `src/features/object-inspector/ObjectInspector.tsx`.
+- [ ] T038b [US2] Verify open mobile modal sheets may use an `X` close button at `680px` or below in `src/App.tsx`, `src/features/model-explorer/ModelExplorer.tsx`, and `src/features/object-inspector/ObjectInspector.tsx`.
+- [ ] T038c [US2] Verify open compact-tablet side panels use consistent retract or collapse affordances on both sides at the same breakpoint in `src/App.tsx`, `src/features/model-explorer/ModelExplorer.tsx`, and `src/features/object-inspector/ObjectInspector.tsx`.
+- [ ] T038d [US2] Verify current tablet panel widths remain unchanged after navigation is added in `src/App.tsx`, `src/features/model-explorer/ModelExplorer.tsx`, and `src/features/object-inspector/ObjectInspector.tsx`.
 - [ ] T039 Run `npm run lint` and `npm run build` from the repository root.
 
 ## Separate Future PR: Drawing Triage Workspace Shell

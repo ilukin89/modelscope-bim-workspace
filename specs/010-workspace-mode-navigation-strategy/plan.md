@@ -35,7 +35,7 @@ sync + issues           | Drawing Triage         | theme
 
 On desktop, use visible text navigation with a restrained active underline in
 the topbar center. On mobile, show one active-mode disclosure that preferably
-opens a compact topbar-anchored dropdown or popover. Do not create a second
+opens as a compact topbar-anchored dropdown or popover. Do not create a second
 segmented control and do not add a heavy navigation row.
 
 `Model Review` stays the default and retains the current workspace unchanged.
@@ -290,8 +290,11 @@ spec authorizes URLs, deep links, or persistence.
 - Active state must be communicated programmatically and not by color alone.
 - Focus indication must remain visible against both light and dark topbar
   surfaces.
+- After a desktop mode selection, focus should remain on or return to the mode
+  control rather than automatically moving into the changed workspace.
 - The mobile disclosure must expose its expanded state and active mode.
-- Selecting a mobile mode must close the overlay and return focus predictably.
+- Selecting a mobile mode must close the dropdown or popover and return focus to
+  the trigger control.
 - The preferred mode-selector overlay is anchored to its topbar trigger and
   remains compact.
 - The active mode must have a checkmark or equivalent semantic indicator.
@@ -305,8 +308,9 @@ spec authorizes URLs, deep links, or persistence.
   compact-tablet breakpoint.
 - Mode labels should remain full words; avoid unexplained icon-only navigation.
 - Reduced motion is sufficient; no decorative transition is needed.
-- The center workspace content must provide a visible mode change so users do
-  not rely only on the topbar state.
+- The changed workspace must expose a clear heading, landmark, or programmatic
+  active-state update so keyboard and screen-reader users can identify that the
+  workspace content changed without relying on the topbar alone.
 
 ## Constitution Check
 

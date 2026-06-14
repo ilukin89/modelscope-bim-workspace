@@ -123,7 +123,7 @@ export function ObjectInspector({
       className={cn(
         "relative min-h-0 overflow-hidden bg-panel",
         presentation === "sidebar"
-          ? "border-l border-border max-[680px]:hidden"
+          ? "border-l border-border max-[901px]:hidden"
           : "h-full w-full",
       )}
     >

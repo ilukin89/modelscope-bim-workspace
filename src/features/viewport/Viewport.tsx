@@ -289,7 +289,7 @@ export function Viewport({
       </div>
 
       {showExplorerExpand && (
-        <div className="absolute left-3 top-3 z-20 max-[940px]:hidden">
+        <div className="absolute left-3 top-3 z-20 max-[901px]:hidden">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -311,7 +311,7 @@ export function Viewport({
         </div>
       )}
 
-      <div className="absolute left-3 top-3 z-20 min-[941px]:hidden">
+      <div className="absolute left-3 top-3 z-20 min-[901px]:hidden">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -332,7 +332,7 @@ export function Viewport({
       </div>
 
       {showInspectorExpand && (
-        <div className="absolute right-3 top-3 z-20 max-[680px]:hidden">
+        <div className="absolute right-3 top-3 z-20 max-[901px]:hidden">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -354,7 +354,7 @@ export function Viewport({
         </div>
       )}
 
-      <div className="absolute right-3 top-3 z-20 min-[681px]:hidden">
+      <div className="absolute right-3 top-3 z-20 min-[901px]:hidden">
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

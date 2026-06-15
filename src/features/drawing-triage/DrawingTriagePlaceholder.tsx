@@ -4,16 +4,17 @@ import {
   Bot,
   Check,
   FileStack,
-  Layers3,
   MapPin,
   ScanSearch,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type CandidateId = "door-clearance" | "riser-note" | "grid-offset"
+type CandidateAccent = "warning" | "selected" | "candidate"
 
 type Candidate = {
   id: CandidateId
+  accent: CandidateAccent
   marker: number
   title: string
   status: "Needs review" | "Follow-up" | "Candidate"
@@ -26,6 +27,7 @@ type Candidate = {
 const candidates: Candidate[] = [
   {
     id: "door-clearance",
+    accent: "warning",
     marker: 1,
     title: "Door swing near circulation path",
     status: "Needs review",
@@ -37,6 +39,7 @@ const candidates: Candidate[] = [
   },
   {
     id: "riser-note",
+    accent: "selected",
     marker: 2,
     title: "Riser annotation may be incomplete",
     status: "Follow-up",
@@ -48,6 +51,7 @@ const candidates: Candidate[] = [
   },
   {
     id: "grid-offset",
+    accent: "candidate",
     marker: 3,
     title: "Partition alignment differs at grid line",
     status: "Candidate",
@@ -59,10 +63,48 @@ const candidates: Candidate[] = [
   },
 ]
 
-const statusStyles: Record<Candidate["status"], string> = {
-  "Needs review": "bg-warning/15 text-warning-foreground",
-  "Follow-up": "bg-primary/12 text-primary",
-  Candidate: "bg-ai/15 text-ai-foreground",
+const candidateAccentColors: Record<CandidateAccent, string> = {
+  warning: "var(--warning)",
+  selected: "var(--selected)",
+  candidate: "oklch(0.67 0.13 300)",
+}
+
+const candidateAccentStyles: Record<
+  CandidateAccent,
+  {
+    badge: string
+    card: string
+    cardSelected: string
+    indicator: string
+    marker: string
+  }
+> = {
+  warning: {
+    badge: "bg-warning/15 text-warning-foreground",
+    card: "hover:border-warning/55 hover:bg-warning/5",
+    cardSelected: "border-warning bg-warning/10 ring-1 ring-warning/35",
+    indicator: "text-warning-foreground",
+    marker: "bg-warning text-primary-foreground",
+  },
+  selected: {
+    badge: "bg-selected/15 text-selected",
+    card: "hover:border-selected/55 hover:bg-selected/5",
+    cardSelected: "border-selected bg-selected/10 ring-1 ring-selected/35",
+    indicator: "text-selected",
+    marker: "bg-selected text-primary-foreground",
+  },
+  candidate: {
+    badge:
+      "bg-[oklch(0.67_0.13_300/0.15)] text-[oklch(0.5_0.14_300)] dark:text-[oklch(0.78_0.1_300)]",
+    card:
+      "hover:border-[oklch(0.67_0.13_300/0.55)] hover:bg-[oklch(0.67_0.13_300/0.05)]",
+    cardSelected:
+      "border-[oklch(0.67_0.13_300)] bg-[oklch(0.67_0.13_300/0.1)] ring-1 ring-[oklch(0.67_0.13_300/0.35)]",
+    indicator:
+      "text-[oklch(0.5_0.14_300)] dark:text-[oklch(0.78_0.1_300)]",
+    marker:
+      "bg-[oklch(0.67_0.13_300)] text-primary-foreground",
+  },
 }
 
 function Marker({
@@ -78,6 +120,8 @@ function Marker({
   y: number
   onSelect: (id: CandidateId) => void
 }) {
+  const accentColor = candidateAccentColors[candidate.accent]
+
   return (
     <g
       role="button"
@@ -99,18 +143,13 @@ function Marker({
         r={selected ? 25 : 20}
         fill={
           selected
-            ? "color-mix(in oklab, var(--selected) 22%, transparent)"
-            : "color-mix(in oklab, var(--warning) 14%, transparent)"
+            ? `color-mix(in oklab, ${accentColor} 24%, transparent)`
+            : `color-mix(in oklab, ${accentColor} 14%, transparent)`
         }
-        stroke={selected ? "var(--selected)" : "var(--warning)"}
+        stroke={accentColor}
         strokeWidth={selected ? 3 : 2}
       />
-      <circle
-        cx={x}
-        cy={y}
-        r={12}
-        fill={selected ? "var(--selected)" : "var(--warning)"}
-      />
+      <circle cx={x} cy={y} r={12} fill={accentColor} />
       <text
         x={x}
         y={y + 4}
@@ -224,7 +263,7 @@ export function DrawingTriagePlaceholder() {
       </aside>
 
       <section className="order-1 flex min-h-[440px] min-w-0 flex-col bg-canvas min-[901px]:order-2">
-        <header className="flex min-h-12 items-center justify-between gap-3 border-b border-border bg-panel/90 px-4 py-2">
+        <header className="flex min-h-12 items-center gap-3 border-b border-border bg-panel/90 px-4 py-2">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <ScanSearch className="size-4 shrink-0 text-primary" />
@@ -238,13 +277,6 @@ export function DrawingTriagePlaceholder() {
             <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
               A-102 · Level 02 floor plan · Review overlay
             </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5 text-[10px] text-muted-foreground">
-            <Layers3 className="size-3.5" />
-            <span className="max-[520px]:hidden">Candidate overlay</span>
-            <span className="rounded-sm bg-ai/15 px-1.5 py-0.5 font-medium text-ai-foreground">
-              On
-            </span>
           </div>
         </header>
 
@@ -380,7 +412,7 @@ export function DrawingTriagePlaceholder() {
                   width="84"
                   height="86"
                   fill="color-mix(in oklab, var(--warning) 12%, transparent)"
-                  stroke="var(--warning)"
+                  stroke={candidateAccentColors[candidates[0].accent]}
                   strokeDasharray="5 4"
                 />
               </g>
@@ -394,8 +426,8 @@ export function DrawingTriagePlaceholder() {
                   y="225"
                   width="112"
                   height="132"
-                  fill="color-mix(in oklab, var(--ai) 12%, transparent)"
-                  stroke="var(--ai)"
+                  fill="color-mix(in oklab, var(--selected) 12%, transparent)"
+                  stroke={candidateAccentColors[candidates[1].accent]}
                   strokeDasharray="5 4"
                 />
               </g>
@@ -409,8 +441,8 @@ export function DrawingTriagePlaceholder() {
                   y="64"
                   width="78"
                   height="165"
-                  fill="color-mix(in oklab, var(--selected) 10%, transparent)"
-                  stroke="var(--selected)"
+                  fill="color-mix(in oklab, oklch(0.67 0.13 300) 12%, transparent)"
+                  stroke={candidateAccentColors[candidates[2].accent]}
                   strokeDasharray="5 4"
                 />
               </g>
@@ -525,8 +557,8 @@ export function DrawingTriagePlaceholder() {
                 Mock visual cues for human assessment, not confirmed defects.
               </p>
             </div>
-            <span className="rounded-sm bg-ai/15 px-1.5 py-0.5 text-[9px] font-semibold text-ai-foreground">
-              AI aid
+            <span className="shrink-0 whitespace-nowrap rounded-sm bg-ai/15 px-1.5 py-0.5 text-[9px] font-semibold text-ai-foreground">
+              AI
             </span>
           </div>
         </div>
@@ -534,6 +566,7 @@ export function DrawingTriagePlaceholder() {
         <div className="space-y-2 p-3">
           {candidates.map((candidate) => {
             const selected = candidate.id === selectedCandidateId
+            const accentStyles = candidateAccentStyles[candidate.accent]
 
             return (
               <button
@@ -542,19 +575,18 @@ export function DrawingTriagePlaceholder() {
                 aria-pressed={selected}
                 onClick={() => setSelectedCandidateId(candidate.id)}
                 className={cn(
-                  "w-full rounded-sm border bg-card p-3 text-left outline-none transition-[border-color,background-color] duration-150 focus-visible:ring-2 focus-visible:ring-ring",
+                  "w-full rounded-sm border bg-card p-3 text-left outline-none transition-[border-color,background-color,box-shadow] duration-150 focus-visible:ring-2 focus-visible:ring-ring",
                   selected
-                    ? "border-selected bg-accent/55"
-                    : "border-border hover:border-muted-foreground/45 hover:bg-panel-subtle/60",
+                    ? accentStyles.cardSelected
+                    : cn("border-border", accentStyles.card),
                 )}
               >
                 <div className="flex items-start gap-2.5">
                   <span
                     className={cn(
                       "flex size-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold",
-                      selected
-                        ? "bg-selected text-primary-foreground"
-                        : "bg-muted text-muted-foreground",
+                      accentStyles.marker,
+                      selected && "ring-2 ring-current/25",
                     )}
                   >
                     {candidate.marker}
@@ -564,7 +596,7 @@ export function DrawingTriagePlaceholder() {
                       <span
                         className={cn(
                           "rounded-sm px-1.5 py-0.5 text-[9px] font-semibold",
-                          statusStyles[candidate.status],
+                          accentStyles.badge,
                         )}
                       >
                         {candidate.status}
@@ -582,7 +614,9 @@ export function DrawingTriagePlaceholder() {
                       <span>{candidate.risk}</span>
                     </span>
                     <span className="mt-1.5 flex items-center gap-1 text-[9px] font-medium text-foreground">
-                      <MapPin className="size-3 text-primary" />
+                      <MapPin
+                        className={cn("size-3", accentStyles.indicator)}
+                      />
                       {candidate.region}
                     </span>
                   </span>

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, type CSSProperties } from "react"
 import {
   AlertTriangle,
   Bot,
@@ -15,6 +15,7 @@ type CandidateId = "door-clearance" | "riser-note" | "grid-offset"
 type Candidate = {
   id: CandidateId
   marker: number
+  accent: string
   title: string
   status: "Needs review" | "Follow-up" | "Candidate"
   summary: string
@@ -27,6 +28,7 @@ const candidates: Candidate[] = [
   {
     id: "door-clearance",
     marker: 1,
+    accent: "var(--warning)",
     title: "Door swing near circulation path",
     status: "Needs review",
     summary:
@@ -38,6 +40,7 @@ const candidates: Candidate[] = [
   {
     id: "riser-note",
     marker: 2,
+    accent: "var(--ai)",
     title: "Riser annotation may be incomplete",
     status: "Follow-up",
     summary:
@@ -49,6 +52,7 @@ const candidates: Candidate[] = [
   {
     id: "grid-offset",
     marker: 3,
+    accent: "oklch(0.62 0.17 295)",
     title: "Partition alignment differs at grid line",
     status: "Candidate",
     summary:
@@ -58,12 +62,6 @@ const candidates: Candidate[] = [
     region: "Grid B1 · Open office",
   },
 ]
-
-const statusStyles: Record<Candidate["status"], string> = {
-  "Needs review": "bg-warning/15 text-warning-foreground",
-  "Follow-up": "bg-primary/12 text-primary",
-  Candidate: "bg-ai/15 text-ai-foreground",
-}
 
 function Marker({
   candidate,
@@ -97,20 +95,13 @@ function Marker({
         cx={x}
         cy={y}
         r={selected ? 25 : 20}
-        fill={
-          selected
-            ? "color-mix(in oklab, var(--selected) 22%, transparent)"
-            : "color-mix(in oklab, var(--warning) 14%, transparent)"
-        }
-        stroke={selected ? "var(--selected)" : "var(--warning)"}
+        fill={`color-mix(in oklab, ${candidate.accent} ${
+          selected ? "22%" : "14%"
+        }, transparent)`}
+        stroke={candidate.accent}
         strokeWidth={selected ? 3 : 2}
       />
-      <circle
-        cx={x}
-        cy={y}
-        r={12}
-        fill={selected ? "var(--selected)" : "var(--warning)"}
-      />
+      <circle cx={x} cy={y} r={12} fill={candidate.accent} />
       <text
         x={x}
         y={y + 4}
@@ -281,13 +272,13 @@ export function DrawingTriagePlaceholder() {
                 strokeDasharray="6 6"
                 strokeWidth="1"
               >
-                <line x1="92" y1="54" x2="92" y2="540" />
+                <line x1="110" y1="54" x2="110" y2="540" />
                 <line x1="300" y1="54" x2="300" y2="540" />
-                <line x1="510" y1="54" x2="510" y2="540" />
-                <line x1="718" y1="54" x2="718" y2="540" />
+                <line x1="490" y1="54" x2="490" y2="540" />
+                <line x1="680" y1="54" x2="680" y2="540" />
                 <line x1="55" y1="110" x2="795" y2="110" />
-                <line x1="55" y1="300" x2="795" y2="300" />
-                <line x1="55" y1="490" x2="795" y2="490" />
+                <line x1="55" y1="290" x2="795" y2="290" />
+                <line x1="55" y1="480" x2="795" y2="480" />
               </g>
 
               <g
@@ -297,13 +288,13 @@ export function DrawingTriagePlaceholder() {
                 fontWeight="600"
                 textAnchor="middle"
               >
-                <text x="92" y="42">A</text>
+                <text x="110" y="42">A</text>
                 <text x="300" y="42">B</text>
-                <text x="510" y="42">C</text>
-                <text x="718" y="42">D</text>
+                <text x="490" y="42">C</text>
+                <text x="680" y="42">D</text>
                 <text x="38" y="114">1</text>
-                <text x="38" y="304">2</text>
-                <text x="38" y="494">3</text>
+                <text x="38" y="294">2</text>
+                <text x="38" y="484">3</text>
               </g>
 
               <g
@@ -313,20 +304,21 @@ export function DrawingTriagePlaceholder() {
               >
                 <rect x="70" y="75" width="670" height="430" strokeWidth="9" />
                 <path
-                  d="M70 215h185m52 0h208m48 0h177M70 380h140m55 0h120m50 0h305"
-                  strokeWidth="6"
+                  d="M70 250h180m40 0h176m34 0h150m34 0h56M70 325h170m40 0h100m28 0h42m28 0h62m40 0h100m30 0h30"
+                  strokeWidth="5"
                 />
                 <path
-                  d="M255 75v140m0 165v125M515 75v140m0 165v125M650 75v140M385 215v165"
-                  strokeWidth="6"
+                  d="M420 75v175M580 75v175M360 325v180M430 325v180M500 325v180M650 325v180M500 420h150M585 420v85"
+                  strokeWidth="5"
                 />
-                <rect x="535" y="235" width="92" height="112" strokeWidth="5" />
-                <rect x="90" y="235" width="86" height="112" strokeWidth="4" />
-                <path d="M210 380v-52a52 52 0 0 1 52 52" strokeWidth="2" />
-                <path d="M515 165h-46a46 46 0 0 0 46 46" strokeWidth="2" />
-                <path d="M650 165h44a44 44 0 0 1-44 44" strokeWidth="2" />
-                <path d="M385 270h-42a42 42 0 0 0 42 42" strokeWidth="2" />
-                <path d="M515 430h-42a42 42 0 0 1 42-42" strokeWidth="2" />
+                <path d="M250 250v-40a40 40 0 0 1 40 40" strokeWidth="2" />
+                <path d="M500 250v34a34 34 0 0 1-34-34" strokeWidth="2" />
+                <path d="M650 250v-34a34 34 0 0 1 34 34" strokeWidth="2" />
+                <path d="M240 325v40a40 40 0 0 0 40-40" strokeWidth="2" />
+                <path d="M380 325v28a28 28 0 0 0 28-28" strokeWidth="2" />
+                <path d="M450 325v28a28 28 0 0 0 28-28" strokeWidth="2" />
+                <path d="M540 325v40m40-40v40" strokeWidth="2" />
+                <path d="M680 325v30a30 30 0 0 0 30-30" strokeWidth="2" />
               </g>
 
               <g
@@ -334,19 +326,41 @@ export function DrawingTriagePlaceholder() {
                 stroke="oklch(0.56 0.03 220)"
                 strokeWidth="2"
               >
-                <rect x="108" y="255" width="50" height="72" />
-                <path d="M118 268h30m-30 12h30m-30 12h30m-30 12h30" />
-                <rect x="550" y="250" width="62" height="82" />
-                <path d="M560 264h42m-42 13h42m-42 13h42m-42 13h42" />
-                <rect x="285" y="255" width="62" height="30" rx="2" />
-                <circle cx="298" cy="270" r="4" />
-                <circle cx="334" cy="270" r="4" />
-                <rect x="285" y="315" width="62" height="30" rx="2" />
-                <circle cx="298" cy="330" r="4" />
-                <circle cx="334" cy="330" r="4" />
-                <path d="M675 245h42m-42 16h42m-42 16h42m-42 16h42m-42 16h42m-42 16h42" />
-                <path d="M105 120h105m-105 25h105m-105 25h105" />
-                <path d="M285 120h185m-185 25h185m-185 25h185" />
+                <path d="M308 92v78h96" strokeDasharray="3 3" />
+                <path d="M112 116h112m-112 38h112m-112 38h112" />
+                <path d="M126 106v20m34-20v20m34-20v20M126 144v20m34-20v20m34-20v20M126 182v20m34-20v20m34-20v20" />
+                <path d="M255 116h110m-110 38h110m-110 38h110" />
+                <path d="M270 106v20m36-20v20m36-20v20M270 144v20m36-20v20m36-20v20M270 182v20m36-20v20m36-20v20" />
+                <rect x="454" y="130" width="92" height="42" rx="2" />
+                <circle cx="466" cy="124" r="4" />
+                <circle cx="500" cy="124" r="4" />
+                <circle cx="534" cy="124" r="4" />
+                <circle cx="466" cy="178" r="4" />
+                <circle cx="500" cy="178" r="4" />
+                <circle cx="534" cy="178" r="4" />
+                <rect x="614" y="130" width="92" height="42" rx="2" />
+                <circle cx="626" cy="124" r="4" />
+                <circle cx="660" cy="124" r="4" />
+                <circle cx="694" cy="124" r="4" />
+                <circle cx="626" cy="178" r="4" />
+                <circle cx="660" cy="178" r="4" />
+                <circle cx="694" cy="178" r="4" />
+                <path d="M108 374h205m-205 40h205m-205 40h205" />
+                <path d="M124 363v22m38-22v22m38-22v22m38-22v22m38-22v22M124 403v22m38-22v22m38-22v22m38-22v22m38-22v22M124 443v22m38-22v22m38-22v22m38-22v22m38-22v22" />
+                <rect x="374" y="370" width="42" height="70" />
+                <path d="M382 386h26m-26 14h26" />
+                <rect x="444" y="370" width="42" height="70" />
+                <path d="M452 386h26m-26 14h26" />
+                <rect x="514" y="350" width="58" height="58" />
+                <path d="M522 398h42m-42-10h42m-42-10h42m-42-10h42m-42-10h42" />
+                <rect x="596" y="350" width="42" height="58" />
+                <path d="M596 379h42M617 350v58" />
+                <rect x="596" y="438" width="42" height="50" />
+                <path d="M603 448h28m-28 10h28m-28 10h28m-28 10h28" />
+                <path d="M670 362h50v44h-50M680 374h30m-30 14h30" />
+                <circle cx="680" cy="452" r="10" />
+                <circle cx="710" cy="452" r="10" />
+                <path d="M500 286h150" strokeDasharray="8 5" />
               </g>
 
               <g
@@ -355,18 +369,17 @@ export function DrawingTriagePlaceholder() {
                 fontSize="9"
                 textAnchor="middle"
               >
-                <text x="160" y="197">OPEN OFFICE</text>
-                <text x="385" y="197">OPEN OFFICE</text>
-                <text x="585" y="197">MEETING 02</text>
-                <text x="695" y="197">MEETING 03</text>
-                <text x="132" y="365">STAIR 02</text>
-                <text x="316" y="365">TEA POINT</text>
-                <text x="450" y="365">CORRIDOR</text>
-                <text x="580" y="365">SERVICE RISER</text>
-                <text x="695" y="365">CORE</text>
-                <text x="165" y="470">OPEN OFFICE</text>
-                <text x="450" y="470">PROJECT ROOM</text>
-                <text x="630" y="470">FOCUS ROOMS</text>
+                <text x="245" y="230">OPEN OFFICE NORTH</text>
+                <text x="500" y="205">MEETING 02</text>
+                <text x="660" y="205">MEETING 03</text>
+                <text x="405" y="292">MAIN CORRIDOR</text>
+                <text x="215" y="488">OPEN OFFICE SOUTH</text>
+                <text x="395" y="472">FOCUS 01</text>
+                <text x="465" y="472">FOCUS 02</text>
+                <text x="543" y="448">STAIR 02</text>
+                <text x="617" y="412">LIFT</text>
+                <text x="617" y="498">RISER</text>
+                <text x="695" y="488">TEA POINT</text>
               </g>
 
               <g
@@ -375,12 +388,12 @@ export function DrawingTriagePlaceholder() {
                 opacity={selectedCandidateId === "door-clearance" ? 1 : 0.38}
               >
                 <rect
-                  x="474"
-                  y="146"
-                  width="84"
-                  height="86"
-                  fill="color-mix(in oklab, var(--warning) 12%, transparent)"
-                  stroke="var(--warning)"
+                  x="455"
+                  y="238"
+                  width="62"
+                  height="62"
+                  fill={`color-mix(in oklab, ${candidates[0].accent} 12%, transparent)`}
+                  stroke={candidates[0].accent}
                   strokeDasharray="5 4"
                 />
               </g>
@@ -390,12 +403,12 @@ export function DrawingTriagePlaceholder() {
                 opacity={selectedCandidateId === "riser-note" ? 1 : 0.38}
               >
                 <rect
-                  x="525"
-                  y="225"
-                  width="112"
-                  height="132"
-                  fill="color-mix(in oklab, var(--ai) 12%, transparent)"
-                  stroke="var(--ai)"
+                  x="586"
+                  y="428"
+                  width="62"
+                  height="70"
+                  fill={`color-mix(in oklab, ${candidates[1].accent} 12%, transparent)`}
+                  stroke={candidates[1].accent}
                   strokeDasharray="5 4"
                 />
               </g>
@@ -405,12 +418,12 @@ export function DrawingTriagePlaceholder() {
                 opacity={selectedCandidateId === "grid-offset" ? 1 : 0.38}
               >
                 <rect
-                  x="245"
-                  y="64"
-                  width="78"
-                  height="165"
-                  fill="color-mix(in oklab, var(--selected) 10%, transparent)"
-                  stroke="var(--selected)"
+                  x="286"
+                  y="82"
+                  width="42"
+                  height="100"
+                  fill={`color-mix(in oklab, ${candidates[2].accent} 10%, transparent)`}
+                  stroke={candidates[2].accent}
                   strokeDasharray="5 4"
                 />
               </g>
@@ -418,22 +431,22 @@ export function DrawingTriagePlaceholder() {
               <Marker
                 candidate={candidates[0]}
                 selected={selectedCandidateId === "door-clearance"}
-                x={530}
-                y={158}
+                x={505}
+                y={286}
                 onSelect={setSelectedCandidateId}
               />
               <Marker
                 candidate={candidates[1]}
                 selected={selectedCandidateId === "riser-note"}
-                x={620}
-                y={240}
+                x={640}
+                y={448}
                 onSelect={setSelectedCandidateId}
               />
               <Marker
                 candidate={candidates[2]}
                 selected={selectedCandidateId === "grid-offset"}
-                x={300}
-                y={92}
+                x={310}
+                y={96}
                 onSelect={setSelectedCandidateId}
               />
 
@@ -525,8 +538,8 @@ export function DrawingTriagePlaceholder() {
                 Mock visual cues for human assessment, not confirmed defects.
               </p>
             </div>
-            <span className="rounded-sm bg-ai/15 px-1.5 py-0.5 text-[9px] font-semibold text-ai-foreground">
-              AI aid
+            <span className="whitespace-nowrap rounded-sm bg-ai/15 px-2 py-1 text-[10px] font-semibold leading-none text-ai-foreground">
+              AI
             </span>
           </div>
         </div>
@@ -534,6 +547,15 @@ export function DrawingTriagePlaceholder() {
         <div className="space-y-2 p-3">
           {candidates.map((candidate) => {
             const selected = candidate.id === selectedCandidateId
+            const cardStyle = {
+              borderColor: `color-mix(in oklab, ${candidate.accent} ${
+                selected ? "72%" : "28%"
+              }, var(--border))`,
+              background: selected
+                ? `color-mix(in oklab, ${candidate.accent} 10%, var(--card))`
+                : undefined,
+              "--tw-ring-color": candidate.accent,
+            } as CSSProperties
 
             return (
               <button
@@ -542,30 +564,34 @@ export function DrawingTriagePlaceholder() {
                 aria-pressed={selected}
                 onClick={() => setSelectedCandidateId(candidate.id)}
                 className={cn(
-                  "w-full rounded-sm border bg-card p-3 text-left outline-none transition-[border-color,background-color] duration-150 focus-visible:ring-2 focus-visible:ring-ring",
-                  selected
-                    ? "border-selected bg-accent/55"
-                    : "border-border hover:border-muted-foreground/45 hover:bg-panel-subtle/60",
+                  "w-full rounded-sm border bg-card p-3 text-left outline-none transition-[border-color,background-color] duration-150 focus-visible:ring-2",
+                  !selected && "hover:bg-panel-subtle/60",
                 )}
+                style={cardStyle}
               >
                 <div className="flex items-start gap-2.5">
                   <span
                     className={cn(
                       "flex size-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold",
-                      selected
-                        ? "bg-selected text-primary-foreground"
-                        : "bg-muted text-muted-foreground",
+                      !selected && "text-muted-foreground",
                     )}
+                    style={{
+                      background: `color-mix(in oklab, ${candidate.accent} ${
+                        selected ? "100%" : "16%"
+                      }, var(--muted))`,
+                      color: selected ? "var(--primary-foreground)" : undefined,
+                    }}
                   >
                     {candidate.marker}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex flex-wrap items-center gap-1.5">
                       <span
-                        className={cn(
-                          "rounded-sm px-1.5 py-0.5 text-[9px] font-semibold",
-                          statusStyles[candidate.status],
-                        )}
+                        className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold"
+                        style={{
+                          background: `color-mix(in oklab, ${candidate.accent} 15%, transparent)`,
+                          color: `color-mix(in oklab, ${candidate.accent} 72%, var(--foreground))`,
+                        }}
                       >
                         {candidate.status}
                       </span>
@@ -582,7 +608,10 @@ export function DrawingTriagePlaceholder() {
                       <span>{candidate.risk}</span>
                     </span>
                     <span className="mt-1.5 flex items-center gap-1 text-[9px] font-medium text-foreground">
-                      <MapPin className="size-3 text-primary" />
+                      <MapPin
+                        className="size-3"
+                        style={{ color: candidate.accent }}
+                      />
                       {candidate.region}
                     </span>
                   </span>

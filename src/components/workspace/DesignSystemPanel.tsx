@@ -1055,13 +1055,13 @@ function DrawingTriageCardSpecimen({
           className="h-9 w-full justify-center gap-2 rounded-md border px-3 text-[11px] font-semibold tracking-normal shadow-none"
           style={{
             borderColor: issueCreated
-              ? `color-mix(in oklab, ${accent} 54%, var(--border))`
+              ? `color-mix(in oklab, ${accent} 22%, var(--border))`
               : accent,
             background: issueCreated
-              ? `color-mix(in oklab, ${accent} 8%, var(--card))`
+              ? "var(--card)"
               : accent,
             color: issueCreated
-              ? `color-mix(in oklab, ${accent} 66%, var(--foreground))`
+              ? `light-dark(var(--foreground), color-mix(in oklab, var(--foreground) 88%, ${accent}))`
               : visual.ink,
             boxShadow: undefined,
           }}
@@ -1080,15 +1080,17 @@ function DrawingTriageCardSpecimen({
           className="h-9 w-full justify-center gap-2 rounded-md border px-3 text-[11px] font-semibold tracking-normal shadow-none"
           style={{
             borderColor: followUp
-              ? `color-mix(in oklab, ${accent} 36%, var(--border))`
-              : `color-mix(in oklab, ${accent} 58%, var(--border))`,
+              ? `color-mix(in oklab, ${accent} 42%, var(--border))`
+              : `color-mix(in oklab, ${accent} 76%, var(--border))`,
             background: followUp
-              ? "var(--card)"
-              : `color-mix(in oklab, ${accent} 12%, var(--card))`,
+              ? `color-mix(in oklab, ${accent} 5%, var(--card))`
+              : `color-mix(in oklab, ${accent} 24%, var(--card))`,
             color: followUp
-              ? `color-mix(in oklab, ${accent} 56%, var(--foreground))`
-              : `color-mix(in oklab, ${accent} 62%, var(--foreground))`,
-            boxShadow: undefined,
+              ? `color-mix(in oklab, ${accent} 64%, var(--foreground))`
+              : `color-mix(in oklab, ${accent} 82%, var(--foreground))`,
+            boxShadow: followUp
+              ? `inset 0 0 0 1px color-mix(in oklab, ${accent} 18%, transparent)`
+              : `inset 0 0 0 1px color-mix(in oklab, ${accent} 16%, transparent)`,
           }}
         >
           <Bookmark className={cn("size-4", followUp && "fill-current")} />

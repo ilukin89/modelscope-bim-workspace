@@ -1080,14 +1080,14 @@ function DrawingTriageCardSpecimen({
           className="h-9 w-full justify-center gap-2 rounded-md border px-3 text-[11px] font-semibold tracking-normal shadow-none"
           style={{
             borderColor: followUp
-              ? `color-mix(in oklab, ${accent} 58%, var(--border))`
-              : "var(--border)",
+              ? `color-mix(in oklab, ${accent} 36%, var(--border))`
+              : `color-mix(in oklab, ${accent} 58%, var(--border))`,
             background: followUp
-              ? `color-mix(in oklab, ${accent} 12%, var(--card))`
-              : "var(--card)",
+              ? "var(--card)"
+              : `color-mix(in oklab, ${accent} 12%, var(--card))`,
             color: followUp
-              ? `color-mix(in oklab, ${accent} 62%, var(--foreground))`
-              : "var(--muted-foreground)",
+              ? `color-mix(in oklab, ${accent} 56%, var(--foreground))`
+              : `color-mix(in oklab, ${accent} 62%, var(--foreground))`,
             boxShadow: undefined,
           }}
         >

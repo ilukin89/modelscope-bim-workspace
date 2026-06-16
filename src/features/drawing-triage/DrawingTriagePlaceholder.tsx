@@ -713,14 +713,14 @@ export function DrawingTriagePlaceholder() {
             } as CSSProperties
             const followUpActionStyle = {
               borderColor: isFollowUp
-                ? `color-mix(in oklab, ${typeAccent} 58%, var(--border))`
-                : "var(--border)",
+                ? `color-mix(in oklab, ${typeAccent} 36%, var(--border))`
+                : `color-mix(in oklab, ${typeAccent} 58%, var(--border))`,
               background: isFollowUp
-                ? `color-mix(in oklab, ${typeAccent} 12%, var(--card))`
-                : "var(--card)",
+                ? "var(--card)"
+                : `color-mix(in oklab, ${typeAccent} 12%, var(--card))`,
               color: isFollowUp
-                ? `color-mix(in oklab, ${typeAccent} 62%, var(--foreground))`
-                : "var(--muted-foreground)",
+                ? `color-mix(in oklab, ${typeAccent} 56%, var(--foreground))`
+                : `color-mix(in oklab, ${typeAccent} 62%, var(--foreground))`,
               boxShadow: undefined,
             } as CSSProperties
 

@@ -7,7 +7,7 @@ ModelScope is a small code-first UI prototype for a professional BIM / 3D model 
 *Drawing Triage workspace with a sample 2D floor plan, candidate review markers, and human-in-the-loop AI observation cards.*
 
 
-**Live demo:** https://modelscope-bim-workspace.vercel.app/
+**Live demo:** https://modelscope-bim-workspace.vercel.app/ <br>
 **Code:** https://github.com/ilukin89/modelscope-bim-workspace
 
 ## Why this prototype exists

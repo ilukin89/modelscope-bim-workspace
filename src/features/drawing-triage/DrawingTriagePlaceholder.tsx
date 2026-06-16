@@ -35,37 +35,25 @@ type CandidateType = "Clearance" | "Annotation" | "Alignment"
 const typeVisuals: Record<
   CandidateType,
   {
-    accent: string
+    lightAccent: string
+    darkAccent: string
     ink: string
-    lightActionBackground: string
-    lightActionText: string
-    darkActionBackground: string
-    darkActionText: string
   }
 > = {
   Clearance: {
-    accent: "oklch(0.72 0.15 72)",
+    lightAccent: "oklch(0.82 0.1 74.86)",
+    darkAccent: "oklch(0.65 0.1 74.1)",
     ink: "oklch(0.18 0.05 72)",
-    lightActionBackground: "oklch(0.87 0.09 74.89)",
-    lightActionText: "oklch(0.41 0.09 68.92)",
-    darkActionBackground: "oklch(0.65 0.1 74.1)",
-    darkActionText: "oklch(0.18 0.05 72)",
   },
   Annotation: {
-    accent: "oklch(0.64 0.07 205)",
+    lightAccent: "oklch(0.67 0.07 205)",
+    darkAccent: "oklch(0.64 0.07 205)",
     ink: "oklch(0.16 0.035 205)",
-    lightActionBackground: "oklch(0.67 0.07 205)",
-    lightActionText: "oklch(0 0 0)",
-    darkActionBackground: "oklch(0.64 0.07 205)",
-    darkActionText: "oklch(0.16 0.035 205)",
   },
   Alignment: {
-    accent: "oklch(0.66 0.12 270)",
+    lightAccent: "oklch(0.69 0.11 270.41)",
+    darkAccent: "oklch(0.69 0.11 270)",
     ink: "oklch(0.18 0.045 270)",
-    lightActionBackground: "oklch(0.69 0.11 270.4)",
-    lightActionText: "oklch(0.18 0.045 270)",
-    darkActionBackground: "oklch(0.69 0.11 270.4)",
-    darkActionText: "oklch(0.18 0.045 270)",
   },
 }
 
@@ -112,7 +100,8 @@ const candidates: Candidate[] = [
 ]
 
 function getTypeAccent(candidate: Candidate) {
-  return typeVisuals[candidate.type].accent
+  const typeVisual = typeVisuals[candidate.type]
+  return `light-dark(${typeVisual.lightAccent}, ${typeVisual.darkAccent})`
 }
 
 function Marker({
@@ -684,21 +673,42 @@ export function DrawingTriagePlaceholder() {
             const { decision, isFollowUp } = reviewStates[candidate.id]
             const decisionLabel = getDecisionLabel(decision)
             const typeVisual = typeVisuals[candidate.type]
+            const typeAccent = getTypeAccent(candidate)
             const candidateStyle = {
-              "--candidate-accent": typeVisual.accent,
-              "--candidate-ink": typeVisual.ink,
-              borderColor: `color-mix(in oklab, ${typeVisual.accent} ${
-                selected || decision === "issue_created" ? "62%" : "30%"
-              }, var(--border))`,
-              background:
-                selected || decision === "issue_created"
-                  ? `color-mix(in oklab, ${typeVisual.accent} ${
-                      decision === "issue_created" ? "11%" : "7%"
-                    }, var(--card))`
-                  : undefined,
+              borderColor: "var(--border)",
+              borderLeftColor: typeAccent,
+              borderLeftWidth: "3px",
+              background: selected
+                ? `color-mix(in oklab, ${typeAccent} 7%, var(--card))`
+                : "var(--card)",
               boxShadow: selected
-                ? `0 0 0 1px color-mix(in oklab, ${typeVisual.accent} 36%, transparent)`
+                ? `0 0 0 1px color-mix(in oklab, ${typeAccent} 32%, transparent)`
                 : undefined,
+            } as CSSProperties
+            const decisionIsIssue = decision === "issue_created"
+            const issueActionStyle = {
+              borderColor: decisionIsIssue
+                ? `color-mix(in oklab, ${typeAccent} 54%, var(--border))`
+                : typeAccent,
+              background: decisionIsIssue
+                ? `color-mix(in oklab, ${typeAccent} 8%, var(--card))`
+                : typeAccent,
+              color: decisionIsIssue
+                ? `color-mix(in oklab, ${typeAccent} 66%, var(--foreground))`
+                : typeVisual.ink,
+              boxShadow: undefined,
+            } as CSSProperties
+            const followUpActionStyle = {
+              borderColor: isFollowUp
+                ? `color-mix(in oklab, ${typeAccent} 58%, var(--border))`
+                : "var(--border)",
+              background: isFollowUp
+                ? `color-mix(in oklab, ${typeAccent} 12%, var(--card))`
+                : "var(--card)",
+              color: isFollowUp
+                ? `color-mix(in oklab, ${typeAccent} 62%, var(--foreground))`
+                : "var(--muted-foreground)",
+              boxShadow: undefined,
             } as CSSProperties
 
             return (
@@ -715,86 +725,63 @@ export function DrawingTriagePlaceholder() {
                   type="button"
                   aria-pressed={selected}
                   onClick={() => setSelectedCandidateId(candidate.id)}
-                  className="w-full p-3 text-left outline-none ring-ring transition-colors duration-150 hover:bg-panel-subtle/45 focus-visible:ring-2"
+                  className="w-full p-4 text-left outline-none ring-ring transition-colors duration-150 hover:bg-panel-subtle/35 focus-visible:ring-2"
                 >
-                  <span className="flex items-start gap-2.5">
-                    <span
-                      className="flex size-5 shrink-0 items-center justify-center rounded-full border text-[9px] font-bold"
-                      style={{
-                        background: `color-mix(in oklab, ${typeVisual.accent} ${
-                          decision === "issue_created" ? "100%" : "22%"
-                        }, var(--card))`,
-                        borderColor: typeVisual.accent,
-                        color:
-                          decision === "issue_created"
-                            ? typeVisual.ink
-                            : `color-mix(in oklab, ${typeVisual.accent} 72%, var(--foreground))`,
-                      }}
-                    >
-                      {candidate.marker}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex flex-wrap items-center gap-1.5 pr-7">
-                        <span
-                          className="rounded-sm border px-1.5 py-0.5 text-[9px] font-bold"
-                          style={{
-                            borderColor: `color-mix(in oklab, ${typeVisual.accent} 72%, var(--border))`,
-                            background: `color-mix(in oklab, ${typeVisual.accent} 24%, var(--card))`,
-                            color: `color-mix(in oklab, ${typeVisual.accent} 72%, var(--foreground))`,
-                          }}
-                        >
-                          Type: {candidate.type}
-                        </span>
-                        <span
-                          className="inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-[9px] font-semibold"
-                          style={{
-                            borderColor: typeVisual.accent,
-                            background:
-                              decision === "issue_created"
-                                ? `light-dark(${typeVisual.lightActionBackground}, ${typeVisual.darkActionBackground})`
-                                : `color-mix(in oklab, ${typeVisual.accent} 10%, var(--card))`,
-                            color:
-                              decision === "issue_created"
-                                ? `light-dark(${typeVisual.lightActionText}, ${typeVisual.darkActionText})`
-                                : `color-mix(in oklab, ${typeVisual.accent} 62%, var(--foreground))`,
-                          }}
-                        >
-                          {decision === "issue_created" && (
-                            <AlertTriangle className="size-2.5" />
-                          )}
-                          Decision: {decisionLabel}
-                        </span>
-                        {isFollowUp && (
+                  <span className="block">
+                    <span className="flex items-start gap-3">
+                      <span
+                        className="flex size-[22px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
+                        style={{
+                          background: typeAccent,
+                          color: typeVisual.ink,
+                        }}
+                      >
+                        {candidate.marker}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center gap-2 pr-8">
                           <span
-                            className="inline-flex items-center gap-1 rounded-sm border bg-card px-1.5 py-0.5 text-[9px] font-semibold"
+                            className="rounded-[5px] px-2 py-1 text-[10px] font-bold leading-none"
                             style={{
-                              borderColor: typeVisual.accent,
-                              color: `color-mix(in oklab, ${typeVisual.accent} 72%, var(--foreground))`,
+                              background: typeAccent,
+                              color: typeVisual.ink,
                             }}
                           >
-                            <Bookmark className="size-2.5 fill-current" />
-                            Flag: Follow-up
+                            Type: {candidate.type}
                           </span>
-                        )}
+                          <span
+                            className="inline-flex items-center gap-1 rounded-[5px] px-2 py-1 text-[10px] font-semibold leading-none"
+                            style={{
+                              background: decisionIsIssue
+                                ? typeAccent
+                                : `color-mix(in oklab, ${typeAccent} 13%, var(--card))`,
+                              color: decisionIsIssue
+                                ? typeVisual.ink
+                                : `color-mix(in oklab, ${typeAccent} 58%, var(--foreground))`,
+                            }}
+                          >
+                            {decisionIsIssue && (
+                              <AlertTriangle className="size-3" />
+                            )}
+                            Decision: {decisionLabel}
+                          </span>
+                        </span>
                       </span>
-                      <span className="mt-2 block text-[11px] font-semibold leading-snug">
-                        {candidate.title}
-                      </span>
-                      <span className="mt-1.5 block text-[10px] leading-relaxed text-muted-foreground">
-                        {candidate.summary}
-                      </span>
-                      <span className="mt-2.5 flex flex-wrap gap-x-2 gap-y-1 border-t border-border pt-2 text-[9px] text-muted-foreground">
-                        <span>{candidate.confidence}</span>
-                        <span aria-hidden="true">·</span>
-                        <span>{candidate.risk}</span>
-                      </span>
-                      <span className="mt-1.5 flex items-center gap-1 text-[9px] font-medium text-foreground">
-                        <MapPin
-                          className="size-3"
-                          style={{ color: typeVisual.accent }}
-                        />
-                        {candidate.region}
-                      </span>
+                    </span>
+                    <span className="mt-4 block text-[13px] font-semibold leading-snug text-foreground">
+                      {candidate.title}
+                    </span>
+                    <span className="mt-2 block text-[11px] leading-relaxed text-muted-foreground">
+                      {candidate.summary}
+                    </span>
+                    <span className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-[9px] text-muted-foreground">
+                      <span>{candidate.confidence}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{candidate.risk}</span>
+                    </span>
+                    <span className="mt-2 flex items-center gap-1.5 text-[10px] font-semibold text-foreground">
+                      <MapPin className="size-3" style={{ color: typeAccent }} />
+                      {candidate.region}
                     </span>
                   </span>
                 </button>
@@ -803,21 +790,22 @@ export function DrawingTriagePlaceholder() {
                   <span
                     aria-label="Follow-up flag active"
                     title="Follow-up flag active"
-                    className="absolute right-2.5 top-2.5 flex size-6 items-center justify-center rounded-sm border bg-card shadow-sm"
+                    className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-md border bg-card"
                     style={{
-                      borderColor: typeVisual.accent,
-                      color: `color-mix(in oklab, ${typeVisual.accent} 76%, var(--foreground))`,
+                      borderColor: `color-mix(in oklab, ${typeAccent} 60%, var(--border))`,
+                      background: `color-mix(in oklab, ${typeAccent} 9%, var(--card))`,
+                      color: `color-mix(in oklab, ${typeAccent} 68%, var(--foreground))`,
                     }}
                   >
-                    <Bookmark className="size-3.5 fill-current" />
+                    <Bookmark className="size-4 fill-current" />
                   </span>
                 )}
 
-                {decision === "issue_created" && (
+                {decisionIsIssue && (
                   <div
-                    className="mx-3 flex items-start gap-1.5 border-t border-border py-2 text-[9px] font-medium leading-relaxed"
+                    className="mx-4 flex items-start gap-1.5 border-t border-border/70 py-2.5 text-[9px] font-medium leading-relaxed"
                     style={{
-                      color: `color-mix(in oklab, ${typeVisual.accent} 68%, var(--foreground))`,
+                      color: `color-mix(in oklab, ${typeAccent} 68%, var(--foreground))`,
                     }}
                     role="status"
                   >
@@ -828,46 +816,41 @@ export function DrawingTriagePlaceholder() {
                   </div>
                 )}
 
-                <div className="grid gap-1.5 border-t border-border p-2">
+                <div
+                  className="grid gap-2 border-t border-border/60 p-4 pt-3"
+                  style={{
+                    gridTemplateColumns:
+                      "repeat(auto-fit, minmax(132px, 1fr))",
+                  }}
+                >
                   <Button
                     type="button"
+                    variant="outline"
                     size="compact"
-                    className="h-8 w-full justify-start border px-2.5 text-[12px] font-semibold tracking-[0.01em] shadow-sm transition-[filter,box-shadow] hover:brightness-95 focus-visible:ring-2 dark:hover:brightness-110"
-                    style={{
-                      borderColor: `color-mix(in oklab, ${typeVisual.accent} 88%, var(--foreground))`,
-                      background: `light-dark(${typeVisual.lightActionBackground}, ${typeVisual.darkActionBackground})`,
-                      color: `light-dark(${typeVisual.lightActionText}, ${typeVisual.darkActionText})`,
-                      boxShadow:
-                        decision === "issue_created"
-                          ? `inset 0 0 0 1px color-mix(in oklab, light-dark(${typeVisual.lightActionText}, ${typeVisual.darkActionText}) 22%, transparent)`
-                          : undefined,
-                    }}
-                    aria-pressed={decision === "issue_created"}
+                    className="h-9 w-full justify-center gap-2 rounded-md border px-3 text-[11px] font-semibold tracking-normal shadow-none transition-[filter,background-color,border-color] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:hover:brightness-110"
+                    style={issueActionStyle}
+                    aria-pressed={decisionIsIssue}
                     onClick={() => toggleIssue(candidate.id)}
                   >
-                    {decision === "issue_created" ? <X /> : <AlertTriangle />}
-                    {decision === "issue_created"
-                      ? "Remove issue"
-                      : "Convert to issue"}
+                    {decisionIsIssue ? (
+                      <X className="size-4" />
+                    ) : (
+                      <AlertTriangle className="size-4" />
+                    )}
+                    {decisionIsIssue ? "Remove issue" : "Convert to issue"}
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
                     size="compact"
-                    className="h-8 w-full justify-start border bg-card px-2.5 text-[12px] font-semibold tracking-[0.01em] shadow-sm transition-[filter,background-color,border-color] hover:brightness-95 focus-visible:ring-2 dark:hover:brightness-110"
-                    style={{
-                      borderColor: `color-mix(in oklab, ${typeVisual.accent} ${
-                        isFollowUp ? "88%" : "76%"
-                      }, var(--border))`,
-                      background: isFollowUp
-                        ? `color-mix(in oklab, ${typeVisual.accent} 16%, var(--card))`
-                        : "var(--card)",
-                      color: `color-mix(in oklab, ${typeVisual.accent} 76%, var(--foreground))`,
-                    }}
+                    className="h-9 w-full justify-center gap-2 rounded-md border px-3 text-[11px] font-semibold tracking-normal shadow-none transition-[filter,background-color,border-color] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:hover:brightness-110"
+                    style={followUpActionStyle}
                     aria-pressed={isFollowUp}
                     onClick={() => toggleFollowUp(candidate.id)}
                   >
-                    <Bookmark className={cn(isFollowUp && "fill-current")} />
+                    <Bookmark
+                      className={cn("size-4", isFollowUp && "fill-current")}
+                    />
                     {isFollowUp
                       ? "Remove from follow-up"
                       : "Keep for follow-up"}

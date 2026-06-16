@@ -1,18 +1,26 @@
 import { useEffect, useRef, useState } from "react"
 import {
   Bot,
+  Box,
   BoxSelect,
+  Bookmark,
   Check,
+  ChevronDown,
   ChevronRight,
   CircleAlert,
+  CircleDot,
   EyeOff,
+  FileStack,
   Hand,
+  Layers3,
   LoaderCircle,
+  MapPin,
   MessageSquarePlus,
   Orbit,
   Ruler,
   ScanLine,
   TriangleAlert,
+  X,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -66,6 +74,39 @@ const viewportTools = [
   { label: "Measure", icon: Ruler },
   { label: "Comment", icon: MessageSquarePlus },
 ] satisfies Array<{ label: ViewportTool; icon: typeof Orbit }>
+
+type DrawingTriageType = "Clearance" | "Annotation" | "Alignment"
+type DrawingTriageDecision = "needs_review" | "issue_created"
+
+const drawingTriageTypeVisuals: Record<
+  DrawingTriageType,
+  {
+    lightAccent: string
+    darkAccent: string
+    ink: string
+  }
+> = {
+  Clearance: {
+    lightAccent: "oklch(0.82 0.1 74.86)",
+    darkAccent: "oklch(0.65 0.1 74.1)",
+    ink: "oklch(0.18 0.05 72)",
+  },
+  Annotation: {
+    lightAccent: "oklch(0.67 0.07 205)",
+    darkAccent: "oklch(0.64 0.07 205)",
+    ink: "oklch(0.16 0.035 205)",
+  },
+  Alignment: {
+    lightAccent: "oklch(0.69 0.11 270.41)",
+    darkAccent: "oklch(0.69 0.11 270)",
+    ink: "oklch(0.18 0.045 270)",
+  },
+}
+
+function getDrawingTriageAccent(type: DrawingTriageType) {
+  const visual = drawingTriageTypeVisuals[type]
+  return `light-dark(${visual.lightAccent}, ${visual.darkAccent})`
+}
 
 export function DesignSystemPanel() {
   const [activeExampleTool, setActiveExampleTool] =
@@ -270,6 +311,21 @@ export function DesignSystemPanel() {
 
             <SystemSection
               index="04"
+              eyebrow="Navigation"
+              title="Tabs and panel links"
+              description="Workspace tabs, explorer links, and drawing sheet links share compact selected and unselected states."
+            >
+              <div className="grid gap-3">
+                <WorkspaceTabsSpecimen />
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(248px,1fr))] gap-3">
+                  <ModelExplorerLinkSpecimen />
+                  <DrawingContextLinkSpecimen />
+                </div>
+              </div>
+            </SystemSection>
+
+            <SystemSection
+              index="05"
               eyebrow="Model tree"
               title="Object states"
               description="One row vocabulary is shared across model trees, search results, and selection sets."
@@ -295,7 +351,7 @@ export function DesignSystemPanel() {
             </SystemSection>
 
             <SystemSection
-              index="05"
+              index="06"
               eyebrow="Assisted review"
               title="AI Review component"
               description="A dedicated findings entry point remains distinct from navigation tools and exposes its state without chatbot styling."
@@ -306,11 +362,46 @@ export function DesignSystemPanel() {
                 <AiReviewSpecimen state="active" />
               </div>
             </SystemSection>
+
+            <SystemSection
+              index="07"
+              eyebrow="Drawing triage"
+              title="Review candidate cards"
+              description="Candidate observations use type color for category, compact decision state, and quiet human review actions."
+            >
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(292px,292px))] gap-3">
+                <DrawingTriageCardSpecimen
+                  marker={1}
+                  type="Clearance"
+                  decision="needs_review"
+                  title="Door swing near circulation path"
+                  summary="The meeting-room door arc appears close to the main corridor clearance zone."
+                  location="Grid C4 · Meeting 02"
+                />
+                <DrawingTriageCardSpecimen
+                  marker={2}
+                  type="Annotation"
+                  decision="issue_created"
+                  title="Riser annotation may be incomplete"
+                  summary="A service riser is drawn without a matching keynote on this sheet excerpt."
+                  location="Grid D2 · Core"
+                />
+                <DrawingTriageCardSpecimen
+                  marker={3}
+                  type="Alignment"
+                  decision="needs_review"
+                  title="Partition alignment differs at grid line"
+                  summary="The north partition appears offset from the adjacent structural grid reference."
+                  location="Grid B1 · Open office"
+                  followUp
+                />
+              </div>
+            </SystemSection>
           </div>
 
           <div className="space-y-12">
             <SystemSection
-              index="06"
+              index="08"
               eyebrow="Foundations"
               title="Semantic tokens"
               description="Theme-aware roles connect the viewport, panels, selections, issue states, and AI assistance."
@@ -348,7 +439,22 @@ export function DesignSystemPanel() {
             </SystemSection>
 
             <SystemSection
-              index="07"
+              index="09"
+              eyebrow="Drawing triage"
+              title="Candidate type palette"
+              description="Type accents identify the candidate category. Decision and follow-up states reuse the same type color with different emphasis."
+            >
+              <div className="grid gap-2">
+                {(
+                  ["Clearance", "Annotation", "Alignment"] as DrawingTriageType[]
+                ).map((type) => (
+                  <DrawingTriageTypeSpecimen key={type} type={type} />
+                ))}
+              </div>
+            </SystemSection>
+
+            <SystemSection
+              index="10"
               eyebrow="Status language"
               title="Badges"
               description="Compact labels communicate model and workflow state without competing with the viewport."
@@ -378,7 +484,7 @@ export function DesignSystemPanel() {
             </SystemSection>
 
             <SystemSection
-              index="08"
+              index="11"
               eyebrow="Inspector"
               title="Panel anatomy"
               description="Compact regions separate identity, issue state, properties, and actions without nested decoration."
@@ -488,6 +594,308 @@ function SeverityState({
   )
 }
 
+function WorkspaceTabsSpecimen() {
+  const modes = ["Model Review", "Drawing Triage"]
+
+  return (
+    <Card className="overflow-hidden rounded-md border-foreground/20 bg-card shadow-sm dark:border-foreground/25">
+      <CardHeader className="border-b border-foreground/15 p-3 dark:border-foreground/20">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold">Workspace tabs</p>
+            <p className="mt-1 text-[10px] text-foreground/65">
+              Desktop tablist and compact mobile selector states.
+            </p>
+          </div>
+          <Badge variant="outline" className="text-foreground/70">
+            Desktop / mobile
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-3 p-3">
+        <div>
+          <p className="mb-2 font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-foreground/55">
+            Desktop
+          </p>
+          <div
+            className="flex h-12 items-center border border-border bg-panel px-2"
+            role="tablist"
+            aria-label="Workspace mode example"
+          >
+            {modes.map((mode, index) => {
+              const active = index === 0
+
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  className={cn(
+                    "relative flex h-full items-center px-3 text-[11px] font-medium outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                    active
+                      ? "text-foreground after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-primary"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {mode}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-2 font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-foreground/55">
+            Mobile
+          </p>
+          <div className="grid max-w-[220px] gap-1.5 border border-border bg-panel p-2">
+            <button
+              type="button"
+              aria-label="Workspace mode: Model Review"
+              className="flex h-8 min-w-0 items-center gap-1.5 px-2 text-[11px] font-medium text-foreground outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span className="truncate">Model Review</span>
+              <ChevronDown className="ml-auto size-3 shrink-0" />
+            </button>
+            <div className="border-t border-border pt-1">
+              {modes.map((mode, index) => (
+                <div
+                  key={mode}
+                  aria-current={index === 0 ? "page" : undefined}
+                  className="flex h-8 items-center gap-2 rounded-sm px-2 text-xs text-foreground hover:bg-muted"
+                >
+                  {mode}
+                  {index === 0 && <Check className="ml-auto size-3.5" />}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function ModelExplorerLinkSpecimen() {
+  return (
+    <Card className="overflow-hidden rounded-md border-foreground/20 bg-panel shadow-sm dark:border-foreground/25">
+      <CardHeader className="border-b border-border p-2.5">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            Model Explorer
+          </span>
+          <Badge variant="outline" className="text-[9px]">
+            Links
+          </Badge>
+        </div>
+        <div className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-[11px] text-muted-foreground">
+          <Box className="size-3.5" />
+          <span className="truncate">Federated Model</span>
+          <span className="ml-auto font-mono text-[10px]">3.270</span>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4 p-3">
+        <div>
+          <ExplorerSpecimenHeading icon={Layers3} title="Floors" count="5" />
+          <div className="mt-2 space-y-0.5">
+            <ModelExplorerFloorLink label="Level 08" count="516" selected />
+            <ModelExplorerFloorLink label="Level 07" count="498" />
+          </div>
+        </div>
+        <div>
+          <ExplorerSpecimenHeading icon={CircleDot} title="Open Issues" count="3" />
+          <div className="mt-2 space-y-1">
+            <ModelExplorerIssueLink
+              code="ISS-824"
+              label="Beam intersects supply duct"
+              severity="critical"
+              selected
+            />
+            <ModelExplorerIssueLink
+              code="ISS-831"
+              label="Door clearance below 900 mm"
+              severity="warning"
+            />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function DrawingContextLinkSpecimen() {
+  return (
+    <Card className="overflow-hidden rounded-md border-foreground/20 bg-panel shadow-sm dark:border-foreground/25">
+      <CardHeader className="border-b border-border p-4">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <FileStack className="size-4" />
+          <span className="text-[11px] font-semibold uppercase tracking-[0.08em]">
+            Drawing context
+          </span>
+        </div>
+        <p className="mt-4 text-sm font-semibold">Level 02 floor plan</p>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          A-102 · Coordination issue set
+        </p>
+      </CardHeader>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            Sheets
+          </h3>
+          <span className="text-[10px] text-muted-foreground">1 of 3</span>
+        </div>
+        <div className="mt-2 space-y-1">
+          <DrawingSheetLink
+            code="02"
+            title="Level 02 floor plan"
+            detail="2 awaiting decision"
+            selected
+          />
+          <DrawingSheetLink code="01" title="Level 01 floor plan" />
+          <DrawingSheetLink code="R" title="Roof plan" />
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function ExplorerSpecimenHeading({
+  icon: Icon,
+  title,
+  count,
+}: {
+  icon: typeof Layers3
+  title: string
+  count: string
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <Icon className="size-3.5 text-muted-foreground" />
+        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+          {title}
+        </span>
+      </div>
+      <span className="text-[10px] text-muted-foreground">{count}</span>
+    </div>
+  )
+}
+
+function ModelExplorerFloorLink({
+  label,
+  count,
+  selected,
+}: {
+  label: string
+  count: string
+  selected?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      className={cn(
+        "flex h-7 w-full items-center gap-2 rounded-sm px-2 text-left text-[11px] outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+        selected && "bg-accent text-accent-foreground",
+      )}
+    >
+      <ChevronRight className="size-3 text-muted-foreground" />
+      <span className="truncate">{label}</span>
+      <span className="ml-auto font-mono text-[10px] text-muted-foreground">
+        {count}
+      </span>
+    </button>
+  )
+}
+
+function ModelExplorerIssueLink({
+  code,
+  label,
+  severity,
+  selected,
+}: {
+  code: string
+  label: string
+  severity: "critical" | "warning"
+  selected?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      className={cn(
+        "w-full rounded-sm border p-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+        selected
+          ? "border-primary/45 bg-accent"
+          : "border-transparent hover:border-border hover:bg-muted",
+      )}
+    >
+      <div className="flex items-center gap-1.5">
+        <span
+          className={cn(
+            "size-1.5 shrink-0 rounded-full",
+            severity === "critical" ? "bg-destructive" : "bg-warning",
+          )}
+        />
+        <span className="font-mono text-[9px] text-muted-foreground">
+          {code}
+        </span>
+        <Badge
+          variant={severity === "critical" ? "destructive" : "warning"}
+          className="ml-auto px-1 py-0 text-[8px] uppercase"
+        >
+          {severity}
+        </Badge>
+      </div>
+      <p className="mt-1 truncate text-[10px] font-medium">{label}</p>
+    </button>
+  )
+}
+
+function DrawingSheetLink({
+  code,
+  title,
+  detail,
+  selected,
+}: {
+  code: string
+  title: string
+  detail?: string
+  selected?: boolean
+}) {
+  if (selected) {
+    return (
+      <button
+        type="button"
+        aria-current="page"
+        className="flex w-full items-center gap-2 rounded-sm bg-accent px-2.5 py-2 text-left text-[11px] text-accent-foreground outline-none ring-ring focus-visible:ring-2"
+      >
+        <span className="flex size-5 items-center justify-center rounded-sm bg-primary text-[9px] font-bold text-primary-foreground">
+          {code}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-medium">{title}</span>
+          {detail && (
+            <span className="block text-[9px] opacity-75">{detail}</span>
+          )}
+        </span>
+        <Check className="size-3.5" />
+      </button>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-2 px-2.5 py-2 text-[11px] text-muted-foreground">
+      <span className="flex size-5 items-center justify-center rounded-sm bg-muted text-[9px] font-bold">
+        {code}
+      </span>
+      {title}
+    </div>
+  )
+}
+
 function AiReviewSpecimen({
   state,
 }: {
@@ -544,6 +952,228 @@ function AiReviewSpecimen({
         </div>
       )}
     </div>
+  )
+}
+
+function DrawingTriageCardSpecimen({
+  marker,
+  type,
+  decision,
+  title,
+  summary,
+  location,
+  followUp,
+}: {
+  marker: number
+  type: DrawingTriageType
+  decision: DrawingTriageDecision
+  title: string
+  summary: string
+  location: string
+  followUp?: boolean
+}) {
+  const visual = drawingTriageTypeVisuals[type]
+  const accent = getDrawingTriageAccent(type)
+  const issueCreated = decision === "issue_created"
+
+  return (
+    <Card
+      className="relative overflow-hidden rounded-sm border bg-card shadow-sm"
+      style={{
+        borderColor: "var(--border)",
+        borderLeftColor: accent,
+        borderLeftWidth: "3px",
+      }}
+    >
+      <CardContent className="p-4">
+        <div className="flex items-start gap-3">
+          <span
+            className="flex size-[22px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
+            style={{
+              background: accent,
+              color: visual.ink,
+            }}
+          >
+            {marker}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className={cn("flex flex-wrap items-center gap-2", followUp && "pr-8")}>
+              <DrawingTriageTypeChip type={type} />
+              <DrawingTriageDecisionChip type={type} decision={decision} />
+            </div>
+          </div>
+        </div>
+
+        {followUp && (
+          <span
+            aria-label="Follow-up flag active"
+            className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-md border bg-card"
+            style={{
+              borderColor: `color-mix(in oklab, ${accent} 60%, var(--border))`,
+              background: `color-mix(in oklab, ${accent} 9%, var(--card))`,
+              color: `color-mix(in oklab, ${accent} 68%, var(--foreground))`,
+            }}
+          >
+            <Bookmark className="size-4 fill-current" />
+          </span>
+        )}
+
+        <h3 className="mt-4 text-[13px] font-semibold leading-snug text-foreground">
+          {title}
+        </h3>
+        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+          {summary}
+        </p>
+        <div className="mt-3 flex items-center gap-1.5 text-[10px] font-semibold text-foreground">
+          <MapPin className="size-3" style={{ color: accent }} />
+          {location}
+        </div>
+      </CardContent>
+
+      {issueCreated && (
+        <div
+          className="mx-4 flex items-start gap-1.5 border-t border-border/70 py-2.5 text-[9px] font-medium leading-relaxed"
+          style={{
+            color: `color-mix(in oklab, ${accent} 68%, var(--foreground))`,
+          }}
+        >
+          <TriangleAlert className="mt-px size-3 shrink-0" />
+          <span>Mock issue created by an explicit human review decision.</span>
+        </div>
+      )}
+
+      <div
+        className="grid gap-2 border-t border-border/60 p-4 pt-3"
+        style={{
+          gridTemplateColumns: "repeat(auto-fit, minmax(132px, 1fr))",
+        }}
+      >
+        <Button
+          type="button"
+          variant="outline"
+          size="compact"
+          className="h-9 w-full justify-center gap-2 rounded-md border px-3 text-[11px] font-semibold tracking-normal shadow-none"
+          style={{
+            borderColor: issueCreated
+              ? `color-mix(in oklab, ${accent} 54%, var(--border))`
+              : accent,
+            background: issueCreated
+              ? `color-mix(in oklab, ${accent} 8%, var(--card))`
+              : accent,
+            color: issueCreated
+              ? `color-mix(in oklab, ${accent} 66%, var(--foreground))`
+              : visual.ink,
+            boxShadow: undefined,
+          }}
+        >
+          {issueCreated ? (
+            <X className="size-4" />
+          ) : (
+            <TriangleAlert className="size-4" />
+          )}
+          {issueCreated ? "Remove issue" : "Convert to issue"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="compact"
+          className="h-9 w-full justify-center gap-2 rounded-md border px-3 text-[11px] font-semibold tracking-normal shadow-none"
+          style={{
+            borderColor: followUp
+              ? `color-mix(in oklab, ${accent} 58%, var(--border))`
+              : "var(--border)",
+            background: followUp
+              ? `color-mix(in oklab, ${accent} 12%, var(--card))`
+              : "var(--card)",
+            color: followUp
+              ? `color-mix(in oklab, ${accent} 62%, var(--foreground))`
+              : "var(--muted-foreground)",
+            boxShadow: undefined,
+          }}
+        >
+          <Bookmark className={cn("size-4", followUp && "fill-current")} />
+          {followUp ? "Remove from follow-up" : "Keep for follow-up"}
+        </Button>
+      </div>
+    </Card>
+  )
+}
+
+function DrawingTriageTypeChip({ type }: { type: DrawingTriageType }) {
+  const visual = drawingTriageTypeVisuals[type]
+  const accent = getDrawingTriageAccent(type)
+
+  return (
+    <span
+      className="rounded-[5px] px-2 py-1 text-[10px] font-bold leading-none"
+      style={{
+        background: accent,
+        color: visual.ink,
+      }}
+    >
+      Type: {type}
+    </span>
+  )
+}
+
+function DrawingTriageDecisionChip({
+  type,
+  decision,
+}: {
+  type: DrawingTriageType
+  decision: DrawingTriageDecision
+}) {
+  const visual = drawingTriageTypeVisuals[type]
+  const accent = getDrawingTriageAccent(type)
+  const issueCreated = decision === "issue_created"
+
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-[5px] px-2 py-1 text-[10px] font-semibold leading-none"
+      style={{
+        background: issueCreated
+          ? accent
+          : `color-mix(in oklab, ${accent} 13%, var(--card))`,
+        color: issueCreated
+          ? visual.ink
+          : `color-mix(in oklab, ${accent} 58%, var(--foreground))`,
+      }}
+    >
+      {issueCreated && <TriangleAlert className="size-3" />}
+      {issueCreated ? "Issue created" : "Needs review"}
+    </span>
+  )
+}
+
+function DrawingTriageTypeSpecimen({ type }: { type: DrawingTriageType }) {
+  const visual = drawingTriageTypeVisuals[type]
+  const accent = getDrawingTriageAccent(type)
+
+  return (
+    <Card className="overflow-hidden rounded-md border-foreground/20 bg-card shadow-sm dark:border-foreground/25">
+      <div
+        className="h-12 border-b border-foreground/20 dark:border-foreground/25"
+        style={{ background: accent }}
+      />
+      <CardContent className="p-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] font-semibold">{type}</span>
+          <span
+            className="rounded-[5px] px-2 py-1 text-[10px] font-bold leading-none"
+            style={{
+              background: accent,
+              color: visual.ink,
+            }}
+          >
+            Type chip
+          </span>
+        </div>
+        <p className="mt-2 text-[10px] leading-relaxed text-foreground/70">
+          Used for marker fill, type chip, issue-created fill, and follow-up
+          accents. Filled type UI uses dark ink, never white text.
+        </p>
+      </CardContent>
+    </Card>
   )
 }
 

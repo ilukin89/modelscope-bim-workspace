@@ -1,36 +1,74 @@
 import { useState, type CSSProperties } from "react"
 import {
   AlertTriangle,
+  Bookmark,
   Bot,
   Check,
   FileStack,
-  Layers3,
   MapPin,
   ScanSearch,
+  X,
 } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 type CandidateId = "door-clearance" | "riser-note" | "grid-offset"
+type ReviewDecision = "unreviewed" | "issue_created"
+type CandidateReviewState = {
+  decision: ReviewDecision
+  isFollowUp: boolean
+}
 
 type Candidate = {
   id: CandidateId
   marker: number
-  accent: string
+  type: CandidateType
   title: string
-  status: "Needs review" | "Follow-up" | "Candidate"
   summary: string
   confidence: string
   risk: string
   region: string
 }
 
+type CandidateType = "Clearance" | "Annotation" | "Alignment"
+
+const typeVisuals: Record<
+  CandidateType,
+  {
+    lightAccent: string
+    darkAccent: string
+    ink: string
+  }
+> = {
+  Clearance: {
+    lightAccent: "oklch(0.82 0.1 74.86)",
+    darkAccent: "oklch(0.65 0.1 74.1)",
+    ink: "oklch(0.18 0.05 72)",
+  },
+  Annotation: {
+    lightAccent: "oklch(0.67 0.07 205)",
+    darkAccent: "oklch(0.64 0.07 205)",
+    ink: "oklch(0.16 0.035 205)",
+  },
+  Alignment: {
+    lightAccent: "oklch(0.69 0.11 270.41)",
+    darkAccent: "oklch(0.69 0.11 270)",
+    ink: "oklch(0.18 0.045 270)",
+  },
+}
+
+const initialReviewStates: Record<CandidateId, CandidateReviewState> = {
+  "door-clearance": { decision: "unreviewed", isFollowUp: false },
+  "riser-note": { decision: "unreviewed", isFollowUp: false },
+  "grid-offset": { decision: "unreviewed", isFollowUp: false },
+}
+
 const candidates: Candidate[] = [
   {
     id: "door-clearance",
     marker: 1,
-    accent: "var(--warning)",
+    type: "Clearance",
     title: "Door swing near circulation path",
-    status: "Needs review",
     summary:
       "The meeting-room door arc appears close to the main corridor clearance zone.",
     confidence: "82% visual match",
@@ -40,9 +78,8 @@ const candidates: Candidate[] = [
   {
     id: "riser-note",
     marker: 2,
-    accent: "var(--ai)",
+    type: "Annotation",
     title: "Riser annotation may be incomplete",
-    status: "Follow-up",
     summary:
       "A service riser is drawn without a matching keynote on this sheet excerpt.",
     confidence: "68% visual match",
@@ -52,9 +89,8 @@ const candidates: Candidate[] = [
   {
     id: "grid-offset",
     marker: 3,
-    accent: "oklch(0.62 0.17 295)",
+    type: "Alignment",
     title: "Partition alignment differs at grid line",
-    status: "Candidate",
     summary:
       "The north partition appears offset from the adjacent structural grid reference.",
     confidence: "74% visual match",
@@ -63,19 +99,29 @@ const candidates: Candidate[] = [
   },
 ]
 
+function getTypeAccent(candidate: Candidate) {
+  const typeVisual = typeVisuals[candidate.type]
+  return `light-dark(${typeVisual.lightAccent}, ${typeVisual.darkAccent})`
+}
+
 function Marker({
   candidate,
+  reviewState,
   selected,
   x,
   y,
   onSelect,
 }: {
   candidate: Candidate
+  reviewState: CandidateReviewState
   selected: boolean
   x: number
   y: number
   onSelect: (id: CandidateId) => void
 }) {
+  const accent = getTypeAccent(candidate)
+  const emphasis = reviewState.decision === "issue_created"
+
   return (
     <g
       role="button"
@@ -95,17 +141,26 @@ function Marker({
         cx={x}
         cy={y}
         r={selected ? 25 : 20}
-        fill={`color-mix(in oklab, ${candidate.accent} ${
-          selected ? "22%" : "14%"
+        fill={`color-mix(in oklab, ${accent} ${
+          selected ? "24%" : emphasis ? "19%" : "12%"
         }, transparent)`}
-        stroke={candidate.accent}
-        strokeWidth={selected ? 3 : 2}
+        stroke={accent}
+        strokeWidth={selected ? 3 : emphasis ? 2.5 : 2}
       />
-      <circle cx={x} cy={y} r={12} fill={candidate.accent} />
+      <circle
+        cx={x}
+        cy={y}
+        r={12}
+        fill={`color-mix(in oklab, ${accent} ${
+          emphasis ? "34%" : "28%"
+        }, oklch(0.965 0.012 90))`}
+        stroke={accent}
+        strokeWidth="2"
+      />
       <text
         x={x}
         y={y + 4}
-        fill="var(--primary-foreground)"
+        fill="oklch(0.25 0.018 220)"
         fontSize="11"
         fontWeight="700"
         textAnchor="middle"
@@ -119,9 +174,59 @@ function Marker({
 export function DrawingTriagePlaceholder() {
   const [selectedCandidateId, setSelectedCandidateId] =
     useState<CandidateId>("door-clearance")
+  const [reviewStates, setReviewStates] = useState(initialReviewStates)
   const selectedCandidate =
     candidates.find((candidate) => candidate.id === selectedCandidateId) ??
     candidates[0]
+  const selectedReviewState = reviewStates[selectedCandidate.id]
+  const remainingReviewCount = candidates.filter(
+    (candidate) => reviewStates[candidate.id].decision === "unreviewed",
+  ).length
+  const issueCreatedCount = candidates.filter(
+    (candidate) => reviewStates[candidate.id].decision === "issue_created",
+  ).length
+  const followUpCount = candidates.filter(
+    (candidate) => reviewStates[candidate.id].isFollowUp,
+  ).length
+
+  function updateReviewDecision(
+    candidateId: CandidateId,
+    decision: ReviewDecision,
+  ) {
+    setSelectedCandidateId(candidateId)
+    setReviewStates((current) => ({
+      ...current,
+      [candidateId]: {
+        ...current[candidateId],
+        decision,
+      },
+    }))
+  }
+
+  function toggleIssue(candidateId: CandidateId) {
+    const nextDecision =
+      reviewStates[candidateId].decision === "issue_created"
+        ? "unreviewed"
+        : "issue_created"
+
+    updateReviewDecision(candidateId, nextDecision)
+  }
+
+  function toggleFollowUp(candidateId: CandidateId) {
+    setSelectedCandidateId(candidateId)
+    setReviewStates((current) => ({
+      ...current,
+      [candidateId]: {
+        ...current[candidateId],
+        isFollowUp: !current[candidateId].isFollowUp,
+      },
+    }))
+  }
+
+  function getDecisionLabel(decision: ReviewDecision) {
+    if (decision === "issue_created") return "Issue created"
+    return "Needs review"
+  }
 
   return (
     <main
@@ -187,7 +292,9 @@ export function DrawingTriagePlaceholder() {
                     Level 02 floor plan
                   </span>
                   <span className="block text-[9px] opacity-75">
-                    3 review candidates
+                    {remainingReviewCount === 0
+                      ? "Review decisions complete"
+                      : `${remainingReviewCount} awaiting decision`}
                   </span>
                 </span>
                 <Check className="size-3.5" />
@@ -215,7 +322,7 @@ export function DrawingTriagePlaceholder() {
       </aside>
 
       <section className="order-1 flex min-h-[440px] min-w-0 flex-col bg-canvas min-[901px]:order-2">
-        <header className="flex min-h-12 items-center justify-between gap-3 border-b border-border bg-panel/90 px-4 py-2">
+        <header className="flex min-h-12 items-center gap-3 border-b border-border bg-panel/90 px-4 py-2">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <ScanSearch className="size-4 shrink-0 text-primary" />
@@ -230,20 +337,16 @@ export function DrawingTriagePlaceholder() {
               A-102 · Level 02 floor plan · Review overlay
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-1.5 text-[10px] text-muted-foreground">
-            <Layers3 className="size-3.5" />
-            <span className="max-[520px]:hidden">Candidate overlay</span>
-            <span className="rounded-sm bg-ai/15 px-1.5 py-0.5 font-medium text-ai-foreground">
-              On
-            </span>
-          </div>
         </header>
 
         <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4 sm:p-6">
           <div className="absolute left-4 top-4 z-10 flex items-center gap-2 border border-border bg-panel px-2.5 py-1.5 text-[10px] shadow-sm">
             <MapPin className="size-3.5 text-primary" />
             <span className="max-w-[42vw] truncate">
-              Candidate {selectedCandidate.marker}: {selectedCandidate.region}
+              Candidate {selectedCandidate.marker} · Decision:{" "}
+              {getDecisionLabel(selectedReviewState.decision)}
+              {selectedReviewState.isFollowUp ? " · Follow-up" : ""}:{" "}
+              {selectedCandidate.region}
             </span>
           </div>
 
@@ -392,8 +495,10 @@ export function DrawingTriagePlaceholder() {
                   y="238"
                   width="62"
                   height="62"
-                  fill={`color-mix(in oklab, ${candidates[0].accent} 12%, transparent)`}
-                  stroke={candidates[0].accent}
+                  fill={`color-mix(in oklab, ${getTypeAccent(
+                    candidates[0],
+                  )} 12%, transparent)`}
+                  stroke={getTypeAccent(candidates[0])}
                   strokeDasharray="5 4"
                 />
               </g>
@@ -407,8 +512,10 @@ export function DrawingTriagePlaceholder() {
                   y="428"
                   width="62"
                   height="70"
-                  fill={`color-mix(in oklab, ${candidates[1].accent} 12%, transparent)`}
-                  stroke={candidates[1].accent}
+                  fill={`color-mix(in oklab, ${getTypeAccent(
+                    candidates[1],
+                  )} 12%, transparent)`}
+                  stroke={getTypeAccent(candidates[1])}
                   strokeDasharray="5 4"
                 />
               </g>
@@ -422,14 +529,17 @@ export function DrawingTriagePlaceholder() {
                   y="82"
                   width="42"
                   height="100"
-                  fill={`color-mix(in oklab, ${candidates[2].accent} 10%, transparent)`}
-                  stroke={candidates[2].accent}
+                  fill={`color-mix(in oklab, ${getTypeAccent(
+                    candidates[2],
+                  )} 10%, transparent)`}
+                  stroke={getTypeAccent(candidates[2])}
                   strokeDasharray="5 4"
                 />
               </g>
 
               <Marker
                 candidate={candidates[0]}
+                reviewState={reviewStates[candidates[0].id]}
                 selected={selectedCandidateId === "door-clearance"}
                 x={505}
                 y={286}
@@ -437,6 +547,7 @@ export function DrawingTriagePlaceholder() {
               />
               <Marker
                 candidate={candidates[1]}
+                reviewState={reviewStates[candidates[1].id]}
                 selected={selectedCandidateId === "riser-note"}
                 x={640}
                 y={448}
@@ -444,6 +555,7 @@ export function DrawingTriagePlaceholder() {
               />
               <Marker
                 candidate={candidates[2]}
+                reviewState={reviewStates[candidates[2].id]}
                 selected={selectedCandidateId === "grid-offset"}
                 x={310}
                 y={96}
@@ -533,7 +645,11 @@ export function DrawingTriagePlaceholder() {
           </div>
           <div className="mt-4 flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold">3 observations to review</h2>
+              <h2 className="text-sm font-semibold">
+                {remainingReviewCount === 0
+                  ? "Review decisions complete"
+                  : `${remainingReviewCount} of ${candidates.length} observations to review`}
+              </h2>
               <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
                 Mock visual cues for human assessment, not confirmed defects.
               </p>
@@ -542,81 +658,205 @@ export function DrawingTriagePlaceholder() {
               AI
             </span>
           </div>
+          <div
+            className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-muted-foreground"
+            aria-live="polite"
+          >
+            <span>{issueCreatedCount} issues created</span>
+            <span>{followUpCount} follow-up</span>
+          </div>
         </div>
 
         <div className="space-y-2 p-3">
           {candidates.map((candidate) => {
             const selected = candidate.id === selectedCandidateId
-            const cardStyle = {
-              borderColor: `color-mix(in oklab, ${candidate.accent} ${
-                selected ? "72%" : "28%"
-              }, var(--border))`,
+            const { decision, isFollowUp } = reviewStates[candidate.id]
+            const decisionLabel = getDecisionLabel(decision)
+            const typeVisual = typeVisuals[candidate.type]
+            const typeAccent = getTypeAccent(candidate)
+            const candidateStyle = {
+              borderColor: "var(--border)",
+              borderLeftColor: typeAccent,
+              borderLeftWidth: "3px",
               background: selected
-                ? `color-mix(in oklab, ${candidate.accent} 10%, var(--card))`
+                ? `color-mix(in oklab, ${typeAccent} 7%, var(--card))`
+                : "var(--card)",
+              boxShadow: selected
+                ? `0 0 0 1px color-mix(in oklab, ${typeAccent} 32%, transparent)`
                 : undefined,
-              "--tw-ring-color": candidate.accent,
+            } as CSSProperties
+            const decisionIsIssue = decision === "issue_created"
+            const issueActionStyle = {
+              borderColor: decisionIsIssue
+                ? `color-mix(in oklab, ${typeAccent} 54%, var(--border))`
+                : typeAccent,
+              background: decisionIsIssue
+                ? `color-mix(in oklab, ${typeAccent} 8%, var(--card))`
+                : typeAccent,
+              color: decisionIsIssue
+                ? `color-mix(in oklab, ${typeAccent} 66%, var(--foreground))`
+                : typeVisual.ink,
+              boxShadow: undefined,
+            } as CSSProperties
+            const followUpActionStyle = {
+              borderColor: isFollowUp
+                ? `color-mix(in oklab, ${typeAccent} 58%, var(--border))`
+                : "var(--border)",
+              background: isFollowUp
+                ? `color-mix(in oklab, ${typeAccent} 12%, var(--card))`
+                : "var(--card)",
+              color: isFollowUp
+                ? `color-mix(in oklab, ${typeAccent} 62%, var(--foreground))`
+                : "var(--muted-foreground)",
+              boxShadow: undefined,
             } as CSSProperties
 
             return (
-              <button
+              <article
                 key={candidate.id}
-                type="button"
-                aria-pressed={selected}
-                onClick={() => setSelectedCandidateId(candidate.id)}
+                data-review-state={decision}
+                data-follow-up={isFollowUp}
                 className={cn(
-                  "w-full rounded-sm border bg-card p-3 text-left outline-none transition-[border-color,background-color] duration-150 focus-visible:ring-2",
-                  !selected && "hover:bg-panel-subtle/60",
+                  "relative w-full rounded-sm border bg-card transition-[border-color,background-color,box-shadow] duration-150",
                 )}
-                style={cardStyle}
+                style={candidateStyle}
               >
-                <div className="flex items-start gap-2.5">
-                  <span
-                    className={cn(
-                      "flex size-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold",
-                      !selected && "text-muted-foreground",
-                    )}
-                    style={{
-                      background: `color-mix(in oklab, ${candidate.accent} ${
-                        selected ? "100%" : "16%"
-                      }, var(--muted))`,
-                      color: selected ? "var(--primary-foreground)" : undefined,
-                    }}
-                  >
-                    {candidate.marker}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => setSelectedCandidateId(candidate.id)}
+                  className="w-full p-4 text-left outline-none ring-ring transition-colors duration-150 hover:bg-panel-subtle/35 focus-visible:ring-2"
+                >
+                  <span className="block">
+                    <span className="flex items-start gap-3">
                       <span
-                        className="rounded-sm px-1.5 py-0.5 text-[9px] font-semibold"
+                        className="flex size-[22px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
                         style={{
-                          background: `color-mix(in oklab, ${candidate.accent} 15%, transparent)`,
-                          color: `color-mix(in oklab, ${candidate.accent} 72%, var(--foreground))`,
+                          background: typeAccent,
+                          color: typeVisual.ink,
                         }}
                       >
-                        {candidate.status}
+                        {candidate.marker}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center gap-2 pr-8">
+                          <span
+                            className="rounded-[5px] px-2 py-1 text-[10px] font-bold leading-none"
+                            style={{
+                              background: typeAccent,
+                              color: typeVisual.ink,
+                            }}
+                          >
+                            Type: {candidate.type}
+                          </span>
+                          <span
+                            className="inline-flex items-center gap-1 rounded-[5px] px-2 py-1 text-[10px] font-semibold leading-none"
+                            style={{
+                              background: decisionIsIssue
+                                ? typeAccent
+                                : `color-mix(in oklab, ${typeAccent} 13%, var(--card))`,
+                              color: decisionIsIssue
+                                ? typeVisual.ink
+                                : `color-mix(in oklab, ${typeAccent} 58%, var(--foreground))`,
+                            }}
+                          >
+                            {decisionIsIssue && (
+                              <AlertTriangle className="size-3" />
+                            )}
+                            Decision: {decisionLabel}
+                          </span>
+                        </span>
                       </span>
                     </span>
-                    <span className="mt-2 block text-[11px] font-semibold leading-snug">
+                    <span className="mt-4 block text-[13px] font-semibold leading-snug text-foreground">
                       {candidate.title}
                     </span>
-                    <span className="mt-1.5 block text-[10px] leading-relaxed text-muted-foreground">
+                    <span className="mt-2 block text-[11px] leading-relaxed text-muted-foreground">
                       {candidate.summary}
                     </span>
-                    <span className="mt-2.5 flex flex-wrap gap-x-2 gap-y-1 border-t border-border pt-2 text-[9px] text-muted-foreground">
+                    <span className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-[9px] text-muted-foreground">
                       <span>{candidate.confidence}</span>
                       <span aria-hidden="true">·</span>
                       <span>{candidate.risk}</span>
                     </span>
-                    <span className="mt-1.5 flex items-center gap-1 text-[9px] font-medium text-foreground">
-                      <MapPin
-                        className="size-3"
-                        style={{ color: candidate.accent }}
-                      />
+                    <span className="mt-2 flex items-center gap-1.5 text-[10px] font-semibold text-foreground">
+                      <MapPin className="size-3" style={{ color: typeAccent }} />
                       {candidate.region}
                     </span>
                   </span>
+                </button>
+
+                {isFollowUp && (
+                  <span
+                    aria-label="Follow-up flag active"
+                    title="Follow-up flag active"
+                    className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-md border bg-card"
+                    style={{
+                      borderColor: `color-mix(in oklab, ${typeAccent} 60%, var(--border))`,
+                      background: `color-mix(in oklab, ${typeAccent} 9%, var(--card))`,
+                      color: `color-mix(in oklab, ${typeAccent} 68%, var(--foreground))`,
+                    }}
+                  >
+                    <Bookmark className="size-4 fill-current" />
+                  </span>
+                )}
+
+                {decisionIsIssue && (
+                  <div
+                    className="mx-4 flex items-start gap-1.5 border-t border-border/70 py-2.5 text-[9px] font-medium leading-relaxed"
+                    style={{
+                      color: `color-mix(in oklab, ${typeAccent} 68%, var(--foreground))`,
+                    }}
+                    role="status"
+                  >
+                    <AlertTriangle className="mt-px size-3 shrink-0" />
+                    <span>
+                      Mock issue created by an explicit human review decision.
+                    </span>
+                  </div>
+                )}
+
+                <div
+                  className="grid gap-2 border-t border-border/60 p-4 pt-3"
+                  style={{
+                    gridTemplateColumns:
+                      "repeat(auto-fit, minmax(132px, 1fr))",
+                  }}
+                >
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="compact"
+                    className="h-9 w-full justify-center gap-2 rounded-md border px-3 text-[11px] font-semibold tracking-normal shadow-none transition-[filter,background-color,border-color] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:hover:brightness-110"
+                    style={issueActionStyle}
+                    aria-pressed={decisionIsIssue}
+                    onClick={() => toggleIssue(candidate.id)}
+                  >
+                    {decisionIsIssue ? (
+                      <X className="size-4" />
+                    ) : (
+                      <AlertTriangle className="size-4" />
+                    )}
+                    {decisionIsIssue ? "Remove issue" : "Convert to issue"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="compact"
+                    className="h-9 w-full justify-center gap-2 rounded-md border px-3 text-[11px] font-semibold tracking-normal shadow-none transition-[filter,background-color,border-color] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:hover:brightness-110"
+                    style={followUpActionStyle}
+                    aria-pressed={isFollowUp}
+                    onClick={() => toggleFollowUp(candidate.id)}
+                  >
+                    <Bookmark
+                      className={cn("size-4", isFollowUp && "fill-current")}
+                    />
+                    {isFollowUp
+                      ? "Remove from follow-up"
+                      : "Keep for follow-up"}
+                  </Button>
                 </div>
-              </button>
+              </article>
             )
           })}
         </div>

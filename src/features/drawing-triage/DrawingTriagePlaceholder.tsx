@@ -701,27 +701,29 @@ export function DrawingTriagePlaceholder() {
             const decisionIsIssue = decision === "issue_created"
             const issueActionStyle = {
               borderColor: decisionIsIssue
-                ? `color-mix(in oklab, ${typeAccent} 54%, var(--border))`
+                ? `color-mix(in oklab, ${typeAccent} 22%, var(--border))`
                 : typeAccent,
               background: decisionIsIssue
-                ? `color-mix(in oklab, ${typeAccent} 8%, var(--card))`
+                ? "var(--card)"
                 : typeAccent,
               color: decisionIsIssue
-                ? `color-mix(in oklab, ${typeAccent} 66%, var(--foreground))`
+                ? `light-dark(var(--foreground), color-mix(in oklab, var(--foreground) 88%, ${typeAccent}))`
                 : typeVisual.ink,
               boxShadow: undefined,
             } as CSSProperties
             const followUpActionStyle = {
               borderColor: isFollowUp
-                ? `color-mix(in oklab, ${typeAccent} 36%, var(--border))`
-                : `color-mix(in oklab, ${typeAccent} 58%, var(--border))`,
+                ? `color-mix(in oklab, ${typeAccent} 42%, var(--border))`
+                : `color-mix(in oklab, ${typeAccent} 76%, var(--border))`,
               background: isFollowUp
-                ? "var(--card)"
-                : `color-mix(in oklab, ${typeAccent} 12%, var(--card))`,
+                ? `color-mix(in oklab, ${typeAccent} 5%, var(--card))`
+                : `color-mix(in oklab, ${typeAccent} 24%, var(--card))`,
               color: isFollowUp
-                ? `color-mix(in oklab, ${typeAccent} 56%, var(--foreground))`
-                : `color-mix(in oklab, ${typeAccent} 62%, var(--foreground))`,
-              boxShadow: undefined,
+                ? `color-mix(in oklab, ${typeAccent} 64%, var(--foreground))`
+                : `color-mix(in oklab, ${typeAccent} 82%, var(--foreground))`,
+              boxShadow: isFollowUp
+                ? `inset 0 0 0 1px color-mix(in oklab, ${typeAccent} 18%, transparent)`
+                : `inset 0 0 0 1px color-mix(in oklab, ${typeAccent} 16%, transparent)`,
             } as CSSProperties
 
             return (

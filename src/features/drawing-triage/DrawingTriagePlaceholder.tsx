@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react"
+import { useRef, useState, type CSSProperties } from "react"
 import {
   AlertTriangle,
   Bookmark,
@@ -175,6 +175,9 @@ export function DrawingTriagePlaceholder() {
   const [selectedCandidateId, setSelectedCandidateId] =
     useState<CandidateId>("door-clearance")
   const [reviewStates, setReviewStates] = useState(initialReviewStates)
+  const candidateCardRefs = useRef<
+    Partial<Record<CandidateId, HTMLElement | null>>
+  >({})
   const selectedCandidate =
     candidates.find((candidate) => candidate.id === selectedCandidateId) ??
     candidates[0]
@@ -221,6 +224,16 @@ export function DrawingTriagePlaceholder() {
         isFollowUp: !current[candidateId].isFollowUp,
       },
     }))
+  }
+
+  function selectCandidateFromDrawing(candidateId: CandidateId) {
+    setSelectedCandidateId(candidateId)
+    window.requestAnimationFrame(() => {
+      candidateCardRefs.current[candidateId]?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      })
+    })
   }
 
   function getDecisionLabel(decision: ReviewDecision) {
@@ -543,7 +556,7 @@ export function DrawingTriagePlaceholder() {
                 selected={selectedCandidateId === "door-clearance"}
                 x={505}
                 y={286}
-                onSelect={setSelectedCandidateId}
+                onSelect={selectCandidateFromDrawing}
               />
               <Marker
                 candidate={candidates[1]}
@@ -551,7 +564,7 @@ export function DrawingTriagePlaceholder() {
                 selected={selectedCandidateId === "riser-note"}
                 x={640}
                 y={448}
-                onSelect={setSelectedCandidateId}
+                onSelect={selectCandidateFromDrawing}
               />
               <Marker
                 candidate={candidates[2]}
@@ -559,7 +572,7 @@ export function DrawingTriagePlaceholder() {
                 selected={selectedCandidateId === "grid-offset"}
                 x={310}
                 y={96}
-                onSelect={setSelectedCandidateId}
+                onSelect={selectCandidateFromDrawing}
               />
 
               <g transform="translate(755 75)">
@@ -714,6 +727,9 @@ export function DrawingTriagePlaceholder() {
             return (
               <article
                 key={candidate.id}
+                ref={(node) => {
+                  candidateCardRefs.current[candidate.id] = node
+                }}
                 data-review-state={decision}
                 data-follow-up={isFollowUp}
                 className={cn(
@@ -739,7 +755,12 @@ export function DrawingTriagePlaceholder() {
                         {candidate.marker}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="flex flex-wrap items-center gap-2 pr-8">
+                        <span
+                          className={cn(
+                            "flex flex-wrap items-center gap-2",
+                            isFollowUp && "pr-8",
+                          )}
+                        >
                           <span
                             className="rounded-[5px] px-2 py-1 text-[10px] font-bold leading-none"
                             style={{
@@ -763,7 +784,7 @@ export function DrawingTriagePlaceholder() {
                             {decisionIsIssue && (
                               <AlertTriangle className="size-3" />
                             )}
-                            Decision: {decisionLabel}
+                            {decisionLabel}
                           </span>
                         </span>
                       </span>

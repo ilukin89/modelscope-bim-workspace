@@ -832,7 +832,7 @@ export function DrawingTriagePlaceholder() {
                   >
                     <AlertTriangle className="mt-px size-3 shrink-0" />
                     <span>
-                      Mock issue created by an explicit human review decision.
+                      Issue created by an explicit human review decision.
                     </span>
                   </div>
                 )}

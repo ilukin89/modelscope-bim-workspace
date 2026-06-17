@@ -11,6 +11,7 @@ import {
   Orbit,
   PanelLeftOpen,
   PanelRightOpen,
+  RefreshCw,
   Ruler,
   ScanLine,
   ShieldAlert,
@@ -91,6 +92,7 @@ export function Viewport({
   const {
     hostRef: viewportHostRef,
     initializationError: viewerInitializationError,
+    retryInitialization: retryViewerInitialization,
   } = usePrototypeViewerAdapterLifecycle({
     activeTool,
     selectedFloor,
@@ -399,13 +401,23 @@ export function Viewport({
       >
         {Boolean(viewerInitializationError) && (
           <div
-            className="pointer-events-none absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-md border border-border bg-panel/90 px-2.5 py-1.5 text-[10px] font-medium text-muted-foreground shadow-sm"
+            className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-md border border-warning/35 bg-[color-mix(in_oklab,var(--warning)_14%,var(--panel)_86%)] px-2.5 py-1.5 text-[10px] font-medium text-warning-foreground shadow-sm"
             role="status"
             aria-live="polite"
             data-testid="viewer-initialization-error"
           >
-            <CircleAlert className="size-3.5 text-muted-foreground" />
-            Viewer unavailable
+            <CircleAlert className="size-3.5 text-warning" />
+            <span>Viewer unavailable</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="compact"
+              onClick={retryViewerInitialization}
+              className="h-6 px-1.5 text-[10px] text-warning-foreground hover:bg-warning/15 hover:text-warning-foreground"
+            >
+              <RefreshCw className="size-3" />
+              Retry
+            </Button>
           </div>
         )}
         <svg

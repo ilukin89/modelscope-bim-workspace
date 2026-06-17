@@ -66,7 +66,7 @@ export function TopBar({
     workspaceModes[0]
 
   return (
-    <header className="z-30 grid h-12 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b border-border bg-panel px-2.5 max-[680px]:grid-cols-[auto_minmax(0,1fr)_auto]">
+    <header className="z-30 grid h-12 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center border-b border-border bg-panel px-2.5 max-[680px]:grid-cols-[auto_minmax(0,1fr)_auto] max-[380px]:px-1.5">
       <div className="flex min-w-0 items-center gap-2.5">
         <div className="flex min-w-0 items-center gap-2.5">
           <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
@@ -167,7 +167,7 @@ export function TopBar({
                 <button
                   type="button"
                   aria-label={`Workspace mode: ${activeWorkspaceMode.label}`}
-                  className="flex h-8 min-w-0 max-w-[132px] items-center gap-1.5 px-2 text-[11px] font-medium text-foreground outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex h-8 min-w-0 max-w-[132px] items-center gap-1.5 px-2 text-[11px] font-medium text-foreground outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring max-[420px]:max-w-[112px] max-[360px]:max-w-[96px] max-[360px]:px-1.5"
                 >
                   <span className="truncate">{activeWorkspaceMode.label}</span>
                   <ChevronDown className="size-3 shrink-0" />
@@ -201,7 +201,7 @@ export function TopBar({
         <div aria-hidden="true" />
       )}
 
-      <div className="flex min-w-0 shrink-0 items-center justify-end gap-1.5">
+      <div className="flex min-w-0 shrink-0 items-center justify-end gap-1.5 max-[380px]:gap-0.5">
         {showExplorerTrigger && (
           <SheetTrigger asChild>
             <Button
@@ -250,6 +250,7 @@ export function TopBar({
             <Button
               variant="ghost"
               size="icon"
+              className="max-[380px]:size-7"
               aria-label={`Switch to ${darkMode ? "light" : "dark"} mode`}
               onClick={() => onDarkModeChange(!darkMode)}
             >

@@ -10,18 +10,31 @@ import {
   Bookmark,
   Bot,
   Check,
+  Circle,
   FileStack,
+  FileText,
+  LoaderCircle,
   MapPin,
   ScanSearch,
   X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 
 type CandidateId = "door-clearance" | "riser-note" | "grid-offset"
 type ReviewDecision = "unreviewed" | "issue_created"
 type RightPanelView = "review_candidates" | "created_issues"
 type ReviewCandidateFilter = "all" | "follow_up"
+type TriageStage = "empty" | "selected" | "scanning" | "review"
+type DrawingSource = "Sample drawing" | "Mock file"
 type CandidateReviewState = {
   decision: ReviewDecision
   isFollowUp: boolean
@@ -79,6 +92,19 @@ const initialReviewStates: Record<CandidateId, CandidateReviewState> = {
   "grid-offset": { decision: "unreviewed", isFollowUp: false },
 }
 
+type TriageSessionSnapshot = {
+  triageStage: TriageStage
+  drawingSource: DrawingSource | null
+  selectedCandidateId: CandidateId
+  reviewStates: Record<CandidateId, CandidateReviewState>
+  activeRightPanelView: RightPanelView
+  reviewCandidateFilter: ReviewCandidateFilter
+  createdIssues: CreatedIssueSummary[]
+  nextIssueSequence: number
+}
+
+const triageSessionStorageKey = "modelscope:drawing-triage-session"
+
 const candidates: Candidate[] = [
   {
     id: "door-clearance",
@@ -115,6 +141,119 @@ const candidates: Candidate[] = [
   },
 ]
 
+function cloneInitialReviewStates() {
+  return {
+    "door-clearance": { ...initialReviewStates["door-clearance"] },
+    "riser-note": { ...initialReviewStates["riser-note"] },
+    "grid-offset": { ...initialReviewStates["grid-offset"] },
+  }
+}
+
+function isCandidateId(value: unknown): value is CandidateId {
+  return (
+    value === "door-clearance" ||
+    value === "riser-note" ||
+    value === "grid-offset"
+  )
+}
+
+function isDrawingSource(value: unknown): value is DrawingSource {
+  return value === "Sample drawing" || value === "Mock file"
+}
+
+function isTriageStage(value: unknown): value is TriageStage {
+  return (
+    value === "empty" ||
+    value === "selected" ||
+    value === "scanning" ||
+    value === "review"
+  )
+}
+
+function isRightPanelView(value: unknown): value is RightPanelView {
+  return value === "review_candidates" || value === "created_issues"
+}
+
+function isReviewCandidateFilter(
+  value: unknown,
+): value is ReviewCandidateFilter {
+  return value === "all" || value === "follow_up"
+}
+
+function isReviewDecision(value: unknown): value is ReviewDecision {
+  return value === "unreviewed" || value === "issue_created"
+}
+
+function readTriageSessionSnapshot(): TriageSessionSnapshot | null {
+  try {
+    const rawSnapshot = window.sessionStorage.getItem(triageSessionStorageKey)
+    if (!rawSnapshot) return null
+
+    const parsed = JSON.parse(rawSnapshot) as Partial<TriageSessionSnapshot>
+    const triageStage = isTriageStage(parsed.triageStage)
+      ? parsed.triageStage
+      : "empty"
+    const drawingSource = isDrawingSource(parsed.drawingSource)
+      ? parsed.drawingSource
+      : null
+    const reviewStates = cloneInitialReviewStates()
+
+    for (const candidate of candidates) {
+      const candidateState = parsed.reviewStates?.[candidate.id]
+      if (
+        candidateState &&
+        isReviewDecision(candidateState.decision) &&
+        typeof candidateState.isFollowUp === "boolean"
+      ) {
+        reviewStates[candidate.id] = {
+          decision: candidateState.decision,
+          isFollowUp: candidateState.isFollowUp,
+        }
+      }
+    }
+
+    const createdIssues = Array.isArray(parsed.createdIssues)
+      ? parsed.createdIssues.filter(
+          (issue): issue is CreatedIssueSummary =>
+            typeof issue.issueId === "string" && isCandidateId(issue.candidateId),
+        )
+      : []
+    const nextIssueSequence =
+      typeof parsed.nextIssueSequence === "number" &&
+      parsed.nextIssueSequence > 0
+        ? parsed.nextIssueSequence
+        : createdIssues.length + 1
+
+    return {
+      triageStage: triageStage === "scanning" ? "selected" : triageStage,
+      drawingSource,
+      selectedCandidateId: isCandidateId(parsed.selectedCandidateId)
+        ? parsed.selectedCandidateId
+        : "door-clearance",
+      reviewStates,
+      activeRightPanelView: isRightPanelView(parsed.activeRightPanelView)
+        ? parsed.activeRightPanelView
+        : "review_candidates",
+      reviewCandidateFilter: isReviewCandidateFilter(
+        parsed.reviewCandidateFilter,
+      )
+        ? parsed.reviewCandidateFilter
+        : "all",
+      createdIssues,
+      nextIssueSequence,
+    }
+  } catch {
+    return null
+  }
+}
+
+function writeTriageSessionSnapshot(snapshot: TriageSessionSnapshot) {
+  window.sessionStorage.setItem(
+    triageSessionStorageKey,
+    JSON.stringify(snapshot),
+  )
+}
+
 function formatIssueId(sequence: number) {
   return `MS-${String(sequence).padStart(3, "0")}`
 }
@@ -127,6 +266,242 @@ function getTypeAccent(candidate: Candidate) {
 function getPriorityLabel(candidate: Candidate) {
   const priority = candidate.risk.split(" ")[0]
   return priority || "Medium"
+}
+
+function DrawingTriageEntryGate({
+  stage,
+  drawingSource,
+  onUseSampleDrawing,
+  onSelectMockFile,
+  onRunTriage,
+  onChangeDrawing,
+}: {
+  stage: Exclude<TriageStage, "review">
+  drawingSource: DrawingSource | null
+  onUseSampleDrawing: (source: DrawingSource) => void
+  onSelectMockFile: (source: DrawingSource) => void
+  onRunTriage: () => void
+  onChangeDrawing: () => void
+}) {
+  const drawingSummary =
+    "A-102 Level 02 floor plan · Rev P03 · 1:100 · Architecture"
+  const scanningSteps = [
+    "Detecting visual cues",
+    "Checking drawing context",
+    "Preparing review candidates",
+  ]
+
+  return (
+    <main
+      id="workspace-content"
+      aria-labelledby="drawing-triage-heading"
+      className="grid min-h-0 flex-1 grid-cols-[248px_minmax(0,1fr)_316px] overflow-hidden max-[1160px]:grid-cols-[220px_minmax(0,1fr)_280px] max-[900px]:grid-cols-1 max-[900px]:overflow-y-auto max-[900px]:overflow-x-hidden"
+    >
+      <aside className="scrollbar-thin order-3 min-h-[180px] overflow-y-auto border-border bg-panel max-[900px]:border-t max-[900px]:bg-panel-subtle/35 min-[901px]:order-1 min-[901px]:border-r">
+        <div className="border-border p-4 max-[900px]:p-3 min-[901px]:border-b">
+          <div className="max-[900px]:mx-auto max-[900px]:w-full max-[900px]:max-w-[720px]">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <FileStack className="size-4" />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.08em]">
+                Drawing context
+              </span>
+            </div>
+            <h2 className="mt-4 text-sm font-semibold max-[900px]:mt-2">
+              {drawingSource ? "Level 02 floor plan" : "No artifact loaded"}
+            </h2>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {drawingSource
+                ? "A-102 · Rev P03 · 1:100 · Architecture"
+                : "Waiting for a local demo drawing selection."}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-5 p-4 max-[900px]:mx-auto max-[900px]:w-full max-[900px]:max-w-[720px] max-[900px]:space-y-3 max-[900px]:p-3 max-[900px]:pt-0">
+          <section aria-labelledby="intake-heading">
+            <h3
+              id="intake-heading"
+              className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground"
+            >
+              Intake
+            </h3>
+            <dl className="mt-3 grid grid-cols-[72px_1fr] gap-x-2 gap-y-2 text-[11px]">
+              <dt className="text-muted-foreground">Source</dt>
+              <dd className="font-medium">{drawingSource ?? "Not selected"}</dd>
+              <dt className="text-muted-foreground">Status</dt>
+              <dd>
+                {stage === "empty" && "Waiting"}
+                {stage === "selected" && "Ready to scan"}
+                {stage === "scanning" && "Scanning"}
+              </dd>
+              <dt className="text-muted-foreground">Processing</dt>
+              <dd>Mock/local only</dd>
+            </dl>
+          </section>
+
+          <div className="border-t border-border pt-3 text-[10px] leading-relaxed text-muted-foreground">
+            Frontend demo only. No upload, storage, parsing, backend service, or
+            AI API is active.
+          </div>
+        </div>
+      </aside>
+
+      <section className="order-1 flex min-h-[440px] min-w-0 flex-col bg-canvas max-[900px]:min-h-[360px] max-[560px]:min-h-[300px] min-[901px]:order-2">
+        <header className="flex min-h-12 items-center gap-3 border-b border-border bg-panel/90 px-4 py-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <ScanSearch className="size-4 shrink-0 text-primary" />
+              <h1
+                id="drawing-triage-heading"
+                className="truncate text-sm font-semibold tracking-tight"
+              >
+                Drawing Triage
+              </h1>
+            </div>
+            <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+              Local drawing intake
+            </p>
+          </div>
+        </header>
+
+        <div className="flex min-h-0 flex-1 items-center justify-center p-4 sm:p-6">
+          <section
+            aria-live={stage === "scanning" ? "polite" : undefined}
+            className="w-full max-w-[520px] border border-border bg-panel p-5 shadow-sm"
+          >
+            {stage === "empty" && (
+              <>
+                <div className="flex items-center gap-3">
+                  <span className="flex size-9 items-center justify-center rounded-md border border-border bg-panel-subtle text-primary">
+                    <FileText className="size-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <h2 className="text-base font-semibold">
+                      No drawing selected
+                    </h2>
+                    <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                      Select a sample drawing or mock upload a drawing to run AI
+                      triage.
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => onUseSampleDrawing("Sample drawing")}
+                  >
+                    Use sample drawing
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onSelectMockFile("Mock file")}
+                  >
+                    Select mock file
+                  </Button>
+                </div>
+                <p className="mt-4 text-[10px] font-medium text-muted-foreground">
+                  Frontend demo only · no real upload or storage yet
+                </p>
+              </>
+            )}
+
+            {stage === "selected" && (
+              <>
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 flex size-9 items-center justify-center rounded-md border border-border bg-accent text-accent-foreground">
+                    <Check className="size-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <h2 className="text-base font-semibold">
+                      Drawing selected
+                    </h2>
+                    <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                      {drawingSummary}
+                    </p>
+                    <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                      Source: {drawingSource}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <Button type="button" size="sm" onClick={onRunTriage}>
+                    Run AI triage
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={onChangeDrawing}
+                  >
+                    Change drawing
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {stage === "scanning" && (
+              <>
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 flex size-9 items-center justify-center rounded-md border border-border bg-panel-subtle text-primary">
+                    <LoaderCircle className="size-4 animate-spin" />
+                  </span>
+                  <div className="min-w-0">
+                    <h2 className="text-base font-semibold">
+                      AI triage in progress
+                    </h2>
+                    <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                      {drawingSummary}
+                    </p>
+                  </div>
+                </div>
+                <ol className="mt-5 space-y-2">
+                  {scanningSteps.map((step) => (
+                    <li
+                      key={step}
+                      className="flex items-center gap-2 text-[12px] font-medium text-foreground"
+                    >
+                      <Circle className="size-2.5 fill-primary text-primary" />
+                      {step}
+                    </li>
+                  ))}
+                </ol>
+              </>
+            )}
+          </section>
+        </div>
+      </section>
+
+      <aside className="scrollbar-thin order-2 min-h-[180px] overflow-y-auto border-border bg-panel max-[900px]:border-t min-[901px]:order-3 min-[901px]:border-l">
+        <div className="border-b border-border p-4">
+          <div className="max-[900px]:mx-auto max-[900px]:w-full max-[900px]:max-w-[720px]">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Bot className="size-4" />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.08em]">
+                AI triage
+              </span>
+            </div>
+            <h2 className="mt-4 text-sm font-semibold">
+              {stage === "empty" && "Waiting for drawing input"}
+              {stage === "selected" && "Ready to run local triage"}
+              {stage === "scanning" && "Preparing review candidates"}
+            </h2>
+            <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+              Candidate markers and issue controls appear only after the mock
+              scan completes.
+            </p>
+          </div>
+        </div>
+        <div className="mx-3 mt-3 border border-dashed border-border bg-panel-subtle/45 p-3 text-[10px] leading-relaxed text-muted-foreground max-[900px]:mx-auto max-[900px]:w-[calc(100%-1.5rem)] max-[900px]:max-w-[696px]">
+          No review candidates, created issues, or follow-up filters are shown
+          before review.
+        </div>
+      </aside>
+
+    </main>
+  )
 }
 
 function Marker({
@@ -249,17 +624,40 @@ function Marker({
 }
 
 export function DrawingTriagePlaceholder() {
+  const initialSessionRef = useRef<TriageSessionSnapshot | null | undefined>(
+    undefined,
+  )
+  if (initialSessionRef.current === undefined) {
+    initialSessionRef.current = readTriageSessionSnapshot()
+  }
+  const initialSession = initialSessionRef.current
+  const [triageStage, setTriageStage] = useState<TriageStage>(
+    initialSession?.triageStage ?? "empty",
+  )
+  const [drawingSource, setDrawingSource] = useState<DrawingSource | null>(
+    initialSession?.drawingSource ?? null,
+  )
   const [selectedCandidateId, setSelectedCandidateId] =
-    useState<CandidateId>("door-clearance")
-  const [reviewStates, setReviewStates] = useState(initialReviewStates)
+    useState<CandidateId>(
+      initialSession?.selectedCandidateId ?? "door-clearance",
+    )
+  const [reviewStates, setReviewStates] = useState(
+    initialSession?.reviewStates ?? cloneInitialReviewStates(),
+  )
   const [activeRightPanelView, setActiveRightPanelView] =
-    useState<RightPanelView>("review_candidates")
+    useState<RightPanelView>(
+      initialSession?.activeRightPanelView ?? "review_candidates",
+    )
   const [reviewCandidateFilter, setReviewCandidateFilter] =
-    useState<ReviewCandidateFilter>("all")
-  const [createdIssues, setCreatedIssues] = useState<CreatedIssueSummary[]>([])
+    useState<ReviewCandidateFilter>(
+      initialSession?.reviewCandidateFilter ?? "all",
+    )
+  const [createdIssues, setCreatedIssues] = useState<CreatedIssueSummary[]>(
+    initialSession?.createdIssues ?? [],
+  )
   const [pendingPanelFocus, setPendingPanelFocus] =
     useState<PendingPanelFocus | null>(null)
-  const nextIssueSequence = useRef(1)
+  const nextIssueSequence = useRef(initialSession?.nextIssueSequence ?? 1)
   const candidateCardRefs = useRef<
     Partial<Record<CandidateId, HTMLElement | null>>
   >({})
@@ -302,6 +700,11 @@ export function DrawingTriagePlaceholder() {
     remainingReviewCount === 0
       ? "Review decisions complete"
       : `${remainingReviewCount} of ${candidates.length} observations to review`
+  const activeDrawingSource = drawingSource ?? "Sample drawing"
+  const activeDrawingFileName =
+    activeDrawingSource === "Mock file"
+      ? "mock-a102-level-02.pdf"
+      : "MS_A102_review.pdf"
 
   function candidateHasCreatedIssue(candidateId: CandidateId) {
     return (
@@ -346,6 +749,39 @@ export function DrawingTriagePlaceholder() {
     createdIssueSummaries.length,
     pendingPanelFocus,
     selectedCandidateId,
+  ])
+
+  useEffect(() => {
+    if (triageStage !== "scanning") {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setTriageStage("review")
+    }, 850)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [triageStage])
+
+  useEffect(() => {
+    writeTriageSessionSnapshot({
+      triageStage,
+      drawingSource,
+      selectedCandidateId,
+      reviewStates,
+      activeRightPanelView,
+      reviewCandidateFilter,
+      createdIssues,
+      nextIssueSequence: nextIssueSequence.current,
+    })
+  }, [
+    activeRightPanelView,
+    createdIssues,
+    drawingSource,
+    reviewCandidateFilter,
+    reviewStates,
+    selectedCandidateId,
+    triageStage,
   ])
 
   function updateReviewDecision(
@@ -479,13 +915,43 @@ export function DrawingTriagePlaceholder() {
     return "Needs review"
   }
 
-  return (
-    <main
-      id="workspace-content"
-      aria-labelledby="drawing-triage-heading"
-      className="grid min-h-0 flex-1 grid-cols-[248px_minmax(0,1fr)_316px] overflow-hidden max-[1160px]:grid-cols-[220px_minmax(0,1fr)_280px] max-[900px]:grid-cols-1 max-[900px]:overflow-y-auto"
-    >
-      <aside className="scrollbar-thin order-3 min-h-[180px] overflow-y-auto border-border bg-panel max-[900px]:border-t max-[900px]:bg-panel-subtle/35 min-[901px]:order-1 min-[901px]:border-r">
+  function resetReviewState() {
+    setSelectedCandidateId("door-clearance")
+    setReviewStates(cloneInitialReviewStates())
+    setActiveRightPanelView("review_candidates")
+    setReviewCandidateFilter("all")
+    setCreatedIssues([])
+    setPendingPanelFocus(null)
+    candidateCardRefs.current = {}
+    issueCardRefs.current = {}
+    nextIssueSequence.current = 1
+  }
+
+  function selectDrawingSource(source: DrawingSource) {
+    resetReviewState()
+    setDrawingSource(source)
+    setTriageStage("selected")
+  }
+
+  function changeDrawing() {
+    resetReviewState()
+    setDrawingSource(null)
+    setTriageStage("empty")
+  }
+
+  function removeDrawing() {
+    resetReviewState()
+    setDrawingSource(null)
+    setTriageStage("empty")
+  }
+
+  function runTriage() {
+    setTriageStage("scanning")
+  }
+
+  function renderDrawingContext(contextId: string) {
+    return (
+      <>
         <div className="border-border p-4 max-[900px]:p-3 min-[901px]:border-b">
           <div className="max-[900px]:mx-auto max-[900px]:w-full max-[900px]:max-w-[720px]">
             <div className="flex items-center gap-2 text-muted-foreground">
@@ -495,44 +961,81 @@ export function DrawingTriagePlaceholder() {
               </span>
             </div>
             <h2 className="mt-4 text-sm font-semibold max-[900px]:mt-2">
-              Level 02 floor plan
+              A-102 Level 02 floor plan
             </h2>
             <p className="mt-1 text-[11px] text-muted-foreground max-[900px]:hidden">
-              A-102 · Coordination issue set
+              Rev P03 · 1:100 · Architecture
             </p>
             <p className="mt-1 hidden text-[10px] font-medium text-muted-foreground max-[900px]:block">
               A-102 · Rev P03 · 1:100 · Architecture
             </p>
+            <div className="mt-3 space-y-2">
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] leading-snug text-muted-foreground">
+                <span>
+                  Source:{" "}
+                  <span className="font-semibold text-foreground">
+                    {activeDrawingSource}
+                  </span>
+                </span>
+                <span>
+                  File:{" "}
+                  <span className="font-semibold text-foreground">
+                    {activeDrawingFileName}
+                  </span>
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="compact"
+                  className="h-7 rounded-md px-2 text-[10px]"
+                  onClick={changeDrawing}
+                >
+                  Change drawing
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="compact"
+                  className="h-7 rounded-md px-1.5 text-[10px] text-destructive/75 shadow-none hover:bg-destructive/10 hover:text-destructive"
+                  onClick={removeDrawing}
+                >
+                  Remove drawing
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="space-y-5 p-4 max-[900px]:mx-auto max-[900px]:w-full max-[900px]:max-w-[720px] max-[900px]:space-y-3 max-[900px]:p-3 max-[900px]:pt-0">
-          <section
-            aria-labelledby="artifact-heading"
-            className="max-[900px]:hidden"
-          >
+          <section aria-labelledby={`${contextId}-artifact-heading`}>
             <h3
-              id="artifact-heading"
+              id={`${contextId}-artifact-heading`}
               className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground"
             >
               Artifact
             </h3>
-            <dl className="mt-3 grid grid-cols-[72px_1fr] gap-x-2 gap-y-2 text-[11px]">
+            <dl className="mt-3 grid grid-cols-[72px_minmax(0,1fr)] gap-x-2 gap-y-2 text-[11px]">
               <dt className="text-muted-foreground">File</dt>
-              <dd className="truncate font-medium">MS_A102_review.pdf</dd>
+              <dd className="truncate font-medium">{activeDrawingFileName}</dd>
+              <dt className="text-muted-foreground">Sheet</dt>
+              <dd>A-102 Level 02 floor plan</dd>
               <dt className="text-muted-foreground">Revision</dt>
               <dd>Rev P03 · 14 May 2026</dd>
               <dt className="text-muted-foreground">Scale</dt>
               <dd>1:100 at A1</dd>
               <dt className="text-muted-foreground">Discipline</dt>
               <dd>Architecture</dd>
+              <dt className="text-muted-foreground">Source</dt>
+              <dd>{activeDrawingSource}</dd>
             </dl>
           </section>
 
-          <section aria-labelledby="sheets-heading">
+          <section aria-labelledby={`${contextId}-sheets-heading`}>
             <div className="flex items-center justify-between">
               <h3
-                id="sheets-heading"
+                id={`${contextId}-sheets-heading`}
                 className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground"
               >
                 Sheets
@@ -543,9 +1046,9 @@ export function DrawingTriagePlaceholder() {
               <button
                 type="button"
                 aria-current="page"
-                className="flex w-full items-center gap-2 rounded-sm bg-accent px-2.5 py-2 text-left text-[11px] text-accent-foreground outline-none ring-ring focus-visible:ring-2 max-[900px]:px-2 max-[900px]:py-1.5"
+                className="flex w-full min-w-0 items-center gap-2 rounded-sm bg-accent px-2.5 py-2 text-left text-[11px] text-accent-foreground outline-none ring-ring focus-visible:ring-2 max-[900px]:px-2 max-[900px]:py-1.5"
               >
-                <span className="flex size-5 items-center justify-center rounded-sm bg-primary text-[9px] font-bold text-primary-foreground">
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-sm bg-primary text-[9px] font-bold text-primary-foreground">
                   02
                 </span>
                 <span className="min-w-0 flex-1">
@@ -563,8 +1066,8 @@ export function DrawingTriagePlaceholder() {
                 </span>
                 <Check className="size-3.5 max-[900px]:hidden" />
               </button>
-              <div className="flex items-center gap-2 px-2.5 py-2 text-[11px] text-muted-foreground max-[900px]:px-2 max-[900px]:py-1.5">
-                <span className="flex size-5 items-center justify-center rounded-sm bg-muted text-[9px] font-bold">
+              <div className="flex min-w-0 items-center gap-2 px-2.5 py-2 text-[11px] text-muted-foreground max-[900px]:px-2 max-[900px]:py-1.5">
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-sm bg-muted text-[9px] font-bold">
                   01
                 </span>
                 <span className="min-w-0 truncate">
@@ -574,8 +1077,8 @@ export function DrawingTriagePlaceholder() {
                   <span className="hidden max-[900px]:inline">Level 01</span>
                 </span>
               </div>
-              <div className="flex items-center gap-2 px-2.5 py-2 text-[11px] text-muted-foreground max-[900px]:px-2 max-[900px]:py-1.5">
-                <span className="flex size-5 items-center justify-center rounded-sm bg-muted text-[9px] font-bold">
+              <div className="flex min-w-0 items-center gap-2 px-2.5 py-2 text-[11px] text-muted-foreground max-[900px]:px-2 max-[900px]:py-1.5">
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-sm bg-muted text-[9px] font-bold">
                   R
                 </span>
                 <span className="min-w-0 truncate">Roof plan</span>
@@ -588,9 +1091,34 @@ export function DrawingTriagePlaceholder() {
             processing is active.
           </div>
         </div>
+      </>
+    )
+  }
+
+  if (triageStage !== "review") {
+    return (
+      <DrawingTriageEntryGate
+        stage={triageStage}
+        drawingSource={drawingSource}
+        onUseSampleDrawing={selectDrawingSource}
+        onSelectMockFile={selectDrawingSource}
+        onRunTriage={runTriage}
+        onChangeDrawing={changeDrawing}
+      />
+    )
+  }
+
+  return (
+    <main
+      id="workspace-content"
+      aria-labelledby="drawing-triage-heading"
+      className="grid min-h-0 flex-1 grid-cols-[248px_minmax(0,1fr)_316px] overflow-hidden max-[1160px]:grid-cols-[220px_minmax(0,1fr)_280px] max-[900px]:grid-cols-1 max-[900px]:overflow-y-auto max-[900px]:overflow-x-hidden"
+    >
+      <aside className="scrollbar-thin order-3 min-h-[180px] overflow-y-auto border-border bg-panel max-[900px]:hidden min-[901px]:order-1 min-[901px]:border-r">
+        {renderDrawingContext("desktop-context")}
       </aside>
 
-      <section className="order-1 flex min-h-[440px] min-w-0 flex-col bg-canvas min-[901px]:order-2">
+      <section className="order-1 flex min-h-[440px] min-w-0 flex-col bg-canvas max-[900px]:min-h-[360px] max-[560px]:min-h-[300px] min-[901px]:order-2">
         <header className="flex min-h-12 items-center gap-3 border-b border-border bg-panel/90 px-4 py-2">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -608,10 +1136,71 @@ export function DrawingTriagePlaceholder() {
           </div>
         </header>
 
-        <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4 sm:p-6">
-          <div className="absolute left-4 top-4 z-10 flex items-center gap-2 border border-border bg-panel px-2.5 py-1.5 text-[10px] shadow-sm">
+        <Sheet>
+          <div className="border-b border-border bg-panel/95 px-3 py-1.5 min-[901px]:hidden">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px]">
+              <span className="min-w-0 flex-1 truncate font-semibold text-foreground">
+                <span className="max-[420px]:hidden">
+                  A-102 · Rev P03 · {activeDrawingSource}
+                </span>
+                <span className="hidden max-[420px]:inline">
+                  A-102 · P03
+                </span>
+              </span>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <SheetTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="compact"
+                    className="h-7 rounded-md px-2 text-[10px] shadow-none"
+                  >
+                    Context
+                  </Button>
+                </SheetTrigger>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="compact"
+                  className="h-7 rounded-md px-1.5 text-[10px] shadow-none"
+                  onClick={changeDrawing}
+                >
+                  Change
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="compact"
+                  className="h-7 rounded-md px-1.5 text-[10px] text-destructive/75 shadow-none hover:bg-destructive/10 hover:text-destructive"
+                  onClick={removeDrawing}
+                >
+                  Remove
+                </Button>
+              </div>
+            </div>
+          </div>
+          <SheetContent
+            side="right"
+            overlayClassName="bg-background/10"
+            className="w-[min(92vw,380px)] max-w-none overflow-hidden border-border bg-panel p-0 max-[560px]:w-full [&>button]:right-3 [&>button]:top-3"
+          >
+            <SheetHeader className="sr-only">
+              <SheetTitle>Drawing context</SheetTitle>
+              <SheetDescription>
+                Active drawing metadata, drawing actions, artifact details, and
+                sheet list.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="scrollbar-thin h-full overflow-y-auto pt-7">
+              {renderDrawingContext("mobile-context")}
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3 sm:p-6">
+          <div className="absolute left-3 top-3 z-10 hidden max-w-[calc(100%-1.5rem)] items-center gap-2 border border-border bg-panel px-2.5 py-1.5 text-[10px] shadow-sm min-[901px]:left-4 min-[901px]:top-4 min-[901px]:flex min-[901px]:max-w-[42vw]">
             <MapPin className="size-3.5 text-primary" />
-            <span className="max-w-[42vw] truncate">
+            <span className="min-w-0 truncate">
               Candidate {selectedCandidate.marker} · Decision:{" "}
               {getDecisionLabel(selectedReviewState.decision)}
               {selectedReviewState.isFollowUp ? " · Follow-up" : ""}:{" "}
@@ -904,7 +1493,7 @@ export function DrawingTriagePlaceholder() {
         </div>
       </section>
 
-      <aside className="scrollbar-thin order-2 min-h-[180px] overflow-y-auto border-border bg-panel max-[900px]:border-t min-[901px]:order-3 min-[901px]:border-l">
+      <aside className="scrollbar-thin order-2 min-h-[180px] min-w-0 overflow-y-auto border-border bg-panel max-[900px]:w-full max-[900px]:border-t min-[901px]:order-3 min-[901px]:border-l">
         <div className="border-b border-border p-4">
           <div className="max-[900px]:mx-auto max-[900px]:w-full max-[900px]:max-w-[720px]">
             <div className="flex items-center gap-2 text-muted-foreground">
@@ -1349,6 +1938,7 @@ export function DrawingTriagePlaceholder() {
           </p>
         </div>
       </aside>
+
     </main>
   )
 }

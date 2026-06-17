@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import type { ViewportTool } from "@/features/viewport/types"
 import type { FloorName, LayerId } from "@/types"
 import { PrototypeViewerAdapter } from "./adapters/prototype/PrototypeViewerAdapter"
@@ -54,6 +54,7 @@ export function usePrototypeViewerAdapterLifecycle(
   const hostRef = useRef<HTMLDivElement>(null)
   const latestCommandStateRef = useRef(commandState)
   const readyAdapterRef = useRef<PrototypeViewerAdapter | null>(null)
+  const [initializationError, setInitializationError] = useState<unknown>(null)
 
   latestCommandStateRef.current = commandState
 
@@ -77,10 +78,13 @@ export function usePrototypeViewerAdapterLifecycle(
 
         readyAdapterRef.current = adapter
         synchronizeCommands(adapter, latestCommandStateRef.current)
-      } catch {
+      } catch (error) {
         if (!isActive) {
           return
         }
+
+        console.error("Failed to initialize prototype viewer adapter", error)
+        setInitializationError(error)
       }
     }
 
@@ -105,5 +109,5 @@ export function usePrototypeViewerAdapterLifecycle(
     synchronizeCommands(adapter, latestCommandStateRef.current)
   }, [activeTool, selectedFloor, selectedObjectId, visibleLayerIds])
 
-  return hostRef
+  return { hostRef, initializationError }
 }

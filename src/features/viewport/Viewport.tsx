@@ -88,7 +88,10 @@ export function Viewport({
     null,
   )
   const selectedObjectId = selectedIssue.details.objectId
-  const viewportHostRef = usePrototypeViewerAdapterLifecycle({
+  const {
+    hostRef: viewportHostRef,
+    initializationError: viewerInitializationError,
+  } = usePrototypeViewerAdapterLifecycle({
     activeTool,
     selectedFloor,
     selectedObjectId,
@@ -394,6 +397,17 @@ export function Viewport({
         ref={viewportHostRef}
         className="absolute inset-0 z-[1] flex items-center justify-center p-10 max-[680px]:p-4"
       >
+        {Boolean(viewerInitializationError) && (
+          <div
+            className="pointer-events-none absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-md border border-border bg-panel/90 px-2.5 py-1.5 text-[10px] font-medium text-muted-foreground shadow-sm"
+            role="status"
+            aria-live="polite"
+            data-testid="viewer-initialization-error"
+          >
+            <CircleAlert className="size-3.5 text-muted-foreground" />
+            Viewer unavailable
+          </div>
+        )}
         <svg
           viewBox="0 0 760 620"
           className="h-[82%] max-h-[680px] w-[82%] max-w-[820px] drop-shadow-2xl"

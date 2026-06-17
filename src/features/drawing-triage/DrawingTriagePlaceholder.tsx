@@ -1,4 +1,10 @@
-import { useRef, useState, type CSSProperties } from "react"
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type RefObject,
+} from "react"
 import {
   AlertTriangle,
   Bookmark,
@@ -14,9 +20,19 @@ import { cn } from "@/lib/utils"
 
 type CandidateId = "door-clearance" | "riser-note" | "grid-offset"
 type ReviewDecision = "unreviewed" | "issue_created"
+type RightPanelView = "review_candidates" | "created_issues"
+type ReviewCandidateFilter = "all" | "follow_up"
 type CandidateReviewState = {
   decision: ReviewDecision
   isFollowUp: boolean
+}
+type CreatedIssueSummary = {
+  issueId: string
+  candidateId: CandidateId
+}
+type PendingPanelFocus = {
+  candidateId: CandidateId
+  view: RightPanelView
 }
 
 type Candidate = {
@@ -99,9 +115,18 @@ const candidates: Candidate[] = [
   },
 ]
 
+function formatIssueId(sequence: number) {
+  return `MS-${String(sequence).padStart(3, "0")}`
+}
+
 function getTypeAccent(candidate: Candidate) {
   const typeVisual = typeVisuals[candidate.type]
   return `light-dark(${typeVisual.lightAccent}, ${typeVisual.darkAccent})`
+}
+
+function getPriorityLabel(candidate: Candidate) {
+  const priority = candidate.risk.split(" ")[0]
+  return priority || "Medium"
 }
 
 function Marker({
@@ -121,6 +146,9 @@ function Marker({
 }) {
   const accent = getTypeAccent(candidate)
   const emphasis = reviewState.decision === "issue_created"
+  const isFollowUp =
+    reviewState.decision === "unreviewed" && reviewState.isFollowUp
+  const isIssueCreated = reviewState.decision === "issue_created"
 
   return (
     <g
@@ -167,6 +195,55 @@ function Marker({
       >
         {candidate.marker}
       </text>
+      {isFollowUp && (
+        <g
+          aria-label="Marked for follow-up"
+          transform={`translate(${x + 10} ${y - 25})`}
+        >
+          <rect
+            x="0"
+            y="0"
+            width="15"
+            height="15"
+            rx="3"
+            fill={`color-mix(in oklab, ${accent} 16%, oklch(0.965 0.012 90))`}
+            stroke={accent}
+            strokeWidth="1.5"
+          />
+          <path
+            d="M4.5 3.5h6v8l-3-2.1-3 2.1z"
+            fill={accent}
+            stroke="none"
+          />
+        </g>
+      )}
+      {isIssueCreated && (
+        <g
+          aria-label="Issue created"
+          transform={`translate(${x + 10} ${y - 26})`}
+        >
+          <rect
+            x="0"
+            y="0"
+            width="18"
+            height="18"
+            rx="4"
+            fill={`color-mix(in oklab, ${accent} 24%, oklch(0.965 0.012 90))`}
+            stroke={accent}
+            strokeWidth="2"
+          />
+          <text
+            x="9"
+            y="13.4"
+            fill={accent}
+            fontSize="12.5"
+            fontWeight="800"
+            textAnchor="middle"
+          >
+            !
+          </text>
+        </g>
+      )}
     </g>
   )
 }
@@ -175,7 +252,18 @@ export function DrawingTriagePlaceholder() {
   const [selectedCandidateId, setSelectedCandidateId] =
     useState<CandidateId>("door-clearance")
   const [reviewStates, setReviewStates] = useState(initialReviewStates)
+  const [activeRightPanelView, setActiveRightPanelView] =
+    useState<RightPanelView>("review_candidates")
+  const [reviewCandidateFilter, setReviewCandidateFilter] =
+    useState<ReviewCandidateFilter>("all")
+  const [createdIssues, setCreatedIssues] = useState<CreatedIssueSummary[]>([])
+  const [pendingPanelFocus, setPendingPanelFocus] =
+    useState<PendingPanelFocus | null>(null)
+  const nextIssueSequence = useRef(1)
   const candidateCardRefs = useRef<
+    Partial<Record<CandidateId, HTMLElement | null>>
+  >({})
+  const issueCardRefs = useRef<
     Partial<Record<CandidateId, HTMLElement | null>>
   >({})
   const selectedCandidate =
@@ -185,12 +273,80 @@ export function DrawingTriagePlaceholder() {
   const remainingReviewCount = candidates.filter(
     (candidate) => reviewStates[candidate.id].decision === "unreviewed",
   ).length
-  const issueCreatedCount = candidates.filter(
-    (candidate) => reviewStates[candidate.id].decision === "issue_created",
-  ).length
-  const followUpCount = candidates.filter(
-    (candidate) => reviewStates[candidate.id].isFollowUp,
-  ).length
+  const createdIssueSummaries = createdIssues
+    .map((issue) => ({
+      issue,
+      candidate: candidates.find(
+        (candidate) => candidate.id === issue.candidateId,
+      ),
+    }))
+    .filter(
+      (
+        summary,
+      ): summary is {
+        issue: CreatedIssueSummary
+        candidate: Candidate
+      } =>
+        Boolean(summary.candidate) &&
+        reviewStates[summary.issue.candidateId].decision === "issue_created",
+    )
+  const followUpCandidates = candidates.filter(
+    (candidate) =>
+      reviewStates[candidate.id].decision === "unreviewed" &&
+      reviewStates[candidate.id].isFollowUp,
+  )
+  const followUpCount = followUpCandidates.length
+  const visibleReviewCandidates =
+    reviewCandidateFilter === "follow_up" ? followUpCandidates : candidates
+  const reviewSummaryTitle =
+    remainingReviewCount === 0
+      ? "Review decisions complete"
+      : `${remainingReviewCount} of ${candidates.length} observations to review`
+
+  function candidateHasCreatedIssue(candidateId: CandidateId) {
+    return (
+      reviewStates[candidateId].decision === "issue_created" &&
+      createdIssues.some((issue) => issue.candidateId === candidateId)
+    )
+  }
+
+  function scrollPanelItemIntoView(
+    refs: RefObject<Partial<Record<CandidateId, HTMLElement | null>>>,
+    candidateId: CandidateId,
+  ) {
+    const element = refs.current[candidateId]
+    element?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    })
+    element?.focus({ preventScroll: true })
+  }
+
+  useEffect(() => {
+    if (!pendingPanelFocus || pendingPanelFocus.view !== activeRightPanelView) {
+      return
+    }
+
+    const refs =
+      pendingPanelFocus.view === "created_issues"
+        ? issueCardRefs
+        : candidateCardRefs
+
+    window.requestAnimationFrame(() => {
+      scrollPanelItemIntoView(refs, pendingPanelFocus.candidateId)
+      setPendingPanelFocus((current) =>
+        current?.candidateId === pendingPanelFocus.candidateId &&
+        current.view === pendingPanelFocus.view
+          ? null
+          : current,
+      )
+    })
+  }, [
+    activeRightPanelView,
+    createdIssueSummaries.length,
+    pendingPanelFocus,
+    selectedCandidateId,
+  ])
 
   function updateReviewDecision(
     candidateId: CandidateId,
@@ -202,17 +358,42 @@ export function DrawingTriagePlaceholder() {
       [candidateId]: {
         ...current[candidateId],
         decision,
+        isFollowUp:
+          decision === "issue_created" ? false : current[candidateId].isFollowUp,
       },
     }))
   }
 
-  function toggleIssue(candidateId: CandidateId) {
-    const nextDecision =
-      reviewStates[candidateId].decision === "issue_created"
-        ? "unreviewed"
-        : "issue_created"
+  function convertCandidateToIssue(candidateId: CandidateId) {
+    const issueId = formatIssueId(nextIssueSequence.current)
+    nextIssueSequence.current += 1
 
-    updateReviewDecision(candidateId, nextDecision)
+    updateReviewDecision(candidateId, "issue_created")
+    setCreatedIssues((current) => {
+      if (current.some((issue) => issue.candidateId === candidateId)) {
+        return current
+      }
+
+      return [...current, { issueId, candidateId }]
+    })
+  }
+
+  function removeCandidateIssue(candidateId: CandidateId) {
+    updateReviewDecision(candidateId, "unreviewed")
+    setCreatedIssues((current) =>
+      current.filter((issue) => issue.candidateId !== candidateId),
+    )
+    setActiveRightPanelView("review_candidates")
+    setPendingPanelFocus({ candidateId, view: "review_candidates" })
+  }
+
+  function toggleIssue(candidateId: CandidateId) {
+    if (reviewStates[candidateId].decision === "issue_created") {
+      removeCandidateIssue(candidateId)
+      return
+    }
+
+    convertCandidateToIssue(candidateId)
   }
 
   function toggleFollowUp(candidateId: CandidateId) {
@@ -227,13 +408,70 @@ export function DrawingTriagePlaceholder() {
   }
 
   function selectCandidateFromDrawing(candidateId: CandidateId) {
+    const targetView =
+      activeRightPanelView === "created_issues" &&
+      candidateHasCreatedIssue(candidateId)
+        ? "created_issues"
+        : "review_candidates"
+
+    if (
+      targetView === "review_candidates" &&
+      reviewCandidateFilter === "follow_up" &&
+      !reviewStates[candidateId].isFollowUp
+    ) {
+      setReviewCandidateFilter("all")
+    }
+
     setSelectedCandidateId(candidateId)
-    window.requestAnimationFrame(() => {
-      candidateCardRefs.current[candidateId]?.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-      })
+    setActiveRightPanelView(targetView)
+    setPendingPanelFocus({ candidateId, view: targetView })
+  }
+
+  function showReviewCandidates() {
+    if (
+      reviewCandidateFilter === "follow_up" &&
+      !reviewStates[selectedCandidateId].isFollowUp
+    ) {
+      setReviewCandidateFilter("all")
+    }
+
+    setActiveRightPanelView("review_candidates")
+    setPendingPanelFocus({
+      candidateId: selectedCandidateId,
+      view: "review_candidates",
     })
+  }
+
+  function showCreatedIssues() {
+    const selectedIssueCandidateId = candidateHasCreatedIssue(selectedCandidateId)
+      ? selectedCandidateId
+      : createdIssueSummaries[0]?.issue.candidateId
+
+    if (selectedIssueCandidateId) {
+      setSelectedCandidateId(selectedIssueCandidateId)
+      setPendingPanelFocus({
+        candidateId: selectedIssueCandidateId,
+        view: "created_issues",
+      })
+    }
+
+    setActiveRightPanelView("created_issues")
+  }
+
+  function focusReviewCandidate(candidateId: CandidateId) {
+    if (
+      reviewCandidateFilter === "follow_up" &&
+      !reviewStates[candidateId].isFollowUp
+    ) {
+      setReviewCandidateFilter("all")
+    }
+    setActiveRightPanelView("review_candidates")
+    setPendingPanelFocus({ candidateId, view: "review_candidates" })
+  }
+
+  function viewIssueOnSheet(candidateId: CandidateId) {
+    setSelectedCandidateId(candidateId)
+    focusReviewCandidate(candidateId)
   }
 
   function getDecisionLabel(decision: ReviewDecision) {
@@ -247,22 +485,32 @@ export function DrawingTriagePlaceholder() {
       aria-labelledby="drawing-triage-heading"
       className="grid min-h-0 flex-1 grid-cols-[248px_minmax(0,1fr)_316px] overflow-hidden max-[1160px]:grid-cols-[220px_minmax(0,1fr)_280px] max-[900px]:grid-cols-1 max-[900px]:overflow-y-auto"
     >
-      <aside className="scrollbar-thin order-2 min-h-[180px] overflow-y-auto border-r border-border bg-panel min-[901px]:order-1">
-        <div className="border-b border-border p-4">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <FileStack className="size-4" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.08em]">
-              Drawing context
-            </span>
+      <aside className="scrollbar-thin order-3 min-h-[180px] overflow-y-auto border-border bg-panel max-[900px]:border-t max-[900px]:bg-panel-subtle/35 min-[901px]:order-1 min-[901px]:border-r">
+        <div className="border-border p-4 max-[900px]:p-3 min-[901px]:border-b">
+          <div className="max-[900px]:mx-auto max-[900px]:w-full max-[900px]:max-w-[720px]">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <FileStack className="size-4" />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.08em]">
+                Drawing context
+              </span>
+            </div>
+            <h2 className="mt-4 text-sm font-semibold max-[900px]:mt-2">
+              Level 02 floor plan
+            </h2>
+            <p className="mt-1 text-[11px] text-muted-foreground max-[900px]:hidden">
+              A-102 · Coordination issue set
+            </p>
+            <p className="mt-1 hidden text-[10px] font-medium text-muted-foreground max-[900px]:block">
+              A-102 · Rev P03 · 1:100 · Architecture
+            </p>
           </div>
-          <h2 className="mt-4 text-sm font-semibold">Level 02 floor plan</h2>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            A-102 · Coordination issue set
-          </p>
         </div>
 
-        <div className="space-y-5 p-4">
-          <section aria-labelledby="artifact-heading">
+        <div className="space-y-5 p-4 max-[900px]:mx-auto max-[900px]:w-full max-[900px]:max-w-[720px] max-[900px]:space-y-3 max-[900px]:p-3 max-[900px]:pt-0">
+          <section
+            aria-labelledby="artifact-heading"
+            className="max-[900px]:hidden"
+          >
             <h3
               id="artifact-heading"
               className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground"
@@ -291,43 +539,51 @@ export function DrawingTriagePlaceholder() {
               </h3>
               <span className="text-[10px] text-muted-foreground">1 of 3</span>
             </div>
-            <div className="mt-2 space-y-1">
+            <div className="mt-2 space-y-1 max-[900px]:grid max-[900px]:grid-cols-3 max-[900px]:gap-1 max-[900px]:space-y-0">
               <button
                 type="button"
                 aria-current="page"
-                className="flex w-full items-center gap-2 rounded-sm bg-accent px-2.5 py-2 text-left text-[11px] text-accent-foreground outline-none ring-ring focus-visible:ring-2"
+                className="flex w-full items-center gap-2 rounded-sm bg-accent px-2.5 py-2 text-left text-[11px] text-accent-foreground outline-none ring-ring focus-visible:ring-2 max-[900px]:px-2 max-[900px]:py-1.5"
               >
                 <span className="flex size-5 items-center justify-center rounded-sm bg-primary text-[9px] font-bold text-primary-foreground">
                   02
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium">
-                    Level 02 floor plan
+                    <span className="max-[900px]:hidden">
+                      Level 02 floor plan
+                    </span>
+                    <span className="hidden max-[900px]:inline">Level 02</span>
                   </span>
-                  <span className="block text-[9px] opacity-75">
+                  <span className="block text-[9px] opacity-75 max-[900px]:hidden">
                     {remainingReviewCount === 0
                       ? "Review decisions complete"
                       : `${remainingReviewCount} awaiting decision`}
                   </span>
                 </span>
-                <Check className="size-3.5" />
+                <Check className="size-3.5 max-[900px]:hidden" />
               </button>
-              <div className="flex items-center gap-2 px-2.5 py-2 text-[11px] text-muted-foreground">
+              <div className="flex items-center gap-2 px-2.5 py-2 text-[11px] text-muted-foreground max-[900px]:px-2 max-[900px]:py-1.5">
                 <span className="flex size-5 items-center justify-center rounded-sm bg-muted text-[9px] font-bold">
                   01
                 </span>
-                Level 01 floor plan
+                <span className="min-w-0 truncate">
+                  <span className="max-[900px]:hidden">
+                    Level 01 floor plan
+                  </span>
+                  <span className="hidden max-[900px]:inline">Level 01</span>
+                </span>
               </div>
-              <div className="flex items-center gap-2 px-2.5 py-2 text-[11px] text-muted-foreground">
+              <div className="flex items-center gap-2 px-2.5 py-2 text-[11px] text-muted-foreground max-[900px]:px-2 max-[900px]:py-1.5">
                 <span className="flex size-5 items-center justify-center rounded-sm bg-muted text-[9px] font-bold">
                   R
                 </span>
-                Roof plan
+                <span className="min-w-0 truncate">Roof plan</span>
               </div>
             </div>
           </section>
 
-          <div className="border-t border-border pt-3 text-[10px] leading-relaxed text-muted-foreground">
+          <div className="border-t border-border pt-3 text-[10px] leading-relaxed text-muted-foreground max-[900px]:hidden">
             Sample artifact and metadata. No file upload, storage, or document
             processing is active.
           </div>
@@ -648,243 +904,444 @@ export function DrawingTriagePlaceholder() {
         </div>
       </section>
 
-      <aside className="scrollbar-thin order-3 min-h-[180px] overflow-y-auto border-l border-border bg-panel">
+      <aside className="scrollbar-thin order-2 min-h-[180px] overflow-y-auto border-border bg-panel max-[900px]:border-t min-[901px]:order-3 min-[901px]:border-l">
         <div className="border-b border-border p-4">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Bot className="size-4" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.08em]">
-              Candidate review
-            </span>
-          </div>
-          <div className="mt-4 flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-semibold">
-                {remainingReviewCount === 0
-                  ? "Review decisions complete"
-                  : `${remainingReviewCount} of ${candidates.length} observations to review`}
-              </h2>
-              <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
-                Mock visual cues for human assessment, not confirmed defects.
-              </p>
+          <div className="max-[900px]:mx-auto max-[900px]:w-full max-[900px]:max-w-[720px]">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Bot className="size-4" />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.08em]">
+                Candidate review
+              </span>
             </div>
-            <span className="whitespace-nowrap rounded-sm bg-ai/15 px-2 py-1 text-[10px] font-semibold leading-none text-ai-foreground">
-              AI
-            </span>
-          </div>
-          <div
-            className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-muted-foreground"
-            aria-live="polite"
-          >
-            <span>{issueCreatedCount} issues created</span>
-            <span>{followUpCount} follow-up</span>
+            <div className="mt-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold">
+                  {reviewSummaryTitle}
+                </h2>
+                <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
+                  Mock visual cues for human assessment, not confirmed defects.
+                </p>
+              </div>
+              <span className="whitespace-nowrap rounded-sm bg-ai/15 px-2 py-1 text-[10px] font-semibold leading-none text-ai-foreground">
+                AI
+              </span>
+            </div>
+            <div
+              className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[9px] text-muted-foreground"
+              aria-live="polite"
+            >
+              <span>{remainingReviewCount} remaining</span>
+              <span>{followUpCount} follow-up</span>
+              <span>{createdIssueSummaries.length} issues created</span>
+            </div>
+            <div
+              className="mt-3 grid grid-cols-2 rounded-md border border-border bg-panel-subtle/55 p-0.5"
+              role="tablist"
+              aria-label="Drawing triage right panel view"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeRightPanelView === "review_candidates"}
+                className={cn(
+                  "min-h-8 rounded-[5px] px-2 py-1 text-[10px] font-semibold text-muted-foreground outline-none ring-ring transition-colors focus-visible:ring-2",
+                  activeRightPanelView === "review_candidates" &&
+                    "bg-card text-foreground shadow-sm",
+                )}
+                onClick={showReviewCandidates}
+              >
+                Review candidates
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeRightPanelView === "created_issues"}
+                className={cn(
+                  "flex min-h-8 items-center justify-center gap-1.5 rounded-[5px] px-2 py-1 text-[10px] font-semibold text-muted-foreground outline-none ring-ring transition-colors focus-visible:ring-2",
+                  activeRightPanelView === "created_issues" &&
+                    "bg-card text-foreground shadow-sm",
+                )}
+                onClick={showCreatedIssues}
+              >
+                <span>Created issues </span>
+                <span className="rounded-sm border border-border bg-panel px-1.5 py-0.5 text-[9px] leading-none">
+                  {createdIssueSummaries.length}
+                </span>
+              </button>
+            </div>
+            {activeRightPanelView === "review_candidates" && (
+              <div
+                className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[9px]"
+                aria-label="Review candidate filter"
+              >
+                <span className="font-medium text-muted-foreground">
+                  Showing:
+                </span>
+                <button
+                  type="button"
+                  aria-pressed={reviewCandidateFilter === "all"}
+                  className={cn(
+                    "rounded-sm px-1 py-0.5 font-semibold text-muted-foreground outline-none ring-ring transition-colors hover:text-foreground focus-visible:ring-2",
+                    reviewCandidateFilter === "all" &&
+                      "text-foreground underline decoration-border underline-offset-4",
+                  )}
+                  onClick={() => setReviewCandidateFilter("all")}
+                >
+                  All candidates
+                </button>
+                <span className="text-muted-foreground/45">·</span>
+                <button
+                  type="button"
+                  aria-pressed={reviewCandidateFilter === "follow_up"}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-sm px-1 py-0.5 font-semibold text-muted-foreground outline-none ring-ring transition-colors hover:text-foreground focus-visible:ring-2",
+                    followUpCount === 0 &&
+                      reviewCandidateFilter !== "follow_up" &&
+                      "text-muted-foreground/55 hover:text-muted-foreground",
+                    reviewCandidateFilter === "follow_up" &&
+                      "text-foreground underline decoration-border underline-offset-4",
+                  )}
+                  onClick={() => setReviewCandidateFilter("follow_up")}
+                >
+                  <Bookmark className="size-3" />
+                  Follow-up only {followUpCount}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="space-y-2 p-3">
-          {candidates.map((candidate) => {
-            const selected = candidate.id === selectedCandidateId
-            const { decision, isFollowUp } = reviewStates[candidate.id]
-            const decisionLabel = getDecisionLabel(decision)
-            const typeVisual = typeVisuals[candidate.type]
-            const typeAccent = getTypeAccent(candidate)
-            const candidateStyle = {
-              borderColor: "var(--border)",
-              borderLeftColor: typeAccent,
-              borderLeftWidth: "3px",
-              background: selected
-                ? `color-mix(in oklab, ${typeAccent} 7%, var(--card))`
-                : "var(--card)",
-              boxShadow: selected
-                ? `0 0 0 1px color-mix(in oklab, ${typeAccent} 32%, transparent)`
-                : undefined,
-            } as CSSProperties
-            const decisionIsIssue = decision === "issue_created"
-            const issueActionStyle = {
-              borderColor: decisionIsIssue
-                ? `color-mix(in oklab, ${typeAccent} 22%, var(--border))`
-                : typeAccent,
-              background: decisionIsIssue
-                ? "var(--card)"
-                : typeAccent,
-              color: decisionIsIssue
-                ? `light-dark(var(--foreground), color-mix(in oklab, var(--foreground) 88%, ${typeAccent}))`
-                : typeVisual.ink,
-              boxShadow: undefined,
-            } as CSSProperties
-            const followUpActionStyle = {
-              borderColor: isFollowUp
-                ? `color-mix(in oklab, ${typeAccent} 42%, var(--border))`
-                : `color-mix(in oklab, ${typeAccent} 76%, var(--border))`,
-              background: isFollowUp
-                ? `color-mix(in oklab, ${typeAccent} 5%, var(--card))`
-                : `color-mix(in oklab, ${typeAccent} 24%, var(--card))`,
-              color: isFollowUp
-                ? `color-mix(in oklab, ${typeAccent} 64%, var(--foreground))`
-                : `color-mix(in oklab, ${typeAccent} 82%, var(--foreground))`,
-              boxShadow: isFollowUp
-                ? `inset 0 0 0 1px color-mix(in oklab, ${typeAccent} 18%, transparent)`
-                : `inset 0 0 0 1px color-mix(in oklab, ${typeAccent} 16%, transparent)`,
-            } as CSSProperties
+        {activeRightPanelView === "review_candidates" ? (
+          <div className="space-y-2 p-3 max-[900px]:mx-auto max-[900px]:w-full max-[900px]:max-w-[560px]">
+            {visibleReviewCandidates.length === 0 ? (
+              <div className="border border-dashed border-border bg-panel-subtle/45 p-3 text-[10px] leading-relaxed text-muted-foreground">
+                No candidates are marked for follow-up.
+              </div>
+            ) : (
+              visibleReviewCandidates.map((candidate) => {
+              const selected = candidate.id === selectedCandidateId
+              const { decision, isFollowUp } = reviewStates[candidate.id]
+              const decisionLabel = getDecisionLabel(decision)
+              const typeVisual = typeVisuals[candidate.type]
+              const typeAccent = getTypeAccent(candidate)
+              const candidateStyle = {
+                borderColor: "var(--border)",
+                borderLeftColor: typeAccent,
+                borderLeftWidth: "3px",
+                background: selected
+                  ? `color-mix(in oklab, ${typeAccent} 7%, var(--card))`
+                  : "var(--card)",
+                boxShadow: selected
+                  ? `0 0 0 1px color-mix(in oklab, ${typeAccent} 32%, transparent)`
+                  : undefined,
+              } as CSSProperties
+              const decisionIsIssue = decision === "issue_created"
+              const issueActionStyle = {
+                borderColor: decisionIsIssue
+                  ? `color-mix(in oklab, ${typeAccent} 22%, var(--border))`
+                  : typeAccent,
+                background: decisionIsIssue ? "var(--card)" : typeAccent,
+                color: decisionIsIssue
+                  ? `light-dark(var(--foreground), color-mix(in oklab, var(--foreground) 88%, ${typeAccent}))`
+                  : typeVisual.ink,
+                boxShadow: undefined,
+              } as CSSProperties
+              const followUpActionStyle = {
+                borderColor: isFollowUp
+                  ? `color-mix(in oklab, ${typeAccent} 42%, var(--border))`
+                  : `color-mix(in oklab, ${typeAccent} 76%, var(--border))`,
+                background: isFollowUp
+                  ? `color-mix(in oklab, ${typeAccent} 5%, var(--card))`
+                  : `color-mix(in oklab, ${typeAccent} 24%, var(--card))`,
+                color: isFollowUp
+                  ? `color-mix(in oklab, ${typeAccent} 64%, var(--foreground))`
+                  : `color-mix(in oklab, ${typeAccent} 82%, var(--foreground))`,
+                boxShadow: isFollowUp
+                  ? `inset 0 0 0 1px color-mix(in oklab, ${typeAccent} 18%, transparent)`
+                  : `inset 0 0 0 1px color-mix(in oklab, ${typeAccent} 16%, transparent)`,
+              } as CSSProperties
+              const followUpDisabled = decisionIsIssue
 
-            return (
-              <article
-                key={candidate.id}
-                ref={(node) => {
-                  candidateCardRefs.current[candidate.id] = node
-                }}
-                data-review-state={decision}
-                data-follow-up={isFollowUp}
-                className={cn(
-                  "relative w-full rounded-sm border bg-card transition-[border-color,background-color,box-shadow] duration-150",
-                )}
-                style={candidateStyle}
-              >
-                <button
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => setSelectedCandidateId(candidate.id)}
-                  className="w-full p-4 text-left outline-none ring-ring transition-colors duration-150 hover:bg-panel-subtle/35 focus-visible:ring-2"
+              return (
+                <article
+                  key={candidate.id}
+                  ref={(node) => {
+                    candidateCardRefs.current[candidate.id] = node
+                  }}
+                  tabIndex={-1}
+                  data-review-state={decision}
+                  data-follow-up={isFollowUp}
+                  className={cn(
+                    "relative w-full rounded-sm border bg-card outline-none ring-ring transition-[border-color,background-color,box-shadow] duration-150 focus-visible:ring-2",
+                  )}
+                  style={candidateStyle}
                 >
-                  <span className="block">
-                    <span className="flex items-start gap-3">
-                      <span
-                        className="flex size-[22px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
-                        style={{
-                          background: typeAccent,
-                          color: typeVisual.ink,
-                        }}
-                      >
-                        {candidate.marker}
-                      </span>
-                      <span className="min-w-0 flex-1">
+                  <button
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setSelectedCandidateId(candidate.id)}
+                    className="w-full p-4 text-left outline-none ring-ring transition-colors duration-150 hover:bg-panel-subtle/35 focus-visible:ring-2"
+                  >
+                    <span className="block">
+                      <span className="flex items-start gap-3">
                         <span
-                          className={cn(
-                            "flex flex-wrap items-center gap-2",
-                            isFollowUp && "pr-8",
-                          )}
+                          className="flex size-[22px] shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
+                          style={{
+                            background: typeAccent,
+                            color: typeVisual.ink,
+                          }}
                         >
+                          {candidate.marker}
+                        </span>
+                        <span className="min-w-0 flex-1">
                           <span
-                            className="rounded-[5px] px-2 py-1 text-[10px] font-bold leading-none"
-                            style={{
-                              background: typeAccent,
-                              color: typeVisual.ink,
-                            }}
-                          >
-                            Type: {candidate.type}
-                          </span>
-                          <span
-                            className="inline-flex items-center gap-1 rounded-[5px] px-2 py-1 text-[10px] font-semibold leading-none"
-                            style={{
-                              background: decisionIsIssue
-                                ? typeAccent
-                                : `color-mix(in oklab, ${typeAccent} 13%, var(--card))`,
-                              color: decisionIsIssue
-                                ? typeVisual.ink
-                                : `color-mix(in oklab, ${typeAccent} 58%, var(--foreground))`,
-                            }}
-                          >
-                            {decisionIsIssue && (
-                              <AlertTriangle className="size-3" />
+                            className={cn(
+                              "flex flex-wrap items-center gap-2",
+                              isFollowUp && "pr-8",
                             )}
-                            {decisionLabel}
+                          >
+                            <span
+                              className="rounded-[5px] px-2 py-1 text-[10px] font-bold leading-none"
+                              style={{
+                                background: typeAccent,
+                                color: typeVisual.ink,
+                              }}
+                            >
+                              Type: {candidate.type}
+                            </span>
+                            <span
+                              className="inline-flex items-center gap-1 rounded-[5px] px-2 py-1 text-[10px] font-semibold leading-none"
+                              style={{
+                                background: decisionIsIssue
+                                  ? typeAccent
+                                  : `color-mix(in oklab, ${typeAccent} 13%, var(--card))`,
+                                color: decisionIsIssue
+                                  ? typeVisual.ink
+                                  : `color-mix(in oklab, ${typeAccent} 58%, var(--foreground))`,
+                              }}
+                            >
+                              {decisionIsIssue && (
+                                <AlertTriangle className="size-3" />
+                              )}
+                              {decisionLabel}
+                            </span>
                           </span>
                         </span>
                       </span>
+                      <span className="mt-4 block text-[13px] font-semibold leading-snug text-foreground">
+                        {candidate.title}
+                      </span>
+                      <span className="mt-2 block text-[11px] leading-relaxed text-muted-foreground">
+                        {candidate.summary}
+                      </span>
+                      <span className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-[9px] text-muted-foreground">
+                        <span>{candidate.confidence}</span>
+                        <span aria-hidden="true">·</span>
+                        <span>{candidate.risk}</span>
+                      </span>
+                      <span className="mt-2 flex items-center gap-1.5 text-[10px] font-semibold text-foreground">
+                        <MapPin
+                          className="size-3"
+                          style={{ color: typeAccent }}
+                        />
+                        {candidate.region}
+                      </span>
                     </span>
-                    <span className="mt-4 block text-[13px] font-semibold leading-snug text-foreground">
-                      {candidate.title}
-                    </span>
-                    <span className="mt-2 block text-[11px] leading-relaxed text-muted-foreground">
-                      {candidate.summary}
-                    </span>
-                    <span className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-[9px] text-muted-foreground">
-                      <span>{candidate.confidence}</span>
-                      <span aria-hidden="true">·</span>
-                      <span>{candidate.risk}</span>
-                    </span>
-                    <span className="mt-2 flex items-center gap-1.5 text-[10px] font-semibold text-foreground">
-                      <MapPin className="size-3" style={{ color: typeAccent }} />
-                      {candidate.region}
-                    </span>
-                  </span>
-                </button>
+                  </button>
 
-                {isFollowUp && (
-                  <span
-                    aria-label="Follow-up flag active"
-                    title="Follow-up flag active"
-                    className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-md border bg-card"
-                    style={{
-                      borderColor: `color-mix(in oklab, ${typeAccent} 60%, var(--border))`,
-                      background: `color-mix(in oklab, ${typeAccent} 9%, var(--card))`,
-                      color: `color-mix(in oklab, ${typeAccent} 68%, var(--foreground))`,
-                    }}
-                  >
-                    <Bookmark className="size-4 fill-current" />
-                  </span>
-                )}
+                  {isFollowUp && (
+                    <span
+                      aria-label="Follow-up flag active"
+                      title="Follow-up flag active"
+                      className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-md border bg-card"
+                      style={{
+                        borderColor: `color-mix(in oklab, ${typeAccent} 60%, var(--border))`,
+                        background: `color-mix(in oklab, ${typeAccent} 9%, var(--card))`,
+                        color: `color-mix(in oklab, ${typeAccent} 68%, var(--foreground))`,
+                      }}
+                    >
+                      <Bookmark className="size-4 fill-current" />
+                    </span>
+                  )}
 
-                {decisionIsIssue && (
+                  {decisionIsIssue && (
+                    <div
+                      className="mx-4 flex items-start gap-1.5 border-t border-border/70 py-2.5 text-[9px] font-medium leading-relaxed"
+                      style={{
+                        color: `color-mix(in oklab, ${typeAccent} 68%, var(--foreground))`,
+                      }}
+                      role="status"
+                    >
+                      <AlertTriangle className="mt-px size-3 shrink-0" />
+                      <span>
+                        Issue created by an explicit human review decision.
+                      </span>
+                    </div>
+                  )}
+
                   <div
-                    className="mx-4 flex items-start gap-1.5 border-t border-border/70 py-2.5 text-[9px] font-medium leading-relaxed"
-                    style={{
-                      color: `color-mix(in oklab, ${typeAccent} 68%, var(--foreground))`,
-                    }}
-                    role="status"
-                  >
-                    <AlertTriangle className="mt-px size-3 shrink-0" />
-                    <span>
-                      Issue created by an explicit human review decision.
-                    </span>
-                  </div>
-                )}
-
-                <div
-                  className="grid gap-2 border-t border-border/60 p-4 pt-3"
-                  style={{
-                    gridTemplateColumns:
-                      "repeat(auto-fit, minmax(132px, 1fr))",
-                  }}
-                >
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="compact"
-                    className="h-9 w-full justify-center gap-2 rounded-md border px-3 text-[11px] font-semibold tracking-normal shadow-none transition-[filter,background-color,border-color] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:hover:brightness-110"
-                    style={issueActionStyle}
-                    aria-pressed={decisionIsIssue}
-                    onClick={() => toggleIssue(candidate.id)}
-                  >
-                    {decisionIsIssue ? (
-                      <X className="size-4" />
-                    ) : (
-                      <AlertTriangle className="size-4" />
+                    className={cn(
+                      "grid gap-2 border-t border-border/60 p-4 pt-3",
+                      decisionIsIssue
+                        ? "grid-cols-[minmax(0,220px)] justify-start max-[420px]:grid-cols-1 max-[420px]:justify-stretch"
+                        : "grid-cols-[repeat(auto-fit,minmax(132px,1fr))]",
                     )}
-                    {decisionIsIssue ? "Remove issue" : "Convert to issue"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="compact"
-                    className="h-9 w-full justify-center gap-2 rounded-md border px-3 text-[11px] font-semibold tracking-normal shadow-none transition-[filter,background-color,border-color] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:hover:brightness-110"
-                    style={followUpActionStyle}
-                    aria-pressed={isFollowUp}
-                    onClick={() => toggleFollowUp(candidate.id)}
                   >
-                    <Bookmark
-                      className={cn("size-4", isFollowUp && "fill-current")}
-                    />
-                    {isFollowUp
-                      ? "Remove from follow-up"
-                      : "Keep for follow-up"}
-                  </Button>
-                </div>
-              </article>
-            )
-          })}
-        </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="compact"
+                      className="h-9 w-full justify-center gap-2 rounded-md border px-3 text-[11px] font-semibold tracking-normal shadow-none transition-[filter,background-color,border-color] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:hover:brightness-110"
+                      style={issueActionStyle}
+                      aria-pressed={decisionIsIssue}
+                      onClick={() => toggleIssue(candidate.id)}
+                    >
+                      {decisionIsIssue ? (
+                        <X className="size-4" />
+                      ) : (
+                        <AlertTriangle className="size-4" />
+                      )}
+                      {decisionIsIssue ? "Remove issue" : "Convert to issue"}
+                    </Button>
+                    {!followUpDisabled && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="compact"
+                        className="h-9 w-full justify-center gap-2 rounded-md border px-3 text-[11px] font-semibold tracking-normal shadow-none transition-[filter,background-color,border-color] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:hover:brightness-110"
+                        style={followUpActionStyle}
+                        aria-pressed={isFollowUp}
+                        onClick={() => toggleFollowUp(candidate.id)}
+                      >
+                        <Bookmark
+                          className={cn("size-4", isFollowUp && "fill-current")}
+                        />
+                        {isFollowUp
+                          ? "Remove from follow-up"
+                          : "Keep for follow-up"}
+                      </Button>
+                    )}
+                  </div>
+                </article>
+              )
+              })
+            )}
+          </div>
+        ) : (
+          <div className="space-y-2 p-3 max-[900px]:mx-auto max-[900px]:w-full max-[900px]:max-w-[560px]">
+            {createdIssueSummaries.length === 0 ? (
+              <div className="border border-dashed border-border bg-panel-subtle/45 p-3 text-[10px] leading-relaxed text-muted-foreground">
+                Converted candidates will appear here as compact local issue
+                summaries.
+              </div>
+            ) : (
+              createdIssueSummaries.map(({ issue, candidate }) => {
+                const typeVisual = typeVisuals[candidate.type]
+                const typeAccent = getTypeAccent(candidate)
+                const selected = candidate.id === selectedCandidateId
+                const cardStyle = {
+                  borderColor: selected
+                    ? `color-mix(in oklab, ${typeAccent} 42%, var(--border))`
+                    : "var(--border)",
+                  background: selected
+                    ? `color-mix(in oklab, ${typeAccent} 6%, var(--card))`
+                    : "var(--card)",
+                  boxShadow: selected
+                    ? `0 0 0 1px color-mix(in oklab, ${typeAccent} 22%, transparent)`
+                    : undefined,
+                } as CSSProperties
+                const viewActionStyle = {
+                  borderColor: typeAccent,
+                  background: typeAccent,
+                  color: typeVisual.ink,
+                } as CSSProperties
+                const removeActionStyle = {
+                  borderColor: `color-mix(in oklab, ${typeAccent} 24%, var(--border))`,
+                  background: "var(--card)",
+                  color: `light-dark(var(--foreground), color-mix(in oklab, var(--foreground) 88%, ${typeAccent}))`,
+                } as CSSProperties
 
-        <div className="mx-3 mb-3 flex gap-2 border border-border bg-panel-subtle/55 p-3 text-[10px] leading-relaxed text-muted-foreground">
+                return (
+                  <article
+                    key={issue.issueId}
+                    ref={(node) => {
+                      issueCardRefs.current[issue.candidateId] = node
+                    }}
+                    tabIndex={-1}
+                    className="rounded-sm border p-3 outline-none ring-ring transition-[border-color,background-color,box-shadow] duration-150 focus-visible:ring-2"
+                    style={cardStyle}
+                  >
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="rounded-[5px] border border-border bg-panel px-2 py-1 text-[10px] font-bold leading-none text-foreground">
+                        {issue.issueId}
+                      </span>
+                      <span
+                        className="inline-flex items-center gap-1 rounded-[5px] border px-2 py-1 text-[10px] font-semibold leading-none"
+                        style={{
+                          borderColor: `color-mix(in oklab, ${typeAccent} 34%, var(--border))`,
+                          background: `color-mix(in oklab, ${typeAccent} 10%, var(--card))`,
+                          color: `color-mix(in oklab, ${typeAccent} 68%, var(--foreground))`,
+                        }}
+                      >
+                        <AlertTriangle className="size-3" />
+                        Issue created
+                      </span>
+                    </div>
+                    <h3 className="mt-3 text-[13px] font-semibold leading-snug text-foreground">
+                      {candidate.title}
+                    </h3>
+                    <div className="mt-2 space-y-1 text-[10px] leading-snug text-muted-foreground">
+                      <p>
+                        Type:{" "}
+                        <span className="font-semibold text-foreground">
+                          {candidate.type}
+                        </span>
+                      </p>
+                      <p>
+                        Priority:{" "}
+                        <span className="font-semibold text-foreground">
+                          {getPriorityLabel(candidate)}
+                        </span>
+                      </p>
+                      <p>
+                        Source:{" "}
+                        <span className="font-semibold text-foreground">
+                          Candidate {candidate.marker}
+                        </span>
+                      </p>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 max-[420px]:grid-cols-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="compact"
+                        className="h-8 w-full justify-center gap-1.5 rounded-md border px-2 text-[11px] font-semibold tracking-normal shadow-none transition-[filter,background-color,border-color] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:hover:brightness-110"
+                        style={viewActionStyle}
+                        onClick={() => viewIssueOnSheet(issue.candidateId)}
+                      >
+                        <MapPin className="size-3.5" />
+                        View on sheet
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="compact"
+                        className="h-8 w-full justify-center gap-1.5 rounded-md border px-2 text-[11px] font-semibold tracking-normal shadow-none transition-[filter,background-color,border-color] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:hover:brightness-110"
+                        style={removeActionStyle}
+                        onClick={() => removeCandidateIssue(issue.candidateId)}
+                      >
+                        <X className="size-3.5" />
+                        Remove issue
+                      </Button>
+                    </div>
+                  </article>
+                )
+              })
+            )}
+          </div>
+        )}
+
+        <div className="mx-3 mb-3 flex gap-2 border border-border bg-panel-subtle/55 p-3 text-[10px] leading-relaxed text-muted-foreground max-[900px]:mx-auto max-[900px]:w-[calc(100%-1.5rem)] max-[900px]:max-w-[696px]">
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warning" />
           <p>
             Confidence and priority are review-support metadata. Verify against

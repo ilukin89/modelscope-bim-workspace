@@ -520,6 +520,7 @@ function Marker({
   onSelect: (id: CandidateId) => void
 }) {
   const accent = getTypeAccent(candidate)
+  const stroke = typeVisuals[candidate.type].darkAccent
   const emphasis = reviewState.decision === "issue_created"
   const isFollowUp =
     reviewState.decision === "unreviewed" && reviewState.isFollowUp
@@ -547,7 +548,7 @@ function Marker({
         fill={`color-mix(in oklab, ${accent} ${
           selected ? "24%" : emphasis ? "19%" : "12%"
         }, transparent)`}
-        stroke={accent}
+        stroke={stroke}
         strokeWidth={selected ? 3 : emphasis ? 2.5 : 2}
       />
       <circle
@@ -557,7 +558,7 @@ function Marker({
         fill={`color-mix(in oklab, ${accent} ${
           emphasis ? "34%" : "28%"
         }, oklch(0.965 0.012 90))`}
-        stroke={accent}
+        stroke={stroke}
         strokeWidth="2"
       />
       <text
@@ -581,13 +582,13 @@ function Marker({
             width="15"
             height="15"
             rx="3"
-            fill={`color-mix(in oklab, ${accent} 16%, oklch(0.965 0.012 90))`}
-            stroke={accent}
+            fill={`color-mix(in oklab, ${stroke} 40%, oklch(0.965 0.012 90))`}
+            stroke={stroke}
             strokeWidth="1.5"
           />
           <path
             d="M4.5 3.5h6v8l-3-2.1-3 2.1z"
-            fill={accent}
+            fill={stroke}
             stroke="none"
           />
         </g>
@@ -603,14 +604,14 @@ function Marker({
             width="18"
             height="18"
             rx="4"
-            fill={`color-mix(in oklab, ${accent} 24%, oklch(0.965 0.012 90))`}
-            stroke={accent}
+            fill={`color-mix(in oklab, ${stroke} 48%, oklch(0.965 0.012 90))`}
+            stroke={stroke}
             strokeWidth="2"
           />
           <text
             x="9"
             y="13.4"
-            fill={accent}
+            fill={stroke}
             fontSize="12.5"
             fontWeight="800"
             textAnchor="middle"
@@ -1638,13 +1639,13 @@ export function DrawingTriagePlaceholder() {
               const followUpActionStyle = {
                 borderColor: isFollowUp
                   ? `color-mix(in oklab, ${typeAccent} 42%, var(--border))`
-                  : `color-mix(in oklab, ${typeAccent} 76%, var(--border))`,
+                  : `color-mix(in oklab, ${typeAccent} 92%, var(--border))`,
                 background: isFollowUp
                   ? `color-mix(in oklab, ${typeAccent} 5%, var(--card))`
                   : `color-mix(in oklab, ${typeAccent} 24%, var(--card))`,
                 color: isFollowUp
                   ? `color-mix(in oklab, ${typeAccent} 64%, var(--foreground))`
-                  : `color-mix(in oklab, ${typeAccent} 82%, var(--foreground))`,
+                  : `light-dark(color-mix(in oklab, ${typeVisual.lightAccent} 40%, var(--foreground)), color-mix(in oklab, ${typeVisual.darkAccent} 82%, var(--foreground)))`,
                 boxShadow: isFollowUp
                   ? `inset 0 0 0 1px color-mix(in oklab, ${typeAccent} 18%, transparent)`
                   : `inset 0 0 0 1px color-mix(in oklab, ${typeAccent} 16%, transparent)`,
@@ -1768,14 +1769,7 @@ export function DrawingTriagePlaceholder() {
                     </div>
                   )}
 
-                  <div
-                    className={cn(
-                      "grid gap-2 border-t border-border/60 p-4 pt-3",
-                      decisionIsIssue
-                        ? "grid-cols-[minmax(0,220px)] justify-start max-[420px]:grid-cols-1 max-[420px]:justify-stretch"
-                        : "grid-cols-[repeat(auto-fit,minmax(132px,1fr))]",
-                    )}
-                  >
+                  <div className="grid grid-cols-[repeat(auto-fit,minmax(132px,1fr))] gap-2 border-t border-border/60 p-4 pt-3">
                     <Button
                       type="button"
                       variant="outline"

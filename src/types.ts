@@ -63,6 +63,27 @@ export interface ReviewIssue {
   details: ObjectDetails
 }
 
+export type AiFindingWorkflowStatus = "active" | "issue-created" | "dismissed"
+
+export interface ModelReviewIssue {
+  id: string
+  title: string
+  relatedObject: string
+  relatedLevel: FloorName
+  priority: IssueSeverity
+  status: "Open"
+  sourceFindingId: ReviewIssue["id"]
+  sourceFindingCode: ReviewIssue["code"]
+  sourceIssue: ReviewIssue
+}
+
+export interface ModelReviewHistoryEvent {
+  id: string
+  label: string
+  detail: string
+  time: string
+}
+
 export interface ProjectData {
   id: ProjectId
   name: string

@@ -1,36 +1,23 @@
 import { useEffect, useRef, useState } from "react"
 import {
-  Box,
   BoxSelect,
-  ChevronRight,
-  CircleAlert,
-  EyeOff,
   Hand,
   Layers3,
   MessageSquarePlus,
   Orbit,
-  PanelLeftOpen,
-  PanelRightOpen,
-  RefreshCw,
   Ruler,
-  ScanLine,
-  ShieldAlert,
-  TriangleAlert,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { AiReviewFindingsPopover } from "@/features/viewport/components/AiReviewFindingsPopover"
+import { ViewportSelectionCard } from "@/features/viewport/components/ViewportSelectionCard"
+import { ViewportSidePanelControls } from "@/features/viewport/components/ViewportSidePanelControls"
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { Separator } from "@/components/ui/separator"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+  ViewportCameraBadge,
+  type ViewportFeedback,
+  ViewportFeedbackToast,
+  ViewportToolStatus,
+} from "@/features/viewport/components/ViewportStatusOverlays"
+import { ViewerInitializationErrorBanner } from "@/features/viewport/components/ViewerInitializationErrorBanner"
 import { ViewportToolbar } from "@/features/viewport/ViewportToolbar"
 import type { ViewportTool } from "@/features/viewport/types"
 import { usePrototypeViewerAdapterLifecycle } from "@/features/viewport/viewer-adapter/usePrototypeViewerAdapterLifecycle"
@@ -81,10 +68,8 @@ export function Viewport({
   visibleLayerIds,
 }: ViewportProps) {
   const [aiFindingsOpen, setAiFindingsOpen] = useState(false)
-  const [viewportFeedback, setViewportFeedback] = useState<{
-    message: string
-    type: "frame" | "ai"
-  } | null>(null)
+  const [viewportFeedback, setViewportFeedback] =
+    useState<ViewportFeedback | null>(null)
   const viewportFeedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   )
@@ -198,186 +183,35 @@ export function Viewport({
             showInspectorExpand && "min-[1161px]:right-14",
           )}
         >
-          <Popover open={aiFindingsOpen} onOpenChange={setAiFindingsOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                onClick={openAiReview}
-                aria-label="Open AI review findings"
-                aria-expanded={aiFindingsOpen}
-                className={cn(
-                  "group h-auto min-h-[76px] w-[220px] justify-start gap-2 rounded-lg border border-ai/70 bg-[color-mix(in_oklab,var(--ai)_34%,var(--panel)_66%)] px-3 py-2 text-left shadow-[0_16px_42px_color-mix(in_oklab,var(--background)_72%,transparent)] transition-[border-color,background-color,box-shadow,transform] duration-200 hover:border-ai hover:bg-[color-mix(in_oklab,var(--ai)_42%,var(--panel)_58%)] hover:shadow-[0_18px_46px_color-mix(in_oklab,var(--background)_66%,transparent)] focus-visible:ring-ai max-[1160px]:w-full",
-                  aiFindingsOpen &&
-                    "border-ai bg-[color-mix(in_oklab,var(--ai)_48%,var(--panel)_52%)] ring-2 ring-ai/35",
-                )}
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[15px] font-semibold leading-tight tracking-tight text-foreground">
-                    AI Review
-                  </span>
-                  <span className="mt-1.5 block text-[11px] font-semibold leading-none text-ai-foreground">
-                    {issueCount} coordination findings
-                  </span>
-                  <span className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold">
-                    {severitySummary.map((item, index) => (
-                      <span key={item.label} className="flex items-center gap-2">
-                        {index > 0 && (
-                          <span className="size-1 rounded-full bg-muted-foreground/70" />
-                        )}
-                        <span className={item.className}>
-                          {item.count} {item.label}
-                        </span>
-                      </span>
-                    ))}
-                  </span>
-                </span>
-                <ChevronRight
-                  className={cn(
-                    "ml-auto size-5 shrink-0 text-foreground/75 transition-transform duration-200",
-                    aiFindingsOpen && "rotate-90 text-ai-foreground",
-                  )}
-                  aria-hidden="true"
-                />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="end"
-              side="bottom"
-              sideOffset={8}
-              collisionPadding={12}
-              className="w-[min(360px,calc(100vw-24px))] border-ai/30 bg-panel p-0 shadow-xl"
-            >
-              <div className="border-b border-border px-3 py-2.5">
-                <div>
-                  <p className="text-[11px] font-semibold">AI findings</p>
-                  <p className="mt-0.5 text-[9px] text-muted-foreground">
-                    {issueCount} coordination items in this project
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-1 p-1.5">
-                {issues.map((issue) => (
-                  <AiFindingButton
-                    key={issue.id}
-                    issue={issue}
-                    selected={selectedIssue.id === issue.id}
-                    onSelect={() => selectAiFinding(issue)}
-                  />
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
+          <AiReviewFindingsPopover
+            issueCount={issueCount}
+            issues={issues}
+            onFindingSelect={selectAiFinding}
+            onOpenChange={setAiFindingsOpen}
+            onTriggerClick={openAiReview}
+            open={aiFindingsOpen}
+            selectedIssueId={selectedIssue.id}
+            severitySummary={severitySummary}
+          />
         </div>
 
-        <div
-          className="absolute left-1/2 top-16 z-20 -translate-x-1/2 rounded-md border border-border bg-panel/95 px-2.5 py-1.5 text-[10px] font-medium text-foreground shadow-md max-[1160px]:static max-[1160px]:self-center max-[1160px]:translate-x-0"
-          role="status"
-          data-testid="viewport-tool-feedback"
-          data-active-tool={activeTool}
-        >
-          <span className="flex items-center gap-1.5">
-            <ToolModeIcon className="size-3.5 text-primary" />
-            {toolMode.label}
-          </span>
-        </div>
+        <ViewportToolStatus
+          activeTool={activeTool}
+          Icon={ToolModeIcon}
+          label={toolMode.label}
+        />
 
-        {viewportFeedback && (
-          <div
-            className="absolute right-3 top-[108px] z-30 rounded-md border border-primary/30 bg-panel px-2.5 py-1.5 text-[10px] font-medium text-foreground shadow-md max-[1160px]:static max-[1160px]:self-center"
-            role="status"
-            aria-live="polite"
-            data-testid={`${viewportFeedback.type}-viewport-feedback`}
-          >
-            {viewportFeedback.message}
-          </div>
-        )}
+        <ViewportFeedbackToast feedback={viewportFeedback} />
       </div>
 
-      {showExplorerExpand && (
-        <div className="absolute left-3 top-3 z-20 max-[901px]:hidden">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="bg-panel"
-                aria-label="Expand Model Explorer"
-                aria-controls="desktop-model-explorer"
-                aria-expanded="false"
-                onClick={onExpandExplorer}
-              >
-                <PanelLeftOpen />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              Expand Model Explorer
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      )}
-
-      <div className="absolute left-3 top-3 z-20 min-[901px]:hidden">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon"
-              className="bg-panel"
-              aria-label="Open Model Explorer"
-              aria-expanded="false"
-              onClick={onOpenExplorer}
-            >
-              <PanelLeftOpen />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right">
-            Open Model Explorer
-          </TooltipContent>
-        </Tooltip>
-      </div>
-
-      {showInspectorExpand && (
-        <div className="absolute right-3 top-3 z-20 max-[901px]:hidden">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="bg-panel"
-                aria-label="Expand Object Inspector"
-                aria-controls="object-inspector"
-                aria-expanded="false"
-                onClick={onExpandInspector}
-              >
-                <PanelRightOpen />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="left">
-              Expand Object Inspector
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      )}
-
-      <div className="absolute right-3 top-3 z-20 min-[901px]:hidden">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon"
-              className="bg-panel"
-              aria-label="Open Object Inspector"
-              aria-expanded="false"
-              onClick={onOpenInspector}
-            >
-              <PanelRightOpen />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="left">
-            Open Object Inspector
-          </TooltipContent>
-        </Tooltip>
-      </div>
+      <ViewportSidePanelControls
+        onExpandExplorer={onExpandExplorer}
+        onExpandInspector={onExpandInspector}
+        onOpenExplorer={onOpenExplorer}
+        onOpenInspector={onOpenInspector}
+        showExplorerExpand={showExplorerExpand}
+        showInspectorExpand={showInspectorExpand}
+      />
 
       <div
         className={cn(
@@ -400,25 +234,9 @@ export function Viewport({
         className="absolute inset-0 z-[1] flex items-center justify-center p-10 max-[680px]:p-4"
       >
         {Boolean(viewerInitializationError) && (
-          <div
-            className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-md border border-warning/35 bg-[color-mix(in_oklab,var(--warning)_14%,var(--panel)_86%)] px-2.5 py-1.5 text-[10px] font-medium text-warning-foreground shadow-sm"
-            role="status"
-            aria-live="polite"
-            data-testid="viewer-initialization-error"
-          >
-            <CircleAlert className="size-3.5 text-warning" />
-            <span>Viewer unavailable</span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="compact"
-              onClick={retryViewerInitialization}
-              className="h-6 px-1.5 text-[10px] text-warning-foreground hover:bg-warning/15 hover:text-warning-foreground"
-            >
-              <RefreshCw className="size-3" />
-              Retry
-            </Button>
-          </div>
+          <ViewerInitializationErrorBanner
+            onRetry={retryViewerInitialization}
+          />
         )}
         <svg
           viewBox="0 0 760 620"
@@ -1037,132 +855,14 @@ export function Viewport({
         </svg>
       </div>
 
-      <Card
-        className={cn(
-          "absolute bottom-3 left-3 z-20 max-w-[260px] rounded-md bg-panel shadow-lg",
-          !selectedObjectVisible && "border-border opacity-75",
-          selectedObjectVisible &&
-            selectedIssue.severity === "critical" &&
-            "border-destructive/35",
-          selectedObjectVisible &&
-            selectedIssue.severity === "warning" &&
-            "border-warning/35",
-          selectedObjectVisible &&
-            selectedIssue.severity === "info" &&
-            "border-primary/35",
-        )}
-        data-selected-object-visible={selectedObjectVisible}
-      >
-        <CardContent className="flex items-center gap-2 p-2.5">
-          <span
-            className={cn(
-              "flex size-6 items-center justify-center rounded-sm",
-              !selectedObjectVisible && "bg-muted text-muted-foreground",
-              selectedIssue.severity === "critical" &&
-                selectedObjectVisible &&
-                "bg-destructive/12 text-destructive",
-              selectedIssue.severity === "warning" &&
-                selectedObjectVisible &&
-                "bg-warning/12 text-warning-foreground",
-              selectedIssue.severity === "info" &&
-                selectedObjectVisible &&
-                "bg-primary/12 text-primary",
-            )}
-          >
-            {selectedObjectVisible ? (
-              <ScanLine className="size-3.5" />
-            ) : (
-              <EyeOff className="size-3.5" />
-            )}
-          </span>
-          <div className="min-w-0" data-testid="viewport-selection">
-            <p className="truncate text-[11px] font-semibold">
-              {selectedIssue.object}
-            </p>
-            <p className="truncate text-[9px] text-muted-foreground">
-              {selectedObjectVisible
-                ? `${selectedIssue.code} · ${selectedIssue.location}`
-                : `Selected object hidden by ${selectedDisciplineLabel} visibility`}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <ViewportSelectionCard
+        selectedDisciplineLabel={selectedDisciplineLabel}
+        selectedIssue={selectedIssue}
+        selectedObjectVisible={selectedObjectVisible}
+      />
 
-      <div className="absolute bottom-3 right-3 z-20 flex items-center gap-2 rounded-md border border-border bg-panel px-2.5 py-1.5 text-[9px] text-muted-foreground shadow-md">
-        <Box className="size-3" />
-        <span className="font-mono">Perspective</span>
-        <Separator orientation="vertical" className="h-3" />
-        <span className="font-mono">42.0°</span>
-      </div>
+      <ViewportCameraBadge />
     </section>
-  )
-}
-
-const findingMeta = {
-  duct: {
-    label: "Clash detected",
-    icon: CircleAlert,
-    className: "text-destructive",
-  },
-  door: {
-    label: "Clearance issue",
-    icon: TriangleAlert,
-    className: "text-warning",
-  },
-  damper: {
-    label: "Missing classification",
-    icon: ShieldAlert,
-    className: "text-primary",
-  },
-} satisfies Record<
-  HighlightKind,
-  { label: string; icon: typeof CircleAlert; className: string }
->
-
-function AiFindingButton({
-  issue,
-  selected,
-  onSelect,
-}: {
-  issue: ReviewIssue
-  selected: boolean
-  onSelect: () => void
-}) {
-  const meta = findingMeta[issue.highlight]
-  const Icon = meta.icon
-
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-pressed={selected}
-      className={cn(
-        "grid w-full grid-cols-[24px_minmax(0,1fr)] gap-2 rounded-sm border px-2.5 py-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-        selected
-          ? "border-ai/35 bg-ai/10"
-          : "border-transparent hover:border-border hover:bg-muted",
-      )}
-    >
-      <span className="flex size-6 items-center justify-center rounded-sm bg-background">
-        <Icon className={cn("size-3.5", meta.className)} />
-      </span>
-      <span className="min-w-0">
-        <span className="flex items-center gap-2">
-          <span className="truncate text-[10px] font-semibold">
-            {meta.label}
-          </span>
-          <span className="ml-auto font-mono text-[8px] text-muted-foreground">
-            {issue.code}
-          </span>
-        </span>
-        <span className="mt-1 block truncate text-[9px] text-foreground/80">
-          {issue.title}
-        </span>
-        <span className="mt-1 block truncate font-mono text-[8px] text-muted-foreground">
-          {issue.details.objectId} · {issue.details.level}
-        </span>
-      </span>
-    </button>
   )
 }
 

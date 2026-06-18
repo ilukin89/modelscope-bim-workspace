@@ -20,7 +20,7 @@ export function ViewportToolStatus({
 }: ViewportToolStatusProps) {
   return (
     <div
-      className="absolute left-1/2 top-16 z-20 -translate-x-1/2 rounded-md border border-border bg-panel/95 px-2.5 py-1.5 text-[10px] font-medium text-foreground shadow-md max-[1160px]:static max-[1160px]:self-center max-[1160px]:translate-x-0"
+      className="absolute left-1/2 top-16 z-20 -translate-x-1/2 rounded-md border border-border bg-panel/95 px-2.5 py-1.5 text-[10px] font-medium text-foreground shadow-md max-[1160px]:static max-[1160px]:self-center max-[1160px]:translate-x-0 max-[901px]:hidden"
       role="status"
       data-testid="viewport-tool-feedback"
       data-active-tool={activeTool}

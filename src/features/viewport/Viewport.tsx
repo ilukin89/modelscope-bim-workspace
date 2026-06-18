@@ -8,7 +8,6 @@ import {
   Ruler,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { AiReviewFindingsPopover } from "@/features/viewport/components/AiReviewFindingsPopover"
 import { ViewportModelSvg } from "@/features/viewport/components/ViewportModelSvg"
 import { ViewportSelectionCard } from "@/features/viewport/components/ViewportSelectionCard"
 import { ViewportSidePanelControls } from "@/features/viewport/components/ViewportSidePanelControls"
@@ -22,26 +21,30 @@ import { ViewerInitializationErrorBanner } from "@/features/viewport/components/
 import { ViewportToolbar } from "@/features/viewport/ViewportToolbar"
 import type { ViewportTool } from "@/features/viewport/types"
 import { usePrototypeViewerAdapterLifecycle } from "@/features/viewport/viewer-adapter/usePrototypeViewerAdapterLifecycle"
-import type {
-  FloorName,
-  FloorState,
-  LayerId,
-  ReviewIssue,
-} from "@/types"
+import type { FloorName, FloorState, LayerId, ReviewIssue } from "@/types"
 import { cn } from "@/lib/utils"
 
 interface ViewportProps {
   activeTool: ViewportTool
+  aiReviewEntryState:
+    | "not_scanned"
+    | "scanning"
+    | "scanned_with_findings"
+  aiReviewVisualsActive: boolean
+  compactInspectorOpen: boolean
   floors: FloorState[]
-  issueCount: number
-  issues: ReviewIssue[]
-  onOpenAiReview: () => void
+  modelFocusRequest: {
+    issueId: ReviewIssue["id"]
+    label: string
+    nonce: number
+  } | null
   onExpandExplorer: () => void
-  onExpandInspector: () => void
+  onOpenAiReview: () => void
   onOpenExplorer: () => void
   onOpenInspector: () => void
-  onIssueSelect: (issue: ReviewIssue) => void
+  onScanWithAi: () => void
   onToolChange: (tool: ViewportTool) => void
+  previewActive: boolean
   selectedFloor: FloorName
   selectedIssue: ReviewIssue
   showExplorerExpand: boolean
@@ -51,28 +54,31 @@ interface ViewportProps {
 
 export function Viewport({
   activeTool,
+  aiReviewEntryState,
+  aiReviewVisualsActive,
+  compactInspectorOpen,
   floors,
-  issueCount,
-  issues,
-  onOpenAiReview,
+  modelFocusRequest,
   onExpandExplorer,
-  onExpandInspector,
+  onOpenAiReview,
   onOpenExplorer,
   onOpenInspector,
-  onIssueSelect,
+  onScanWithAi,
   onToolChange,
+  previewActive,
   selectedFloor,
   selectedIssue,
   showExplorerExpand,
   showInspectorExpand,
   visibleLayerIds,
 }: ViewportProps) {
-  const [aiFindingsOpen, setAiFindingsOpen] = useState(false)
   const [viewportFeedback, setViewportFeedback] =
     useState<ViewportFeedback | null>(null)
+  const [modelFocusActive, setModelFocusActive] = useState(false)
   const viewportFeedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   )
+  const modelFocusTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const selectedObjectId = selectedIssue.details.objectId
   const {
     hostRef: viewportHostRef,
@@ -91,28 +97,6 @@ export function Viewport({
   const selectedObjectVisible = visibleLayerIds.includes(
     selectedIssue.discipline,
   )
-  const severityCounts = {
-    critical: issues.filter((issue) => issue.severity === "critical").length,
-    warning: issues.filter((issue) => issue.severity === "warning").length,
-    info: issues.filter((issue) => issue.severity === "info").length,
-  }
-  const severitySummary = [
-    {
-      count: severityCounts.critical,
-      label: "critical",
-      className: "text-destructive",
-    },
-    {
-      count: severityCounts.warning,
-      label: severityCounts.warning === 1 ? "warning" : "warnings",
-      className: "text-warning-foreground",
-    },
-    {
-      count: severityCounts.info,
-      label: "info",
-      className: "text-primary",
-    },
-  ].filter((item) => item.count > 0)
   const selectedDisciplineLabel =
     selectedIssue.discipline.charAt(0).toUpperCase() +
     selectedIssue.discipline.slice(1)
@@ -139,6 +123,9 @@ export function Viewport({
       if (viewportFeedbackTimeout.current) {
         clearTimeout(viewportFeedbackTimeout.current)
       }
+      if (modelFocusTimeout.current) {
+        clearTimeout(modelFocusTimeout.current)
+      }
     },
     [],
   )
@@ -157,43 +144,27 @@ export function Viewport({
     )
   }
 
+  useEffect(() => {
+    if (!modelFocusRequest) {
+      return
+    }
 
+    setModelFocusActive(true)
+    showViewportFeedback(`${modelFocusRequest.label} framed in model`, "frame")
 
-  const openAiReview = () => {
-    showViewportFeedback(
-      `AI Review opened · ${issueCount} findings`,
-      "ai",
+    if (modelFocusTimeout.current) {
+      clearTimeout(modelFocusTimeout.current)
+    }
+    modelFocusTimeout.current = setTimeout(
+      () => setModelFocusActive(false),
+      1800,
     )
-  }
-
-  const selectAiFinding = (issue: ReviewIssue) => {
-    onIssueSelect(issue)
-    onOpenAiReview()
-    setAiFindingsOpen(false)
-  }
+  }, [modelFocusRequest?.nonce])
 
   return (
     <section className="viewport-grid relative min-h-0 min-w-0 overflow-hidden">
       <div className="contents max-[1160px]:absolute max-[1160px]:left-1/2 max-[1160px]:top-3 max-[1160px]:z-20 max-[1160px]:flex max-[1160px]:w-max max-[1160px]:max-w-[calc(100%-24px)] max-[1160px]:-translate-x-1/2 max-[1160px]:flex-col max-[1160px]:items-stretch max-[1160px]:gap-2 max-[760px]:w-[min(288px,calc(100%-24px))]">
         <ViewportToolbar activeTool={activeTool} onToolChange={onToolChange} />
-
-        <div
-          className={cn(
-            "absolute right-3 top-3 z-20 max-[1160px]:static max-[1160px]:w-0 max-[1160px]:min-w-full",
-            showInspectorExpand && "min-[1161px]:right-14",
-          )}
-        >
-          <AiReviewFindingsPopover
-            issueCount={issueCount}
-            issues={issues}
-            onFindingSelect={selectAiFinding}
-            onOpenChange={setAiFindingsOpen}
-            onTriggerClick={openAiReview}
-            open={aiFindingsOpen}
-            selectedIssueId={selectedIssue.id}
-            severitySummary={severitySummary}
-          />
-        </div>
 
         <ViewportToolStatus
           activeTool={activeTool}
@@ -205,10 +176,13 @@ export function Viewport({
       </div>
 
       <ViewportSidePanelControls
+        aiReviewEntryState={aiReviewEntryState}
+        compactInspectorOpen={compactInspectorOpen}
         onExpandExplorer={onExpandExplorer}
-        onExpandInspector={onExpandInspector}
+        onOpenAiReview={onOpenAiReview}
         onOpenExplorer={onOpenExplorer}
         onOpenInspector={onOpenInspector}
+        onScanWithAi={onScanWithAi}
         showExplorerExpand={showExplorerExpand}
         showInspectorExpand={showInspectorExpand}
       />
@@ -251,11 +225,20 @@ export function Viewport({
           selectedIssueHighlight={selectedIssue.highlight}
           selectedIssueObject={selectedIssue.object}
           selectedObjectVisible={selectedObjectVisible}
+          previewActive={previewActive}
+          modelFocusActive={
+            aiReviewVisualsActive &&
+            modelFocusActive &&
+            modelFocusRequest?.issueId === selectedIssue.id
+          }
+          aiReviewVisualsActive={aiReviewVisualsActive}
           structureVisible={structureVisible}
         />
       </div>
 
       <ViewportSelectionCard
+        aiReviewVisualsActive={aiReviewVisualsActive}
+        previewActive={previewActive}
         selectedDisciplineLabel={selectedDisciplineLabel}
         selectedIssue={selectedIssue}
         selectedObjectVisible={selectedObjectVisible}

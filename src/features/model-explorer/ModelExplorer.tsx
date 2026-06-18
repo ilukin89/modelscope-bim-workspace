@@ -6,9 +6,8 @@ import {
   Eye,
   EyeOff,
   Layers3,
-  PanelLeftClose,
 } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { SidePanelGlyph } from "@/components/layout/SidePanelGlyph"
 import { Button } from "@/components/ui/button"
 import {
   Tooltip,
@@ -20,7 +19,6 @@ import type {
   FloorName,
   LayerId,
   LayerState,
-  ReviewIssue,
 } from "@/types"
 import { cn } from "@/lib/utils"
 
@@ -30,11 +28,8 @@ interface ModelExplorerProps {
   floors: FloorState[]
   layers: LayerState[]
   onLayerToggle: (id: LayerId) => void
-  issues: ReviewIssue[]
   selectedFloor: FloorName
   onFloorSelect: (floor: FloorName) => void
-  selectedIssue: ReviewIssue
-  onIssueSelect: (issue: ReviewIssue) => void
   onCollapse?: () => void
   savedViews: string[]
 }
@@ -52,11 +47,8 @@ export function ModelExplorer({
   floors,
   layers,
   onLayerToggle,
-  issues,
   selectedFloor,
   onFloorSelect,
-  selectedIssue,
-  onIssueSelect,
   onCollapse,
   savedViews,
 }: ModelExplorerProps) {
@@ -100,7 +92,7 @@ export function ModelExplorer({
                   aria-expanded="true"
                   onClick={onCollapse}
                 >
-                  <PanelLeftClose className="size-3.5" />
+                  <SidePanelGlyph direction="collapse" side="left" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right">
@@ -211,59 +203,6 @@ export function ModelExplorer({
             </div>
           ),
         )}
-      </ExplorerSection>
-
-      <ExplorerSection
-        icon={CircleDot}
-        title="Open Issues"
-        count={String(issues.length)}
-      >
-        <div className="space-y-1">
-          {issues.map((issue) => (
-            <button
-              type="button"
-              key={issue.id}
-              data-issue={issue.code}
-              onClick={() => onIssueSelect(issue)}
-              aria-pressed={selectedIssue.id === issue.id}
-              className={cn(
-                "w-full rounded-sm border p-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
-                selectedIssue.id === issue.id
-                  ? "border-primary/45 bg-accent"
-                  : "border-transparent hover:border-border hover:bg-muted",
-              )}
-            >
-              <div className="flex items-center gap-1.5">
-                <span
-                  className={cn(
-                    "size-1.5 shrink-0 rounded-full",
-                    issue.severity === "critical" && "bg-destructive",
-                    issue.severity === "warning" && "bg-warning",
-                    issue.severity === "info" && "bg-primary",
-                  )}
-                />
-                <span className="font-mono text-[9px] text-muted-foreground">
-                  {issue.code}
-                </span>
-                <Badge
-                  variant={
-                    issue.severity === "critical"
-                      ? "destructive"
-                      : issue.severity === "warning"
-                        ? "warning"
-                        : "outline"
-                  }
-                  className="ml-auto px-1 py-0 text-[8px] uppercase"
-                >
-                  {issue.severity}
-                </Badge>
-              </div>
-              <p className="mt-1 truncate text-[10px] font-medium">
-                {issue.title}
-              </p>
-            </button>
-          ))}
-        </div>
       </ExplorerSection>
     </aside>
   )

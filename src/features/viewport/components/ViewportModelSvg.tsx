@@ -3,10 +3,13 @@ import type { FloorName, HighlightKind } from "@/types"
 
 interface ViewportModelSvgProps {
   activeTool: ViewportTool
+  aiReviewVisualsActive: boolean
   architectureVisible: boolean
   electricalVisible: boolean
   floorMarkerY: number
   mechanicalVisible: boolean
+  modelFocusActive: boolean
+  previewActive: boolean
   sectionActive: boolean
   selectedDisciplineLabel: string
   selectedFloor: FloorName
@@ -19,10 +22,13 @@ interface ViewportModelSvgProps {
 
 export function ViewportModelSvg({
   activeTool,
+  aiReviewVisualsActive,
   architectureVisible,
   electricalVisible,
   floorMarkerY,
   mechanicalVisible,
+  modelFocusActive,
+  previewActive,
   sectionActive,
   selectedDisciplineLabel,
   selectedFloor,
@@ -450,7 +456,11 @@ export function ViewportModelSvg({
           data-viewport-layer="mechanical"
           data-visible={mechanicalVisible}
           opacity={
-            mechanicalVisible ? (selectedIssueHighlight === "duct" ? 1 : 0.55) : 0
+            mechanicalVisible
+              ? aiReviewVisualsActive && selectedIssueHighlight === "duct"
+                ? 1
+                : 0.55
+              : 0
           }
           className="transition-opacity duration-200"
         >
@@ -501,8 +511,16 @@ export function ViewportModelSvg({
           <circle cx="527" cy="413" r="4" fill="var(--warning)" />
         </g>
 
-        {selectedObjectVisible && (
+        {selectedObjectVisible && aiReviewVisualsActive && (
           <SelectedObjectHighlight kind={selectedIssueHighlight} />
+        )}
+
+        {selectedObjectVisible && aiReviewVisualsActive && previewActive && (
+          <PreviewChangeOverlay kind={selectedIssueHighlight} />
+        )}
+
+        {selectedObjectVisible && aiReviewVisualsActive && modelFocusActive && (
+          <ModelFocusOverlay kind={selectedIssueHighlight} />
         )}
       </g>
 
@@ -715,6 +733,151 @@ function SelectedObjectHighlight({ kind }: { kind: HighlightKind }) {
         strokeWidth="2"
         strokeDasharray="5 5"
       />
+    </g>
+  )
+}
+
+function PreviewChangeOverlay({ kind }: { kind: HighlightKind }) {
+  if (kind === "door") {
+    return (
+      <g data-testid="viewport-preview-change" data-preview-kind="door">
+        <path
+          d="M441 457a62 62 0 0 1 59-65"
+          fill="none"
+          stroke="var(--success)"
+          strokeWidth="3"
+          strokeDasharray="8 5"
+        />
+        <path
+          d="M505 389 498 404 489 391"
+          fill="none"
+          stroke="var(--success)"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <PreviewLabel x={388} y={344} title="Preview" detail="Reverse swing" />
+      </g>
+    )
+  }
+
+  if (kind === "damper") {
+    return (
+      <g data-testid="viewport-preview-change" data-preview-kind="damper">
+        <rect
+          x="342"
+          y="303"
+          width="92"
+          height="78"
+          rx="6"
+          fill="color-mix(in oklab, var(--success) 12%, transparent)"
+          stroke="var(--success)"
+          strokeWidth="2.5"
+          strokeDasharray="7 5"
+        />
+        <path
+          d="M430 320 486 292"
+          fill="none"
+          stroke="var(--success)"
+          strokeWidth="2"
+        />
+        <PreviewLabel x={486} y={260} title="Preview" detail="Assign FD-300" />
+      </g>
+    )
+  }
+
+  return (
+    <g data-testid="viewport-preview-change" data-preview-kind="duct">
+      <path
+        d="M297 347 485 296 532 317 344 371Z"
+        fill="color-mix(in oklab, var(--success) 18%, transparent)"
+        stroke="var(--success)"
+        strokeWidth="3"
+        strokeDasharray="8 5"
+      />
+      <path
+        d="M420 338v42"
+        stroke="var(--success)"
+        strokeWidth="2"
+        strokeDasharray="5 4"
+      />
+      <PreviewLabel x={458} y={374} title="Preview" detail="Shift route" />
+    </g>
+  )
+}
+
+function ModelFocusOverlay({ kind }: { kind: HighlightKind }) {
+  const frame =
+    kind === "door"
+      ? { x: 430, y: 354, width: 78, height: 120, labelX: 508, labelY: 348 }
+      : kind === "damper"
+        ? { x: 334, y: 296, width: 108, height: 92, labelX: 442, labelY: 292 }
+        : { x: 286, y: 260, width: 268, height: 120, labelX: 530, labelY: 350 }
+
+  return (
+    <g data-testid="viewport-model-focus" data-focus-kind={kind}>
+      <rect
+        x={frame.x}
+        y={frame.y}
+        width={frame.width}
+        height={frame.height}
+        rx="8"
+        fill="none"
+        stroke="var(--primary)"
+        strokeWidth="3"
+        strokeDasharray="9 5"
+      />
+      <g transform={`translate(${frame.labelX} ${frame.labelY})`}>
+        <rect
+          width="70"
+          height="24"
+          rx="4"
+          fill="var(--panel)"
+          stroke="var(--primary)"
+          strokeWidth="1.5"
+        />
+        <text
+          x="35"
+          y="15"
+          textAnchor="middle"
+          fill="var(--foreground)"
+          fontSize="9"
+          fontWeight="700"
+        >
+          Focused
+        </text>
+      </g>
+    </g>
+  )
+}
+
+function PreviewLabel({
+  x,
+  y,
+  title,
+  detail,
+}: {
+  x: number
+  y: number
+  title: string
+  detail: string
+}) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <rect
+        width="92"
+        height="38"
+        rx="4"
+        fill="var(--panel)"
+        stroke="var(--success)"
+        strokeWidth="1.5"
+      />
+      <text x="8" y="15" fill="var(--success)" fontSize="9" fontWeight="700">
+        {title}
+      </text>
+      <text x="8" y="29" fill="var(--foreground)" fontSize="9">
+        {detail}
+      </text>
     </g>
   )
 }

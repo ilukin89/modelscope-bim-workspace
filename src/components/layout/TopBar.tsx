@@ -118,12 +118,18 @@ export function TopBar({
         </div>
 
         <div className="ml-1 flex shrink-0 items-center gap-2 max-[1199px]:hidden">
-          <Badge variant="success" className="normal-case tracking-normal">
+          <Badge
+            variant="success"
+            className="!border-0 normal-case tracking-normal dark:!border dark:!border-success/25"
+          >
             <Cloud className="size-3" />
             Synced
             <Check className="size-2.5" />
           </Badge>
-          <Badge variant="warning" className="normal-case tracking-normal">
+          <Badge
+            variant="warning"
+            className="!border-0 normal-case tracking-normal dark:!border dark:!border-warning/25"
+          >
             <TriangleAlert className="size-3" />
             {unresolvedIssues} unresolved
           </Badge>

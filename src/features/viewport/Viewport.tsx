@@ -21,7 +21,13 @@ import { ViewerInitializationErrorBanner } from "@/features/viewport/components/
 import { ViewportToolbar } from "@/features/viewport/ViewportToolbar"
 import type { ViewportTool } from "@/features/viewport/types"
 import { usePrototypeViewerAdapterLifecycle } from "@/features/viewport/viewer-adapter/usePrototypeViewerAdapterLifecycle"
-import type { FloorName, FloorState, LayerId, ReviewIssue } from "@/types"
+import type {
+  FloorName,
+  FloorState,
+  HighlightKind,
+  LayerId,
+  ReviewIssue,
+} from "@/types"
 import { cn } from "@/lib/utils"
 
 interface ViewportProps {
@@ -30,6 +36,8 @@ interface ViewportProps {
     | "not_scanned"
     | "scanning"
     | "scanned_with_findings"
+  aiReviewFindingCount: number
+  aiReviewFindingSpatialCounts: Record<HighlightKind, number>
   aiReviewVisualsActive: boolean
   compactInspectorOpen: boolean
   floors: FloorState[]
@@ -45,6 +53,7 @@ interface ViewportProps {
   onScanWithAi: () => void
   onToolChange: (tool: ViewportTool) => void
   previewActive: boolean
+  selectedAiFindingActive: boolean
   selectedFloor: FloorName
   selectedIssue: ReviewIssue
   showExplorerExpand: boolean
@@ -55,6 +64,8 @@ interface ViewportProps {
 export function Viewport({
   activeTool,
   aiReviewEntryState,
+  aiReviewFindingCount,
+  aiReviewFindingSpatialCounts,
   aiReviewVisualsActive,
   compactInspectorOpen,
   floors,
@@ -66,6 +77,7 @@ export function Viewport({
   onScanWithAi,
   onToolChange,
   previewActive,
+  selectedAiFindingActive,
   selectedFloor,
   selectedIssue,
   showExplorerExpand,
@@ -219,26 +231,32 @@ export function Viewport({
           floorMarkerY={floorMarkerY}
           mechanicalVisible={mechanicalVisible}
           sectionActive={sectionActive}
+          aiReviewFindingCount={aiReviewFindingCount}
+          aiReviewFindingSpatialCounts={aiReviewFindingSpatialCounts}
           selectedDisciplineLabel={selectedDisciplineLabel}
           selectedFloor={selectedFloor}
           selectedFloorIndex={selectedFloorIndex}
           selectedIssueHighlight={selectedIssue.highlight}
           selectedIssueObject={selectedIssue.object}
           selectedObjectVisible={selectedObjectVisible}
-          previewActive={previewActive}
+          previewActive={previewActive && selectedAiFindingActive}
           modelFocusActive={
             aiReviewVisualsActive &&
+            selectedAiFindingActive &&
             modelFocusActive &&
             modelFocusRequest?.issueId === selectedIssue.id
           }
           aiReviewVisualsActive={aiReviewVisualsActive}
+          selectedAiFindingActive={selectedAiFindingActive}
           structureVisible={structureVisible}
         />
       </div>
 
       <ViewportSelectionCard
+        aiReviewFindingCount={aiReviewFindingCount}
         aiReviewVisualsActive={aiReviewVisualsActive}
-        previewActive={previewActive}
+        previewActive={previewActive && selectedAiFindingActive}
+        selectedAiFindingActive={selectedAiFindingActive}
         selectedDisciplineLabel={selectedDisciplineLabel}
         selectedIssue={selectedIssue}
         selectedObjectVisible={selectedObjectVisible}

@@ -29,6 +29,14 @@ export type IssueSeverity = "critical" | "warning" | "info"
 
 export type HighlightKind = "duct" | "door" | "damper"
 
+export type AiFindingType =
+  | "coordination"
+  | "clearance"
+  | "fire-safety"
+  | "annotation"
+
+export type AiFindingGroupingMode = "severity" | "type" | "status"
+
 export interface ObjectGeometry {
   width: string
   height: string
@@ -58,12 +66,18 @@ export interface ReviewIssue {
   location: string
   severity: IssueSeverity
   status: string
+  findingType: AiFindingType
+  initialAiStatus?: AiFindingWorkflowStatus
   discipline: LayerId
   highlight: HighlightKind
   details: ObjectDetails
 }
 
-export type AiFindingWorkflowStatus = "active" | "issue-created" | "dismissed"
+export type AiFindingWorkflowStatus =
+  | "active"
+  | "issue-created"
+  | "dismissed"
+  | "follow-up"
 
 export interface ModelReviewIssue {
   id: string

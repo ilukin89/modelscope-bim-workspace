@@ -3,6 +3,8 @@ import type { FloorName, HighlightKind } from "@/types"
 
 interface ViewportModelSvgProps {
   activeTool: ViewportTool
+  aiReviewFindingCount: number
+  aiReviewFindingSpatialCounts: Record<HighlightKind, number>
   aiReviewVisualsActive: boolean
   architectureVisible: boolean
   electricalVisible: boolean
@@ -16,12 +18,15 @@ interface ViewportModelSvgProps {
   selectedFloorIndex: number
   selectedIssueHighlight: HighlightKind
   selectedIssueObject: string
+  selectedAiFindingActive: boolean
   selectedObjectVisible: boolean
   structureVisible: boolean
 }
 
 export function ViewportModelSvg({
   activeTool,
+  aiReviewFindingCount,
+  aiReviewFindingSpatialCounts,
   aiReviewVisualsActive,
   architectureVisible,
   electricalVisible,
@@ -35,6 +40,7 @@ export function ViewportModelSvg({
   selectedFloorIndex,
   selectedIssueHighlight,
   selectedIssueObject,
+  selectedAiFindingActive,
   selectedObjectVisible,
   structureVisible,
 }: ViewportModelSvgProps) {
@@ -511,17 +517,30 @@ export function ViewportModelSvg({
           <circle cx="527" cy="413" r="4" fill="var(--warning)" />
         </g>
 
-        {selectedObjectVisible && aiReviewVisualsActive && (
+        {aiReviewVisualsActive && aiReviewFindingCount > 0 && (
+          <AiFindingClusterMarkers
+            counts={aiReviewFindingSpatialCounts}
+            selectedKind={
+              selectedAiFindingActive ? selectedIssueHighlight : null
+            }
+          />
+        )}
+
+        {selectedObjectVisible &&
+          aiReviewVisualsActive &&
+          selectedAiFindingActive && (
           <SelectedObjectHighlight kind={selectedIssueHighlight} />
         )}
 
-        {selectedObjectVisible && aiReviewVisualsActive && previewActive && (
-          <PreviewChangeOverlay kind={selectedIssueHighlight} />
-        )}
+        {selectedObjectVisible &&
+          aiReviewVisualsActive &&
+          selectedAiFindingActive &&
+          previewActive && <PreviewChangeOverlay kind={selectedIssueHighlight} />}
 
-        {selectedObjectVisible && aiReviewVisualsActive && modelFocusActive && (
-          <ModelFocusOverlay kind={selectedIssueHighlight} />
-        )}
+        {selectedObjectVisible &&
+          aiReviewVisualsActive &&
+          selectedAiFindingActive &&
+          modelFocusActive && <ModelFocusOverlay kind={selectedIssueHighlight} />}
       </g>
 
       <g
@@ -658,6 +677,126 @@ export function ViewportModelSvg({
         </text>
       </g>
     </svg>
+  )
+}
+
+const clusterMarkerPositions: Record<
+  HighlightKind,
+  { x: number; y: number; label: string }
+> = {
+  duct: { x: 545, y: 288, label: "coordination zone" },
+  door: { x: 504, y: 392, label: "clearance zone" },
+  damper: { x: 338, y: 313, label: "fire safety zone" },
+}
+
+function AiFindingClusterMarkers({
+  counts,
+  selectedKind,
+}: {
+  counts: Record<HighlightKind, number>
+  selectedKind: HighlightKind | null
+}) {
+  return (
+    <g data-testid="viewport-ai-finding-clusters" pointerEvents="none">
+      {(Object.keys(clusterMarkerPositions) as HighlightKind[]).map((kind) => {
+        const count = counts[kind]
+        if (count < 1) {
+          return null
+        }
+
+        const position = clusterMarkerPositions[kind]
+        const selected = selectedKind === kind
+        const contextual = Boolean(selectedKind) && !selected
+
+        return (
+          <g
+            key={kind}
+            transform={`translate(${position.x} ${position.y})`}
+            opacity={contextual ? 0.42 : 1}
+            data-cluster-kind={kind}
+            data-selected-cluster={selected}
+          >
+            <circle
+              r={selected ? 15 : 12}
+              fill={
+                selected
+                  ? "var(--destructive)"
+                  : "color-mix(in oklab, var(--ai) 72%, var(--panel))"
+              }
+              stroke="var(--canvas)"
+              strokeWidth="3"
+            />
+            <text
+              x="0"
+              y="3.5"
+              textAnchor="middle"
+              fill={
+                selected ? "var(--destructive-foreground)" : "var(--foreground)"
+              }
+              fontSize={selected ? "10" : "9"}
+              fontWeight="800"
+              stroke="none"
+            >
+              {count}
+            </text>
+            {!selectedKind && (
+              <ClusterLabel
+                count={count}
+                selected={false}
+                x={16}
+                y={-12}
+              />
+            )}
+            {selected && (
+              <ClusterLabel
+                count={count}
+                selected
+                x={18}
+                y={-13}
+              />
+            )}
+          </g>
+        )
+      })}
+    </g>
+  )
+}
+
+function ClusterLabel({
+  count,
+  selected,
+  x,
+  y,
+}: {
+  count: number
+  selected: boolean
+  x: number
+  y: number
+}) {
+  const label = count === 1 ? "1 finding" : `${count} findings`
+
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <rect
+        width={selected ? 78 : 72}
+        height="24"
+        rx="4"
+        fill="var(--panel)"
+        stroke={selected ? "var(--destructive)" : "var(--ai)"}
+        strokeWidth="1.5"
+      />
+      <text
+        x={selected ? 39 : 36}
+        y="15"
+        textAnchor="middle"
+        fill="var(--foreground)"
+        fontSize="9"
+        fontWeight="700"
+        stroke="none"
+      >
+        {label}
+      </text>
+    </g>
   )
 }
 

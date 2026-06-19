@@ -22,9 +22,11 @@ import type { InspectorTab } from "@/features/object-inspector/types"
 import type { ViewportTool } from "@/features/viewport/types"
 import { cn } from "@/lib/utils"
 import type {
+  AiFindingGroupingMode,
   AiFindingWorkflowStatus,
   AppView,
   FloorName,
+  HighlightKind,
   LayerId,
   LayerState,
   ModelReviewHistoryEvent,
@@ -43,7 +45,34 @@ const getDefaultIssue = (project: typeof initialProject) =>
 const getInitialFindingStatuses = (
   project: typeof initialProject,
 ): Record<ReviewIssue["id"], AiFindingWorkflowStatus> =>
-  Object.fromEntries(project.issues.map((issue) => [issue.id, "active"]))
+  Object.fromEntries(
+    project.issues.map((issue) => [issue.id, issue.initialAiStatus ?? "active"]),
+  )
+
+const getAiFindingGroupKey = (
+  finding: ReviewIssue,
+  mode: AiFindingGroupingMode,
+  statuses: Record<ReviewIssue["id"], AiFindingWorkflowStatus>,
+) => {
+  if (mode === "severity") {
+    return finding.severity
+  }
+
+  if (mode === "type") {
+    return finding.findingType
+  }
+
+  return statuses[finding.id] ?? "active"
+}
+
+const getSpatialFindingCounts = (findings: ReviewIssue[]) =>
+  findings.reduce(
+    (counts, finding) => ({
+      ...counts,
+      [finding.highlight]: counts[finding.highlight] + 1,
+    }),
+    { duct: 0, door: 0, damper: 0 } satisfies Record<HighlightKind, number>,
+  )
 type AiScanStatus =
   | "not_scanned"
   | "scanning"
@@ -54,6 +83,7 @@ interface ProjectAiReviewState {
   previewIssueId: ReviewIssue["id"] | null
   reviewHistory: ModelReviewHistoryEvent[]
   scanStatus: AiScanStatus
+  selectedFindingId: ReviewIssue["id"] | null
 }
 const getInitialProjectAiReviewState = (
   project: typeof initialProject,
@@ -63,6 +93,7 @@ const getInitialProjectAiReviewState = (
   previewIssueId: null,
   reviewHistory: [],
   scanStatus: "not_scanned",
+  selectedFindingId: null,
 })
 const getInitialProjectAiReviewStates = (): Record<
   ProjectId,
@@ -90,6 +121,8 @@ function App() {
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false)
   const [activeInspectorTab, setActiveInspectorTab] =
     useState<InspectorTab>("properties")
+  const [aiFindingGroupingMode, setAiFindingGroupingMode] =
+    useState<AiFindingGroupingMode>("severity")
   const [layers, setLayers] = useState<LayerState[]>(
     cloneLayers(initialProject.layers),
   )
@@ -117,9 +150,15 @@ function App() {
   const aiReviewFindings =
     aiReviewVisualsActive ? selectedProject.issues : []
   const aiFindingStatuses = selectedAiReviewState.findingStatuses
+  const selectedAiFindingId = aiReviewVisualsActive
+    ? selectedAiReviewState.selectedFindingId
+    : null
+  const selectedAiFinding =
+    aiReviewFindings.find((finding) => finding.id === selectedAiFindingId) ??
+    null
   const selectedFindingStatus =
-    aiReviewVisualsActive
-      ? (aiFindingStatuses[selectedIssue.id] ?? "active")
+    aiReviewVisualsActive && selectedAiFindingId
+      ? (aiFindingStatuses[selectedAiFindingId] ?? "active")
       : "active"
   const modelReviewIssues = aiReviewVisualsActive
     ? selectedAiReviewState.modelReviewIssues
@@ -136,7 +175,35 @@ function App() {
     ? selectedAiReviewState.previewIssueId
     : null
   const previewActive =
-    aiReviewVisualsActive && previewIssueId === selectedIssue.id
+    aiReviewVisualsActive &&
+    Boolean(selectedAiFindingId) &&
+    previewIssueId === selectedAiFindingId
+  const aiInspectorReviewWide =
+    activeInspectorTab === "ai" &&
+    aiReviewFindings.length >= 10 &&
+    !inspectorCollapsed
+  const activeAiFindingGroupKey = selectedAiFinding
+    ? getAiFindingGroupKey(
+        selectedAiFinding,
+        aiFindingGroupingMode,
+        aiFindingStatuses,
+      )
+    : null
+  const viewportAiFindingContext = aiReviewVisualsActive
+    ? selectedAiFinding && activeAiFindingGroupKey
+      ? aiReviewFindings.filter(
+          (finding) =>
+            getAiFindingGroupKey(
+              finding,
+              aiFindingGroupingMode,
+              aiFindingStatuses,
+            ) === activeAiFindingGroupKey,
+        )
+      : aiReviewFindings
+    : []
+  const viewportAiFindingCounts = getSpatialFindingCounts(
+    viewportAiFindingContext,
+  )
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode)
@@ -238,6 +305,10 @@ function App() {
 
   const selectAiFinding = (issue: ReviewIssue) => {
     selectIssue(issue)
+    updateSelectedProjectAiReviewState((state) => ({
+      ...state,
+      selectedFindingId: issue.id,
+    }))
     recordHistory(
       "AI finding selected",
       `${issue.code} · ${issue.details.objectId} on ${issue.details.level}`,
@@ -257,6 +328,7 @@ function App() {
     updateSelectedProjectAiReviewState((state) => ({
       ...state,
       previewIssueId: selectedIssue.id,
+      selectedFindingId: selectedIssue.id,
     }))
     recordHistory(
       "Preview opened",
@@ -270,7 +342,6 @@ function App() {
     )
 
     if (existingIssue) {
-      setActiveInspectorTab("issues")
       return
     }
 
@@ -296,10 +367,25 @@ function App() {
       },
       modelReviewIssues: [...state.modelReviewIssues, nextIssue],
     }))
-    setActiveInspectorTab("issues")
     recordHistory(
       "Issue created",
       `${issueId} from ${selectedIssue.code} · ${selectedIssue.details.objectId}`,
+    )
+  }
+
+  const viewCreatedIssueDetails = () => {
+    const existingIssue = selectedAiReviewState.modelReviewIssues.find(
+      (issue) => issue.sourceFindingId === selectedIssue.id,
+    )
+
+    if (!existingIssue) {
+      return
+    }
+
+    setActiveInspectorTab("issues")
+    recordHistory(
+      "Issue details opened",
+      `${existingIssue.id} from ${selectedIssue.code}`,
     )
   }
 
@@ -420,6 +506,25 @@ function App() {
     setModelFocusRequest(null)
   }
 
+  const viewAiFindingInModel = () => {
+    updateSelectedProjectAiReviewState((state) => ({
+      ...state,
+      selectedFindingId: selectedIssue.id,
+    }))
+    setModelFocusRequest({
+      issueId: selectedIssue.id,
+      label: selectedIssue.code,
+      nonce: Date.now(),
+    })
+    if (window.matchMedia("(max-width: 900px)").matches) {
+      setInspectorOpen(false)
+    }
+    recordHistory(
+      "Finding viewed in model",
+      `${selectedIssue.code} · ${selectedIssue.details.objectId}`,
+    )
+  }
+
   const openAiReview = () => {
     setActiveInspectorTab("ai")
     if (window.matchMedia("(max-width: 900px)").matches) {
@@ -457,7 +562,6 @@ function App() {
     }))
 
     aiScanTimeout.current = setTimeout(() => {
-      const defaultIssue = getDefaultIssue(selectedProject)
       updateProjectAiReviewState(selectedProject.id, (state) => {
         const nextFindingStatuses = getInitialFindingStatuses(selectedProject)
         state.modelReviewIssues.forEach((issue) => {
@@ -469,10 +573,9 @@ function App() {
           findingStatuses: nextFindingStatuses,
           previewIssueId: null,
           scanStatus: "scanned_with_findings",
+          selectedFindingId: null,
         }
       })
-      setSelectedIssue(defaultIssue)
-      setSelectedFloor(defaultIssue.details.level)
       openAiReview()
       recordHistory(
         "AI scan completed",
@@ -570,6 +673,7 @@ function App() {
               activeTab={activeInspectorTab}
               aiFindingStatuses={aiFindingStatuses}
               aiFindings={aiReviewFindings}
+              aiGroupingMode={aiFindingGroupingMode}
               aiFindingStatus={selectedFindingStatus}
               aiScanStatus={aiScanStatus}
               focusedModelIssueId={focusedModelIssueId}
@@ -581,15 +685,19 @@ function App() {
               onDismissFinding={dismissAiFinding}
               onDropIssue={dropModelReviewIssue}
               onFindingSelect={selectAiFinding}
+              onGroupingModeChange={setAiFindingGroupingMode}
               onHideIssueFromModel={hideModelReviewIssue}
               onPreviewChange={togglePreviewChange}
               onRescanAi={scanWithAi}
               onRestoreFinding={restoreAiFinding}
               onTabChange={setActiveInspectorTab}
+              onViewFindingInModel={viewAiFindingInModel}
+              onViewCreatedIssueDetails={viewCreatedIssueDetails}
               onViewIssueInModel={viewModelReviewIssue}
               previewActive={previewActive}
               presentation="sheet"
               reviewHistory={reviewHistory}
+              selectedFindingId={selectedAiFindingId}
               selectedObjectVisible={selectedObjectVisible}
               selectedIssue={selectedIssue}
             />
@@ -605,10 +713,14 @@ function App() {
               explorerCollapsed && inspectorCollapsed
                 ? "grid-cols-1"
                 : explorerCollapsed
-                  ? "grid-cols-[minmax(0,1fr)_316px] max-[1160px]:grid-cols-[minmax(0,1fr)_280px] max-[901px]:grid-cols-1"
+                  ? aiInspectorReviewWide
+                    ? "grid-cols-[minmax(0,1fr)_640px] max-[1420px]:grid-cols-[minmax(0,1fr)_460px] max-[1160px]:grid-cols-[minmax(0,1fr)_340px] max-[901px]:grid-cols-1"
+                    : "grid-cols-[minmax(0,1fr)_316px] max-[1160px]:grid-cols-[minmax(0,1fr)_280px] max-[901px]:grid-cols-1"
                   : inspectorCollapsed
                     ? "grid-cols-[248px_minmax(0,1fr)] max-[1160px]:grid-cols-[220px_minmax(0,1fr)] max-[901px]:grid-cols-1"
-                    : "grid-cols-[248px_minmax(0,1fr)_316px] max-[1160px]:grid-cols-[220px_minmax(0,1fr)_280px] max-[901px]:grid-cols-1",
+                    : aiInspectorReviewWide
+                      ? "grid-cols-[248px_minmax(0,1fr)_640px] max-[1420px]:grid-cols-[220px_minmax(0,1fr)_460px] max-[1160px]:grid-cols-[220px_minmax(0,1fr)_340px] max-[901px]:grid-cols-1"
+                      : "grid-cols-[248px_minmax(0,1fr)_316px] max-[1160px]:grid-cols-[220px_minmax(0,1fr)_280px] max-[901px]:grid-cols-1",
             )}
           >
             {!explorerCollapsed && (
@@ -626,6 +738,8 @@ function App() {
             <Viewport
               activeTool={activeTool}
               aiReviewEntryState={aiScanStatus}
+              aiReviewFindingCount={aiReviewFindings.length}
+              aiReviewFindingSpatialCounts={viewportAiFindingCounts}
               aiReviewVisualsActive={aiReviewVisualsActive}
               compactInspectorOpen={inspectorOpen}
               floors={selectedProject.floors}
@@ -637,6 +751,7 @@ function App() {
               onScanWithAi={scanWithAi}
               onToolChange={setActiveTool}
               previewActive={previewActive}
+              selectedAiFindingActive={Boolean(selectedAiFinding)}
               selectedFloor={selectedFloor}
               selectedIssue={selectedIssue}
               showExplorerExpand={explorerCollapsed}
@@ -648,6 +763,7 @@ function App() {
                 activeTab={activeInspectorTab}
                 aiFindingStatuses={aiFindingStatuses}
                 aiFindings={aiReviewFindings}
+                aiGroupingMode={aiFindingGroupingMode}
                 aiFindingStatus={selectedFindingStatus}
                 aiScanStatus={aiScanStatus}
                 focusedModelIssueId={focusedModelIssueId}
@@ -659,14 +775,18 @@ function App() {
                 onDismissFinding={dismissAiFinding}
                 onDropIssue={dropModelReviewIssue}
                 onFindingSelect={selectAiFinding}
+                onGroupingModeChange={setAiFindingGroupingMode}
                 onHideIssueFromModel={hideModelReviewIssue}
                 onPreviewChange={togglePreviewChange}
                 onRescanAi={scanWithAi}
                 onRestoreFinding={restoreAiFinding}
                 onTabChange={setActiveInspectorTab}
+                onViewFindingInModel={viewAiFindingInModel}
+                onViewCreatedIssueDetails={viewCreatedIssueDetails}
                 onViewIssueInModel={viewModelReviewIssue}
                 previewActive={previewActive}
                 reviewHistory={reviewHistory}
+                selectedFindingId={selectedAiFindingId}
                 selectedObjectVisible={selectedObjectVisible}
                 selectedIssue={selectedIssue}
               />

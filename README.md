@@ -2,7 +2,7 @@
 
 ModelScope is a small code-first UI prototype for a professional BIM / 3D model review workspace. It is intentionally a product interface prototype, not a BIM renderer or model-processing engine.
 
-[![Slika-zaslona-2026-06-18-u-22-26-02.png](https://i.postimg.cc/y8vzSP0W/Slika-zaslona-2026-06-18-u-22-26-02.png)](https://postimg.cc/WdFyB0WP)
+[![Slika-zaslona-2026-06-19-u-10-09-21.png](https://i.postimg.cc/sxDZrTVb/Slika-zaslona-2026-06-19-u-10-09-21.png)](https://postimg.cc/S23KL7YG)
 [![Slika-zaslona-2026-06-18-u-22-26-26.png](https://i.postimg.cc/1tNx212Y/Slika-zaslona-2026-06-18-u-22-26-26.png)](https://postimg.cc/PphFv9tm)
 *Drawing Triage workspace with a sample 2D floor plan, candidate review markers, and human-in-the-loop AI observation cards.*
 <br>

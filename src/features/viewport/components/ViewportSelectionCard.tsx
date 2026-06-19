@@ -4,16 +4,20 @@ import type { ReviewIssue } from "@/types"
 import { cn } from "@/lib/utils"
 
 interface ViewportSelectionCardProps {
+  aiReviewFindingCount: number
   aiReviewVisualsActive: boolean
   previewActive: boolean
+  selectedAiFindingActive: boolean
   selectedDisciplineLabel: string
   selectedIssue: ReviewIssue
   selectedObjectVisible: boolean
 }
 
 export function ViewportSelectionCard({
+  aiReviewFindingCount,
   aiReviewVisualsActive,
   previewActive,
+  selectedAiFindingActive,
   selectedDisciplineLabel,
   selectedIssue,
   selectedObjectVisible,
@@ -46,21 +50,27 @@ export function ViewportSelectionCard({
             selectedObjectVisible &&
               !aiReviewVisualsActive &&
               "bg-muted text-muted-foreground",
+            aiReviewVisualsActive &&
+              !selectedAiFindingActive &&
+              "bg-ai/12 text-ai-foreground",
             selectedIssue.severity === "critical" &&
               selectedObjectVisible &&
               aiReviewVisualsActive &&
+              selectedAiFindingActive &&
               "bg-destructive/12 text-destructive",
             selectedIssue.severity === "warning" &&
               selectedObjectVisible &&
               aiReviewVisualsActive &&
+              selectedAiFindingActive &&
               "bg-warning/12 text-warning-foreground",
             selectedIssue.severity === "info" &&
               selectedObjectVisible &&
               aiReviewVisualsActive &&
+              selectedAiFindingActive &&
               "bg-primary/12 text-primary",
           )}
         >
-          {selectedObjectVisible && aiReviewVisualsActive ? (
+          {aiReviewVisualsActive ? (
             <ScanLine className="size-3.5" />
           ) : selectedObjectVisible ? (
             <Box className="size-3.5" />
@@ -70,12 +80,16 @@ export function ViewportSelectionCard({
         </span>
         <div className="min-w-0" data-testid="viewport-selection">
           <p className="truncate text-[11px] font-semibold">
-            {selectedIssue.object}
+            {aiReviewVisualsActive && !selectedAiFindingActive
+              ? "AI review overview"
+              : selectedIssue.object}
           </p>
           <p className="truncate text-[9px] text-muted-foreground">
             {!selectedObjectVisible
               ? `Selected object hidden by ${selectedDisciplineLabel} visibility`
-              : aiReviewVisualsActive
+              : aiReviewVisualsActive && !selectedAiFindingActive
+                ? `${aiReviewFindingCount} findings clustered in model`
+                : aiReviewVisualsActive
                 ? `${previewActive ? "Preview" : selectedIssue.code} · ${
                     selectedIssue.location
                   }`

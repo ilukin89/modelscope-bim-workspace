@@ -4,17 +4,17 @@
 
 :root {
   color-scheme: light;
-  --background: oklch(0.965 0.004 220);
+  --background: oklch(0.96 0.006 220);
   --foreground: oklch(0.235 0.014 220);
-  --panel: oklch(0.985 0.003 220);
-  --panel-subtle: oklch(0.945 0.006 220);
-  --canvas: oklch(0.905 0.008 220);
+  --panel: oklch(0.972 0.005 220);
+  --panel-subtle: oklch(0.948 0.007 220);
+  --canvas: oklch(0.918 0.008 220);
   --canvas-grid: oklch(0.77 0.012 220);
-  --card: oklch(0.99 0.002 220);
+  --card: oklch(0.974 0.004 220);
   --card-foreground: oklch(0.235 0.014 220);
-  --popover: oklch(0.99 0.002 220);
+  --popover: oklch(0.974 0.004 220);
   --popover-foreground: oklch(0.235 0.014 220);
-  --primary: oklch(0.53 0.11 222);
+  --primary: oklch(0.53 0.11 220);
   --primary-foreground: oklch(0.98 0.004 220);
   --secondary: oklch(0.92 0.008 220);
   --secondary-foreground: oklch(0.31 0.015 220);
@@ -28,8 +28,8 @@
   --warning-foreground: oklch(0.43 0.1 65);
   --success: oklch(0.62 0.11 155);
   --success-foreground: oklch(0.37 0.09 155);
-  --ai: oklch(0.59 0.1 190);
-  --ai-foreground: oklch(0.36 0.08 190);
+  --ai: oklch(0.45 0.11 190);
+  --ai-foreground: oklch(0.31 0.08 190);
   --selected: oklch(0.62 0.13 222);
   --border: oklch(0.855 0.008 220);
   --input: oklch(0.855 0.008 220);

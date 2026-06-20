@@ -79,6 +79,11 @@ export type AiFindingWorkflowStatus =
   | "dismissed"
   | "follow-up"
 
+export type AiScanStatus =
+  | "not_scanned"
+  | "scanning"
+  | "scanned_with_findings"
+
 export type ModelReviewIssueStatus = "Open" | "In Review" | "Resolved"
 
 export interface ModelReviewIssue {
@@ -98,6 +103,15 @@ export interface ModelReviewHistoryEvent {
   label: string
   detail: string
   time: string
+}
+
+export interface ProjectAiReviewState {
+  findingStatuses: Record<ReviewIssue["id"], AiFindingWorkflowStatus>
+  modelReviewIssues: ModelReviewIssue[]
+  previewIssueId: ReviewIssue["id"] | null
+  reviewHistory: ModelReviewHistoryEvent[]
+  scanStatus: AiScanStatus
+  selectedFindingId: ReviewIssue["id"] | null
 }
 
 export interface ProjectData {

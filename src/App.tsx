@@ -20,19 +20,21 @@ import {
 import { getProject, projects } from "@/data/projects"
 import type { InspectorTab } from "@/features/object-inspector/types"
 import type { ViewportTool } from "@/features/viewport/types"
+import { getFindingGroupKey } from "@/lib/findingUtils"
 import { cn } from "@/lib/utils"
 import type {
   AiFindingGroupingMode,
   AiFindingWorkflowStatus,
+  AiScanStatus,
   AppView,
   FloorName,
   HighlightKind,
   LayerId,
   LayerState,
-  ModelReviewHistoryEvent,
   ModelReviewIssue,
   ModelReviewIssueStatus,
   ProjectId,
+  ProjectAiReviewState,
   ReviewIssue,
   WorkspaceMode,
 } from "@/types"
@@ -50,22 +52,6 @@ const getInitialFindingStatuses = (
     project.issues.map((issue) => [issue.id, issue.initialAiStatus ?? "active"]),
   )
 
-const getAiFindingGroupKey = (
-  finding: ReviewIssue,
-  mode: AiFindingGroupingMode,
-  statuses: Record<ReviewIssue["id"], AiFindingWorkflowStatus>,
-) => {
-  if (mode === "severity") {
-    return finding.severity
-  }
-
-  if (mode === "type") {
-    return finding.findingType
-  }
-
-  return statuses[finding.id] ?? "active"
-}
-
 const getSpatialFindingCounts = (findings: ReviewIssue[]) =>
   findings.reduce(
     (counts, finding) => ({
@@ -74,18 +60,8 @@ const getSpatialFindingCounts = (findings: ReviewIssue[]) =>
     }),
     { duct: 0, door: 0, damper: 0 } satisfies Record<HighlightKind, number>,
   )
-type AiScanStatus =
-  | "not_scanned"
-  | "scanning"
-  | "scanned_with_findings"
-interface ProjectAiReviewState {
-  findingStatuses: Record<ReviewIssue["id"], AiFindingWorkflowStatus>
-  modelReviewIssues: ModelReviewIssue[]
-  previewIssueId: ReviewIssue["id"] | null
-  reviewHistory: ModelReviewHistoryEvent[]
-  scanStatus: AiScanStatus
-  selectedFindingId: ReviewIssue["id"] | null
-}
+const initialAiScanStatus: AiScanStatus = "not_scanned"
+
 const getInitialProjectAiReviewState = (
   project: typeof initialProject,
 ): ProjectAiReviewState => ({
@@ -93,7 +69,7 @@ const getInitialProjectAiReviewState = (
   modelReviewIssues: [],
   previewIssueId: null,
   reviewHistory: [],
-  scanStatus: "not_scanned",
+  scanStatus: initialAiScanStatus,
   selectedFindingId: null,
 })
 const getInitialProjectAiReviewStates = (): Record<
@@ -184,7 +160,7 @@ function App() {
     aiReviewFindings.length >= 10 &&
     !inspectorCollapsed
   const activeAiFindingGroupKey = selectedAiFinding
-    ? getAiFindingGroupKey(
+    ? getFindingGroupKey(
         selectedAiFinding,
         aiFindingGroupingMode,
         aiFindingStatuses,
@@ -194,7 +170,7 @@ function App() {
     ? selectedAiFinding && activeAiFindingGroupKey
       ? aiReviewFindings.filter(
           (finding) =>
-            getAiFindingGroupKey(
+            getFindingGroupKey(
               finding,
               aiFindingGroupingMode,
               aiFindingStatuses,

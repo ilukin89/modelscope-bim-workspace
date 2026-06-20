@@ -23,11 +23,13 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { InspectorTab } from "@/features/object-inspector/types"
+import { getFindingGroupKey } from "@/lib/findingUtils"
 import { cn } from "@/lib/utils"
 import type {
   AiFindingGroupingMode,
   AiFindingType,
   AiFindingWorkflowStatus,
+  AiScanStatus,
   ModelReviewHistoryEvent,
   ModelReviewIssue,
   ModelReviewIssueStatus,
@@ -40,10 +42,7 @@ interface ObjectInspectorProps {
   aiFindings: ReviewIssue[]
   aiGroupingMode: AiFindingGroupingMode
   aiFindingStatus: AiFindingWorkflowStatus
-  aiScanStatus:
-    | "not_scanned"
-    | "scanning"
-    | "scanned_with_findings"
+  aiScanStatus: AiScanStatus
   focusedModelIssueId: ModelReviewIssue["id"] | null
   issueCount: number
   modelReviewIssues: ModelReviewIssue[]
@@ -204,22 +203,6 @@ const issueFilterOptions = [
   { value: "All", label: "All" },
   ...modelReviewIssueStatuses.map((status) => ({ value: status, label: status })),
 ] satisfies { value: ModelReviewIssueFilter; label: string }[]
-
-function getFindingGroupKey(
-  finding: ReviewIssue,
-  mode: AiFindingGroupingMode,
-  statuses: Record<ReviewIssue["id"], AiFindingWorkflowStatus>,
-) {
-  if (mode === "severity") {
-    return finding.severity
-  }
-
-  if (mode === "type") {
-    return finding.findingType
-  }
-
-  return statuses[finding.id] ?? "active"
-}
 
 function getGroupingConfig(mode: AiFindingGroupingMode) {
   if (mode === "severity") {

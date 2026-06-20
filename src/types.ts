@@ -79,13 +79,15 @@ export type AiFindingWorkflowStatus =
   | "dismissed"
   | "follow-up"
 
+export type ModelReviewIssueStatus = "Open" | "In Review" | "Resolved"
+
 export interface ModelReviewIssue {
   id: string
   title: string
   relatedObject: string
   relatedLevel: FloorName
   priority: IssueSeverity
-  status: "Open"
+  status: ModelReviewIssueStatus
   sourceFindingId: ReviewIssue["id"]
   sourceFindingCode: ReviewIssue["code"]
   sourceIssue: ReviewIssue

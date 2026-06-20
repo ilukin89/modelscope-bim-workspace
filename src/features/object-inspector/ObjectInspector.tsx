@@ -30,6 +30,7 @@ import type {
   AiFindingWorkflowStatus,
   ModelReviewHistoryEvent,
   ModelReviewIssue,
+  ModelReviewIssueStatus,
   ReviewIssue,
 } from "@/types"
 
@@ -63,6 +64,10 @@ interface ObjectInspectorProps {
   onRescanAi: () => void
   onRestoreFinding: () => void
   onTabChange: (tab: InspectorTab) => void
+  onUpdateIssueStatus: (
+    id: ModelReviewIssue["id"],
+    status: ModelReviewIssueStatus,
+  ) => void
   onViewFindingInModel: () => void
   onViewCreatedIssueDetails: () => void
   onViewIssueInModel: (issue: ModelReviewIssue) => void
@@ -176,6 +181,30 @@ const statusLabel: Record<AiFindingWorkflowStatus, string> = {
   "follow-up": "Follow-up",
 }
 
+const modelReviewIssueStatuses = [
+  "Open",
+  "In Review",
+  "Resolved",
+] as const satisfies readonly ModelReviewIssueStatus[]
+
+type ModelReviewIssueFilter = "All" | ModelReviewIssueStatus
+type ModelReviewIssueSort =
+  | "status-priority"
+  | "newest-first"
+  | "source-id"
+
+const modelReviewIssueStatusPriority: Record<ModelReviewIssueStatus, number> =
+  {
+    Open: 0,
+    "In Review": 1,
+    Resolved: 2,
+  }
+
+const issueFilterOptions = [
+  { value: "All", label: "All" },
+  ...modelReviewIssueStatuses.map((status) => ({ value: status, label: status })),
+] satisfies { value: ModelReviewIssueFilter; label: string }[]
+
 function getFindingGroupKey(
   finding: ReviewIssue,
   mode: AiFindingGroupingMode,
@@ -231,6 +260,7 @@ export function ObjectInspector({
   onRescanAi,
   onRestoreFinding,
   onTabChange,
+  onUpdateIssueStatus,
   onViewFindingInModel,
   onViewCreatedIssueDetails,
   onViewIssueInModel,
@@ -242,6 +272,10 @@ export function ObjectInspector({
   const [openFindingGroups, setOpenFindingGroups] = useState(
     defaultOpenFindingGroups,
   )
+  const [issueStatusFilter, setIssueStatusFilter] =
+    useState<ModelReviewIssueFilter>("All")
+  const [issueSort, setIssueSort] =
+    useState<ModelReviewIssueSort>("status-priority")
   const details = selectedIssue.details
   const properties = [
     ["Category", details.category],
@@ -275,6 +309,60 @@ export function ObjectInspector({
   const findingDismissed = aiFindingStatus === "dismissed"
   const issueCreated = aiFindingStatus === "issue-created"
   const findingNeedsReview = !findingDismissed && !issueCreated
+  const issueCounts = useMemo(
+    () => ({
+      All: modelReviewIssues.length,
+      Open: modelReviewIssues.filter((issue) => issue.status === "Open").length,
+      "In Review": modelReviewIssues.filter(
+        (issue) => issue.status === "In Review",
+      ).length,
+      Resolved: modelReviewIssues.filter((issue) => issue.status === "Resolved")
+        .length,
+    }),
+    [modelReviewIssues],
+  )
+  const filteredModelReviewIssues = useMemo(() => {
+    const filteredIssues = modelReviewIssues.filter(
+      (issue) => issueStatusFilter === "All" || issue.status === issueStatusFilter,
+    )
+
+    return [...filteredIssues].sort((firstIssue, secondIssue) => {
+      if (issueSort === "status-priority") {
+        return (
+          modelReviewIssueStatusPriority[firstIssue.status] -
+          modelReviewIssueStatusPriority[secondIssue.status]
+        )
+      }
+
+      if (issueSort === "newest-first") {
+        const firstIssueNumber = Number(firstIssue.id.match(/\d+$/)?.[0])
+        const secondIssueNumber = Number(secondIssue.id.match(/\d+$/)?.[0])
+
+        if (Number.isFinite(firstIssueNumber) && Number.isFinite(secondIssueNumber)) {
+          return secondIssueNumber - firstIssueNumber
+        }
+
+        return secondIssue.id.localeCompare(firstIssue.id)
+      }
+
+      const firstSourceId =
+        firstIssue.sourceFindingCode || firstIssue.sourceFindingId
+      const secondSourceId =
+        secondIssue.sourceFindingCode || secondIssue.sourceFindingId
+
+      if (!firstSourceId || !secondSourceId) {
+        return 0
+      }
+
+      return firstSourceId.localeCompare(secondSourceId)
+    })
+  }, [issueSort, issueStatusFilter, modelReviewIssues])
+  const filteredIssueEmptyMessage =
+    issueStatusFilter === "Open"
+      ? "No open issues."
+      : issueStatusFilter === "In Review"
+        ? "No issues in review."
+        : "No resolved issues."
   const findingGroups = useMemo(() => {
     const config = getGroupingConfig(aiGroupingMode)
 
@@ -379,7 +467,10 @@ export function ObjectInspector({
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="properties" className="scrollbar-thin overflow-y-auto">
+        <TabsContent
+          value="properties"
+          className="scrollbar-thin overflow-y-auto"
+        >
           <InspectorHeading
             open={identityOpen}
             title="Identity data"
@@ -424,20 +515,76 @@ export function ObjectInspector({
           )}
         </TabsContent>
 
-        <TabsContent value="issues" className="scrollbar-thin overflow-y-auto p-2">
+        <TabsContent
+          value="issues"
+          className="scrollbar-thin overflow-y-auto p-2"
+        >
           {modelReviewIssues.length > 0 ? (
-            <div className="space-y-1.5">
-              {modelReviewIssues.map((issue) => (
-                <ModelReviewIssueCard
-                  key={issue.id}
-                  issue={issue}
-                  focusedInModel={focusedModelIssueId === issue.id}
-                  selected={issue.sourceFindingId === selectedIssue.id}
-                  onHideFromModel={() => onHideIssueFromModel(issue)}
-                  onViewInModel={() => onViewIssueInModel(issue)}
-                />
-              ))}
-            </div>
+            <>
+              <div className="mb-2 space-y-1.5 px-0.5">
+                <div className="flex flex-wrap gap-1" aria-label="Filter issues by status">
+                  {issueFilterOptions.map((filter) => {
+                    const active = issueStatusFilter === filter.value
+
+                    return (
+                      <Button
+                        key={filter.value}
+                        type="button"
+                        size="compact"
+                        variant={active ? "outline" : "ghost"}
+                        aria-pressed={active}
+                        className={cn(
+                          "h-6 rounded-sm px-1.5 text-[9px]",
+                          active
+                            ? "border-primary/35 bg-primary/8 text-primary shadow-none hover:border-primary/45 hover:bg-primary/12 hover:text-primary dark:border-primary/45 dark:bg-primary/14"
+                            : "text-muted-foreground hover:bg-muted/45 hover:text-foreground",
+                        )}
+                        onClick={() => setIssueStatusFilter(filter.value)}
+                      >
+                        <span>{filter.label}</span>
+                        <span className="font-mono text-[8px] opacity-80">
+                          {issueCounts[filter.value]}
+                        </span>
+                      </Button>
+                    )
+                  })}
+                </div>
+                <label className="flex items-center gap-1.5 text-[9px] text-muted-foreground">
+                  <span>Sort</span>
+                  <select
+                    value={issueSort}
+                    onChange={(event) =>
+                      setIssueSort(event.target.value as ModelReviewIssueSort)
+                    }
+                    className="h-6 min-w-0 rounded-sm border border-border/30 bg-background px-1.5 text-[9px] text-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring dark:border-border dark:bg-panel"
+                    aria-label="Sort model review issues"
+                  >
+                    <option value="status-priority">Status priority</option>
+                    <option value="newest-first">Newest first</option>
+                    <option value="source-id">Source ID</option>
+                  </select>
+                </label>
+              </div>
+              {filteredModelReviewIssues.length > 0 ? (
+                <div className="space-y-1.5">
+                  {filteredModelReviewIssues.map((issue) => (
+                    <ModelReviewIssueCard
+                      key={issue.id}
+                      issue={issue}
+                      focusedInModel={focusedModelIssueId === issue.id}
+                      selected={issue.sourceFindingId === selectedIssue.id}
+                      onHideFromModel={() => onHideIssueFromModel(issue)}
+                      onUpdateIssueStatus={onUpdateIssueStatus}
+                      onViewInModel={() => onViewIssueInModel(issue)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-md border border-dashed border-border/18 bg-muted/8 p-3 text-[10px] text-muted-foreground dark:border-border dark:bg-transparent">
+                  {filteredIssueEmptyMessage}
+                </div>
+              )}
+            </>
           ) : (
             <div className="rounded-md border border-dashed border-border/18 bg-muted/8 p-3 text-[10px] text-muted-foreground dark:border-border dark:bg-transparent">
               Created Model Review issues will appear here.
@@ -445,7 +592,10 @@ export function ObjectInspector({
           )}
         </TabsContent>
 
-        <TabsContent value="ai" className="min-h-0 overflow-hidden p-0">
+        <TabsContent
+          value="ai"
+          className="min-h-0 overflow-hidden p-0"
+        >
           <div className="flex h-full min-h-0 flex-col overflow-hidden">
             {hasAiFindings ? (
               <>
@@ -861,7 +1011,10 @@ export function ObjectInspector({
           </div>
         </TabsContent>
 
-        <TabsContent value="history" className="scrollbar-thin overflow-y-auto p-3">
+        <TabsContent
+          value="history"
+          className="scrollbar-thin overflow-y-auto p-3"
+        >
           {reviewHistory.length > 0 ? (
             <div className="space-y-4">
               {reviewHistory.map((event) => (
@@ -921,23 +1074,35 @@ function ModelReviewIssueCard({
   issue,
   selected,
   onHideFromModel,
+  onUpdateIssueStatus,
   onViewInModel,
 }: {
   focusedInModel: boolean
   issue: ModelReviewIssue
   selected: boolean
   onHideFromModel: () => void
+  onUpdateIssueStatus: (
+    id: ModelReviewIssue["id"],
+    status: ModelReviewIssueStatus,
+  ) => void
   onViewInModel: () => void
 }) {
+  const lifecycleAction =
+    issue.status === "Open"
+      ? { label: "Send for Review", nextStatus: "In Review" as const }
+      : issue.status === "In Review"
+        ? { label: "Mark Resolved", nextStatus: "Resolved" as const }
+        : { label: "Reopen", nextStatus: "Open" as const }
+
   return (
     <div
       className={cn(
-        "rounded-md border p-2.5 shadow-[0_1px_0_color-mix(in_oklab,var(--foreground)_4%,transparent)]",
+        "rounded-md border p-2.5 shadow-[0_1px_0_color-mix(in_oklab,var(--foreground)_4%,transparent)] transition-colors duration-150",
         focusedInModel
-          ? "border-primary/34 bg-primary/12 dark:border-primary/50 dark:bg-primary/16"
+          ? "border-primary/34 bg-primary/12 hover:border-primary/50 hover:bg-primary/16 dark:border-primary/50 dark:bg-primary/16 dark:hover:border-primary/60 dark:hover:bg-primary/22"
           : selected
-            ? "border-primary/28 bg-accent/52 dark:border-primary/45 dark:bg-accent"
-            : "border-border/22 bg-panel/95 dark:border-border dark:bg-panel",
+            ? "border-primary/28 bg-accent/52 hover:border-primary/36 hover:bg-primary/8 dark:border-primary/45 dark:bg-accent dark:hover:border-primary/55 dark:hover:bg-primary/12"
+            : "border-border/22 bg-panel/95 hover:border-primary/32 hover:bg-primary/[0.035] dark:border-border dark:bg-panel dark:hover:border-primary/45 dark:hover:bg-primary/8",
       )}
     >
       <div className="flex items-center gap-2">
@@ -952,9 +1117,23 @@ function ModelReviewIssueCard({
         >
           {issue.id}
         </Badge>
-        <span className="ml-auto text-[9px] text-muted-foreground">
-          {focusedInModel ? "Shown in model" : issue.status}
-        </span>
+        <Badge
+          variant={
+            issue.status === "Open"
+              ? "warning"
+              : issue.status === "In Review"
+                ? "default"
+                : "success"
+          }
+          className="text-[8px]"
+        >
+          {issue.status}
+        </Badge>
+        {focusedInModel && (
+          <span className="ml-auto text-[9px] text-muted-foreground">
+            Shown in model
+          </span>
+        )}
       </div>
       <p className="mt-2 text-[11px] font-medium">{issue.title}</p>
       <dl className="mt-2 grid grid-cols-[74px_minmax(0,1fr)] gap-x-2 gap-y-1 text-[9px]">
@@ -990,6 +1169,17 @@ function ModelReviewIssueCard({
         >
           <EyeOff className="size-3" />
           Hide from model
+        </Button>
+        <Button
+          type="button"
+          size="compact"
+          variant={issue.status === "Resolved" ? "outline" : "default"}
+          className="col-span-2 w-full justify-center"
+          onClick={() =>
+            onUpdateIssueStatus(issue.id, lifecycleAction.nextStatus)
+          }
+        >
+          {lifecycleAction.label}
         </Button>
       </div>
     </div>

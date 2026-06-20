@@ -31,6 +31,7 @@ import type {
   LayerState,
   ModelReviewHistoryEvent,
   ModelReviewIssue,
+  ModelReviewIssueStatus,
   ProjectId,
   ReviewIssue,
   WorkspaceMode,
@@ -373,6 +374,42 @@ function App() {
     )
   }
 
+  const updateModelReviewIssueStatus = (
+    issueId: ModelReviewIssue["id"],
+    nextStatus: ModelReviewIssueStatus,
+  ) => {
+    const issue = selectedAiReviewState.modelReviewIssues.find(
+      (modelReviewIssue) => modelReviewIssue.id === issueId,
+    )
+
+    if (!issue || issue.status === nextStatus) {
+      return
+    }
+
+    const historyLabel =
+      issue.status === "Open" && nextStatus === "In Review"
+        ? "Issue sent for review"
+        : issue.status === "In Review" && nextStatus === "Resolved"
+          ? "Issue resolved"
+          : issue.status === "Resolved" && nextStatus === "Open"
+            ? "Issue reopened"
+            : null
+
+    if (!historyLabel) {
+      return
+    }
+
+    updateSelectedProjectAiReviewState((state) => ({
+      ...state,
+      modelReviewIssues: state.modelReviewIssues.map((modelReviewIssue) =>
+        modelReviewIssue.id === issueId
+          ? { ...modelReviewIssue, status: nextStatus }
+          : modelReviewIssue,
+      ),
+    }))
+    recordHistory(historyLabel, `${issue.id} · ${issue.title}`)
+  }
+
   const viewCreatedIssueDetails = () => {
     const existingIssue = selectedAiReviewState.modelReviewIssues.find(
       (issue) => issue.sourceFindingId === selectedIssue.id,
@@ -691,6 +728,7 @@ function App() {
               onRescanAi={scanWithAi}
               onRestoreFinding={restoreAiFinding}
               onTabChange={setActiveInspectorTab}
+              onUpdateIssueStatus={updateModelReviewIssueStatus}
               onViewFindingInModel={viewAiFindingInModel}
               onViewCreatedIssueDetails={viewCreatedIssueDetails}
               onViewIssueInModel={viewModelReviewIssue}
@@ -709,7 +747,7 @@ function App() {
             id="workspace-content"
             aria-label="Model Review workspace"
             className={cn(
-              "grid min-h-0 flex-1 overflow-hidden max-[901px]:grid-cols-1",
+              "grid min-h-0 flex-1 overflow-hidden transition-[grid-template-columns] duration-200 ease-out motion-reduce:transition-none max-[901px]:grid-cols-1",
               explorerCollapsed && inspectorCollapsed
                 ? "grid-cols-1"
                 : explorerCollapsed
@@ -781,6 +819,7 @@ function App() {
                 onRescanAi={scanWithAi}
                 onRestoreFinding={restoreAiFinding}
                 onTabChange={setActiveInspectorTab}
+                onUpdateIssueStatus={updateModelReviewIssueStatus}
                 onViewFindingInModel={viewAiFindingInModel}
                 onViewCreatedIssueDetails={viewCreatedIssueDetails}
                 onViewIssueInModel={viewModelReviewIssue}

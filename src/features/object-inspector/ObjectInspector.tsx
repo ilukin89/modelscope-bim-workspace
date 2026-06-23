@@ -21,6 +21,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ModelReviewIssuesPanel } from "@/features/object-inspector/components/ModelReviewIssuesPanel"
+import { aiReviewContent } from "@/features/object-inspector/data/aiReviewContent"
 import type { InspectorTab } from "@/features/object-inspector/types"
 import { getFindingGroupKey } from "@/lib/findingUtils"
 import { cn } from "@/lib/utils"
@@ -43,7 +44,6 @@ interface ObjectInspectorProps {
   aiFindingStatus: AiFindingWorkflowStatus
   aiScanStatus: AiScanStatus
   focusedModelIssueId: ModelReviewIssue["id"] | null
-  issueCount: number
   modelReviewIssues: ModelReviewIssue[]
   onCreateIssue: () => void
   onClearScanResults: () => void
@@ -70,39 +70,6 @@ interface ObjectInspectorProps {
   onViewCreatedIssueDetails: () => void
   onViewIssueInModel: (issue: ModelReviewIssue) => void
   selectedFindingId: ReviewIssue["id"] | null
-}
-
-const reviewContent = {
-  duct: {
-    suggestion:
-      "Shift this duct 180 mm south and lower it by 60 mm. The proposed route preserves the required beam clearance and avoids the cable tray in Zone C.",
-    confidence: 86,
-    checks: [
-      ["Clash detection", "1 hard clash found", true],
-      ["Access clearance", "600 mm maintained", false],
-      ["System continuity", "No breaks detected", false],
-    ] as const,
-  },
-  door: {
-    suggestion:
-      "Reverse the door swing and move the frame 120 mm east. This restores the required 900 mm clear opening without changing the corridor wall.",
-    confidence: 79,
-    checks: [
-      ["Clear opening", "842 mm available", true],
-      ["Swing conflict", "Furniture zone detected", true],
-      ["Fire compartment", "EI30 requirement maintained", false],
-    ] as const,
-  },
-  damper: {
-    suggestion:
-      "Assign the FD-300 fire-damper type and link it to the Level 07 smoke extract system before the next coordination issue.",
-    confidence: 91,
-    checks: [
-      ["Classification", "Fire rating is missing", true],
-      ["System continuity", "Smoke extract connected", false],
-      ["Access clearance", "Inspection zone maintained", false],
-    ] as const,
-  },
 }
 
 const findingSeverityMeta = {
@@ -199,7 +166,6 @@ export function ObjectInspector({
   aiFindingStatus,
   aiScanStatus,
   focusedModelIssueId,
-  issueCount,
   modelReviewIssues,
   onCreateIssue,
   onClearScanResults,
@@ -250,7 +216,7 @@ export function ObjectInspector({
   const selectedFinding =
     aiFindings.find((finding) => finding.id === selectedFindingId) ?? null
   const activeReview = selectedFinding
-    ? reviewContent[selectedFinding.highlight]
+    ? aiReviewContent[selectedFinding.highlight]
     : null
   const selectedDisciplineLabel =
     selectedIssue.discipline.charAt(0).toUpperCase() +
@@ -362,7 +328,9 @@ export function ObjectInspector({
       >
         <TabsList className="grid grid-cols-4 border-border/30 bg-panel/95 dark:border-border dark:bg-panel">
           <TabsTrigger value="properties">Properties</TabsTrigger>
-          <TabsTrigger value="issues">Issues {issueCount}</TabsTrigger>
+          <TabsTrigger value="issues">
+            Issues {modelReviewIssues.length}
+          </TabsTrigger>
           <TabsTrigger value="ai">AI Review</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>

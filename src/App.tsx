@@ -306,7 +306,6 @@ function App() {
               aiFindingStatus={selectedFindingStatus}
               aiScanStatus={aiScanStatus}
               focusedModelIssueId={focusedModelIssueId}
-              issueCount={modelReviewIssues.length}
               modelReviewIssues={modelReviewIssues}
               onCreateIssue={createModelReviewIssue}
               onClearScanResults={clearAiScanResults}
@@ -397,7 +396,6 @@ function App() {
                 aiFindingStatus={selectedFindingStatus}
                 aiScanStatus={aiScanStatus}
                 focusedModelIssueId={focusedModelIssueId}
-                issueCount={modelReviewIssues.length}
                 modelReviewIssues={modelReviewIssues}
                 onCreateIssue={createModelReviewIssue}
                 onClearScanResults={clearAiScanResults}

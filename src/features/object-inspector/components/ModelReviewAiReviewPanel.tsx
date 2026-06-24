@@ -141,6 +141,7 @@ export function ModelReviewAiReviewPanel({
 }: ModelReviewAiReviewPanelProps) {
   const [compactDetailOpen, setCompactDetailOpen] = useState(false)
   const [openFindingGroups, setOpenFindingGroups] = useState(defaultOpenFindingGroups)
+  const [clearAiFindingsDialogOpen, setClearAiFindingsDialogOpen] = useState(false)
   const [removeIssueDialogOpen, setRemoveIssueDialogOpen] = useState(false)
   const selectedFinding = aiFindings.find((finding) => finding.id === selectedFindingId) ?? null
   const activeReview = selectedFinding ? aiReviewContent[selectedFinding.highlight] : null
@@ -188,7 +189,7 @@ export function ModelReviewAiReviewPanel({
             <div className="flex items-start gap-2">
               <div className="min-w-0 flex-1"><p className="text-[11px] font-semibold">AI Review Queue</p><p className="mt-0.5 text-[9px] text-muted-foreground">{aiFindings.length} findings</p></div>
               <div className="flex shrink-0 gap-1">
-                <Button type="button" variant="ghost" size="compact" className="h-6 px-1.5 text-[9px] text-muted-foreground hover:bg-muted/25 hover:text-foreground dark:hover:bg-muted/50" onClick={onClearScanResults} disabled={aiScanning}>Clear AI findings</Button>
+                <Button type="button" variant="ghost" size="compact" className="h-6 px-1.5 text-[9px] text-muted-foreground hover:bg-muted/25 hover:text-foreground dark:hover:bg-muted/50" onClick={() => setClearAiFindingsDialogOpen(true)} disabled={aiScanning}>Clear AI findings</Button>
                 <Button type="button" variant="outline" size="compact" className="h-6 border-ai/35 bg-ai/10 px-1.5 text-[9px] text-ai-foreground hover:border-ai/45 hover:bg-ai/16 hover:text-ai-foreground" onClick={onRescanAi} disabled={aiScanning}>{aiScanning ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}Rescan</Button>
               </div>
             </div>
@@ -220,6 +221,28 @@ export function ModelReviewAiReviewPanel({
           </div>
         </>
       ) : <div className="p-3"><div className="rounded-md border border-dashed border-border/18 bg-muted/8 p-3 dark:border-border dark:bg-transparent"><div className="flex items-start" aria-live={aiScanning ? "polite" : undefined}><div className="min-w-0 flex-1"><p className="text-[10px] font-medium">{aiScanning ? "Scanning model..." : "No AI scan has been run for this project yet."}</p><p className="mt-1 text-[9px] leading-relaxed text-muted-foreground">AI findings, issue actions, and review history appear after the mock scan completes.</p><Button type="button" variant="outline" size="compact" className="mt-2 w-full justify-center border-ai/35 bg-ai/10 text-ai-foreground hover:border-ai/45 hover:bg-ai/16 hover:text-ai-foreground" onClick={onRescanAi} disabled={aiScanning}>{aiScanning ? <Loader2 className="size-3 animate-spin" /> : <ScanSearch className="size-3" />}{aiScanning ? "Scanning..." : "Scan with AI"}</Button></div></div></div></div>}
+      <AlertDialog
+        open={clearAiFindingsDialogOpen}
+        onOpenChange={setClearAiFindingsDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear AI findings?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will reset the current AI Review findings, created issues and review history for this project. This cannot be undone in this prototype.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={onClearScanResults}
+            >
+              Clear findings
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog
         open={removeIssueDialogOpen}
         onOpenChange={setRemoveIssueDialogOpen}

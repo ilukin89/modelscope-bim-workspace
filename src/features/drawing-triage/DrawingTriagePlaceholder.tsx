@@ -319,6 +319,7 @@ export function DrawingTriagePlaceholder() {
   )
   const [pendingPanelFocus, setPendingPanelFocus] =
     useState<PendingPanelFocus | null>(null)
+  const [changeDrawingDialogOpen, setChangeDrawingDialogOpen] = useState(false)
   const [removeDrawingDialogOpen, setRemoveDrawingDialogOpen] = useState(false)
   const [issuePendingRemoval, setIssuePendingRemoval] =
     useState<CandidateId | null>(null)
@@ -595,6 +596,10 @@ export function DrawingTriagePlaceholder() {
     setTriageStage("empty")
   }
 
+  function requestChangeDrawing() {
+    setChangeDrawingDialogOpen(true)
+  }
+
   function removeDrawing() {
     resetReviewState()
     setDrawingSource(null)
@@ -646,7 +651,7 @@ export function DrawingTriagePlaceholder() {
                   variant="outline"
                   size="compact"
                   className="h-7 rounded-md px-2 text-[10px]"
-                  onClick={changeDrawing}
+                  onClick={requestChangeDrawing}
                 >
                   Change drawing
                 </Button>
@@ -759,7 +764,7 @@ export function DrawingTriagePlaceholder() {
         onUseSampleDrawing={selectDrawingSource}
         onSelectMockFile={selectDrawingSource}
         onRunTriage={runTriage}
-        onChangeDrawing={changeDrawing}
+        onChangeDrawing={requestChangeDrawing}
       />
     )
   }
@@ -820,7 +825,7 @@ export function DrawingTriagePlaceholder() {
                   variant="ghost"
                   size="compact"
                   className="h-7 rounded-md px-1.5 text-[10px] shadow-none"
-                  onClick={changeDrawing}
+                  onClick={requestChangeDrawing}
                 >
                   Change
                 </Button>
@@ -1594,6 +1599,25 @@ export function DrawingTriagePlaceholder() {
       </aside>
 
       </main>
+      <AlertDialog
+        open={changeDrawingDialogOpen}
+        onOpenChange={setChangeDrawingDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Change drawing?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will clear the current drawing, local triage results, created issues and follow-up state before returning to drawing selection. This cannot be undone in this prototype.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={changeDrawing}>
+              Change drawing
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog
       open={removeDrawingDialogOpen}
       onOpenChange={setRemoveDrawingDialogOpen}

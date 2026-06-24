@@ -132,6 +132,14 @@ export const candidates: Candidate[] = [
   },
 ]
 
+export const candidateTypeCounts = candidates.reduce<Record<CandidateType, number>>(
+  (counts, candidate) => ({
+    ...counts,
+    [candidate.type]: counts[candidate.type] + 1,
+  }),
+  { Clearance: 0, Annotation: 0, Coordination: 0 },
+)
+
 export const initialReviewStates: Record<CandidateId, CandidateReviewState> =
   Object.fromEntries(
     candidates.map((candidate) => [

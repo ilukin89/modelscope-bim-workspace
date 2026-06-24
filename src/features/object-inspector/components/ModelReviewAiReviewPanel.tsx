@@ -15,6 +15,16 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { aiReviewContent } from "@/features/object-inspector/data/aiReviewContent"
@@ -131,6 +141,7 @@ export function ModelReviewAiReviewPanel({
 }: ModelReviewAiReviewPanelProps) {
   const [compactDetailOpen, setCompactDetailOpen] = useState(false)
   const [openFindingGroups, setOpenFindingGroups] = useState(defaultOpenFindingGroups)
+  const [removeIssueDialogOpen, setRemoveIssueDialogOpen] = useState(false)
   const selectedFinding = aiFindings.find((finding) => finding.id === selectedFindingId) ?? null
   const activeReview = selectedFinding ? aiReviewContent[selectedFinding.highlight] : null
   const existingIssue = modelReviewIssues.find((issue) => issue.sourceFindingId === selectedFinding?.id)
@@ -202,13 +213,35 @@ export function ModelReviewAiReviewPanel({
                   {existingIssue && <p className="mt-2 font-mono text-[9px] text-muted-foreground">Linked issue {existingIssue.id} · source {selectedFinding.code}</p>}
                   {existingIssue && issueCreated && <div className="mt-3 rounded-md border border-success/30 bg-success/8 px-2.5 py-2 text-success-foreground ring-1 ring-success/10 dark:border-success/40 dark:bg-success/10"><div className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 size-3 shrink-0 text-success" /><div className="min-w-0"><p className="text-[10px] leading-snug">{selectedFinding.title} ({selectedFinding.code}) has been added to the issues list.</p></div></div></div>}
                   <div className="mt-3 flex items-center gap-2 text-ai-foreground"><span className="text-[10px] font-semibold">AI suggestion</span>{!findingDismissed && <Sparkles className="size-3" />}</div><p className="mt-2 text-[10px] leading-relaxed text-foreground/85">{activeReview.suggestion}</p><div className="mt-3 flex items-center gap-2"><span className="text-[9px] text-muted-foreground">Confidence</span><Progress value={activeReview.confidence} aria-label="AI suggestion confidence" className="h-1.5 bg-ai/20" /><span className="font-mono text-[9px] text-ai-foreground">{activeReview.confidence}%</span></div>
-                  <div className="mt-3 grid grid-cols-2 gap-2">{findingNeedsReview && <><Button size="compact" variant={previewActive ? "secondary" : "default"} className="col-span-2 w-full" onClick={onPreviewChange}>{previewActive ? "Exit preview" : "Preview change"}</Button><Button variant="outline" size="compact" className="col-span-2 w-full justify-center border-ai/30 bg-card px-2 text-[10px] text-ai-foreground shadow-none hover:border-ai/40 hover:bg-ai/5 hover:text-ai-foreground dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted dark:hover:text-foreground" onClick={onCreateIssue}>Create issue</Button><Button variant="ghost" size="compact" className="col-span-2 mx-auto h-auto w-auto px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted/45 hover:text-foreground" onClick={onDismissFinding}>Dismiss</Button></>}{issueCreated && <><Button size="compact" className="col-span-2 w-full" onClick={onViewCreatedIssueDetails}>View issue details</Button><Button type="button" variant="outline" size="compact" className="col-span-2 w-full justify-center border-primary/35 bg-background px-2 text-[10px] text-primary shadow-none ring-1 ring-primary/8 hover:border-primary/45 hover:bg-primary/8 hover:text-primary hover:ring-primary/14 dark:border-primary/45 dark:ring-primary/10" onClick={onViewFindingInModel}>View in model</Button><Button variant="ghost" size="compact" className="col-span-2 w-full text-destructive hover:bg-destructive/8 hover:text-destructive dark:hover:bg-destructive/10" onClick={onDropIssue}>Remove issue</Button></>}{findingDismissed && <><Button size="compact" className="col-span-2 w-full" onClick={onRestoreFinding}>Restore finding</Button><Button type="button" variant="outline" size="compact" className="col-span-2 w-full justify-center border-primary/35 bg-background px-2 text-[10px] text-primary shadow-none ring-1 ring-primary/8 hover:border-primary/45 hover:bg-primary/8 hover:text-primary hover:ring-primary/14 dark:border-primary/45 dark:ring-primary/10" onClick={onViewFindingInModel}>View in model</Button></>}</div>
+                  <div className="mt-3 grid grid-cols-2 gap-2">{findingNeedsReview && <><Button size="compact" variant={previewActive ? "secondary" : "default"} className="col-span-2 w-full" onClick={onPreviewChange}>{previewActive ? "Exit preview" : "Preview change"}</Button><Button variant="outline" size="compact" className="col-span-2 w-full justify-center border-ai/30 bg-card px-2 text-[10px] text-ai-foreground shadow-none hover:border-ai/40 hover:bg-ai/5 hover:text-ai-foreground dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted dark:hover:text-foreground" onClick={onCreateIssue}>Create issue</Button><Button variant="ghost" size="compact" className="col-span-2 mx-auto h-auto w-auto px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted/45 hover:text-foreground" onClick={onDismissFinding}>Dismiss</Button></>}{issueCreated && <><Button size="compact" className="col-span-2 w-full" onClick={onViewCreatedIssueDetails}>View issue details</Button><Button type="button" variant="outline" size="compact" className="col-span-2 w-full justify-center border-primary/35 bg-background px-2 text-[10px] text-primary shadow-none ring-1 ring-primary/8 hover:border-primary/45 hover:bg-primary/8 hover:text-primary hover:ring-primary/14 dark:border-primary/45 dark:ring-primary/10" onClick={onViewFindingInModel}>View in model</Button><Button variant="ghost" size="compact" className="col-span-2 w-full text-destructive hover:bg-destructive/8 hover:text-destructive dark:hover:bg-destructive/10" onClick={() => setRemoveIssueDialogOpen(true)}>Remove issue</Button></>}{findingDismissed && <><Button size="compact" className="col-span-2 w-full" onClick={onRestoreFinding}>Restore finding</Button><Button type="button" variant="outline" size="compact" className="col-span-2 w-full justify-center border-primary/35 bg-background px-2 text-[10px] text-primary shadow-none ring-1 ring-primary/8 hover:border-primary/45 hover:bg-primary/8 hover:text-primary hover:ring-primary/14 dark:border-primary/45 dark:ring-primary/10" onClick={onViewFindingInModel}>View in model</Button></>}</div>
                 </CardContent></Card><div className="mt-3 space-y-2">{activeReview.checks.map(([label, detail, warning]) => <ReviewCheck key={label} label={label} detail={detail} warning={warning} />)}</div></div>
               </> : <div className="hidden h-full min-h-0 items-center justify-center p-3 min-[1421px]:flex"><div className="rounded-md border border-dashed border-border/22 bg-muted/8 p-3 text-[10px] text-muted-foreground dark:border-border dark:bg-transparent">Select a finding from the AI Review Queue to review evidence, preview a change, create an issue, or dismiss the suggestion.</div></div>}
             </section>
           </div>
         </>
       ) : <div className="p-3"><div className="rounded-md border border-dashed border-border/18 bg-muted/8 p-3 dark:border-border dark:bg-transparent"><div className="flex items-start" aria-live={aiScanning ? "polite" : undefined}><div className="min-w-0 flex-1"><p className="text-[10px] font-medium">{aiScanning ? "Scanning model..." : "No AI scan has been run for this project yet."}</p><p className="mt-1 text-[9px] leading-relaxed text-muted-foreground">AI findings, issue actions, and review history appear after the mock scan completes.</p><Button type="button" variant="outline" size="compact" className="mt-2 w-full justify-center border-ai/35 bg-ai/10 text-ai-foreground hover:border-ai/45 hover:bg-ai/16 hover:text-ai-foreground" onClick={onRescanAi} disabled={aiScanning}>{aiScanning ? <Loader2 className="size-3 animate-spin" /> : <ScanSearch className="size-3" />}{aiScanning ? "Scanning..." : "Scan with AI"}</Button></div></div></div></div>}
+      <AlertDialog
+        open={removeIssueDialogOpen}
+        onOpenChange={setRemoveIssueDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove issue?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the created issue from the Model Review issue list. The original AI finding will remain available in AI Review.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={onDropIssue}
+            >
+              Remove issue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

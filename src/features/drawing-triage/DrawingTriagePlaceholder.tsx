@@ -17,6 +17,16 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -309,6 +319,9 @@ export function DrawingTriagePlaceholder() {
   )
   const [pendingPanelFocus, setPendingPanelFocus] =
     useState<PendingPanelFocus | null>(null)
+  const [removeDrawingDialogOpen, setRemoveDrawingDialogOpen] = useState(false)
+  const [issuePendingRemoval, setIssuePendingRemoval] =
+    useState<CandidateId | null>(null)
   const nextIssueSequence = useRef(initialSession?.nextIssueSequence ?? 1)
   const candidateCardRefs = useRef<
     Partial<Record<CandidateId, HTMLElement | null>>
@@ -473,15 +486,6 @@ export function DrawingTriagePlaceholder() {
     )
     setActiveRightPanelView("review_candidates")
     setPendingPanelFocus({ candidateId, view: "review_candidates" })
-  }
-
-  function toggleIssue(candidateId: CandidateId) {
-    if (reviewStates[candidateId].decision === "issue_created") {
-      removeCandidateIssue(candidateId)
-      return
-    }
-
-    convertCandidateToIssue(candidateId)
   }
 
   function toggleFollowUp(candidateId: CandidateId) {
@@ -651,7 +655,7 @@ export function DrawingTriagePlaceholder() {
                   variant="ghost"
                   size="compact"
                   className="h-7 rounded-md px-1.5 text-[10px] text-destructive/75 shadow-none hover:bg-destructive/10 hover:text-destructive"
-                  onClick={removeDrawing}
+                  onClick={() => setRemoveDrawingDialogOpen(true)}
                 >
                   Remove drawing
                 </Button>
@@ -761,7 +765,8 @@ export function DrawingTriagePlaceholder() {
   }
 
   return (
-    <main
+    <>
+      <main
       id="workspace-content"
       aria-labelledby="drawing-triage-heading"
       className="grid min-h-0 flex-1 grid-cols-[248px_minmax(0,1fr)_316px] overflow-hidden max-[1160px]:grid-cols-[220px_minmax(0,1fr)_280px] max-[900px]:grid-cols-1 max-[900px]:overflow-y-auto max-[900px]:overflow-x-hidden"
@@ -1428,7 +1433,11 @@ export function DrawingTriagePlaceholder() {
                       className="h-9 w-full justify-center gap-2 rounded-md border px-3 text-[11px] font-semibold tracking-normal shadow-none transition-[filter,background-color,border-color] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:hover:brightness-110"
                       style={issueActionStyle}
                       aria-pressed={decisionIsIssue}
-                      onClick={() => toggleIssue(candidate.id)}
+                      onClick={() =>
+                        decisionIsIssue
+                          ? setIssuePendingRemoval(candidate.id)
+                          : convertCandidateToIssue(candidate.id)
+                      }
                     >
                       {decisionIsIssue ? (
                         <X className="size-4" />
@@ -1562,7 +1571,7 @@ export function DrawingTriagePlaceholder() {
                         size="compact"
                         className="h-8 w-full justify-center gap-1.5 rounded-md border px-2 text-[11px] font-semibold tracking-normal shadow-none transition-[filter,background-color,border-color] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:hover:brightness-110"
                         style={removeActionStyle}
-                        onClick={() => removeCandidateIssue(issue.candidateId)}
+                        onClick={() => setIssuePendingRemoval(issue.candidateId)}
                       >
                         <X className="size-3.5" />
                         Remove issue
@@ -1584,6 +1593,57 @@ export function DrawingTriagePlaceholder() {
         </div>
       </aside>
 
-    </main>
+      </main>
+      <AlertDialog
+      open={removeDrawingDialogOpen}
+      onOpenChange={setRemoveDrawingDialogOpen}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remove drawing?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will remove the current drawing and clear its local triage results, created issues and follow-up state. This cannot be undone in this prototype.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={removeDrawing}
+          >
+            Remove drawing
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+      open={issuePendingRemoval !== null}
+      onOpenChange={(open) => {
+        if (!open) setIssuePendingRemoval(null)
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remove issue?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will remove the created issue from the local review list. The original AI candidate will remain available on the sheet.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={() => {
+              if (issuePendingRemoval) {
+                removeCandidateIssue(issuePendingRemoval)
+              }
+            }}
+          >
+            Remove issue
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

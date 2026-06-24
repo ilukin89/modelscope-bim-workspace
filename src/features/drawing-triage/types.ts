@@ -1,6 +1,6 @@
 export type CandidateId = "door-clearance" | "riser-note" | "grid-offset"
 
-export type CandidateType = "Clearance" | "Annotation" | "Alignment"
+export type CandidateType = "Clearance" | "Annotation" | "Coordination"
 
 export type Candidate = {
   id: CandidateId

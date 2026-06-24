@@ -10,10 +10,7 @@ import {
   Bookmark,
   Bot,
   Check,
-  Circle,
   FileStack,
-  FileText,
-  LoaderCircle,
   MapPin,
   ScanSearch,
   X,
@@ -28,126 +25,30 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
-
-type CandidateId = "door-clearance" | "riser-note" | "grid-offset"
-type ReviewDecision = "unreviewed" | "issue_created"
-type RightPanelView = "review_candidates" | "created_issues"
-type ReviewCandidateFilter = "all" | "follow_up"
-type TriageStage = "empty" | "selected" | "scanning" | "review"
-type DrawingSource = "Sample drawing" | "Mock file"
-type CandidateReviewState = {
-  decision: ReviewDecision
-  isFollowUp: boolean
-}
-type CreatedIssueSummary = {
-  issueId: string
-  candidateId: CandidateId
-}
-type PendingPanelFocus = {
-  candidateId: CandidateId
-  view: RightPanelView
-}
-
-type Candidate = {
-  id: CandidateId
-  marker: number
-  type: CandidateType
-  title: string
-  summary: string
-  confidence: string
-  risk: string
-  region: string
-}
-
-type CandidateType = "Clearance" | "Annotation" | "Alignment"
-
-const typeVisuals: Record<
-  CandidateType,
-  {
-    lightAccent: string
-    darkAccent: string
-    ink: string
-  }
-> = {
-  Clearance: {
-    lightAccent: "oklch(0.82 0.1 74.86)",
-    darkAccent: "oklch(0.65 0.1 74.1)",
-    ink: "oklch(0.18 0.05 72)",
-  },
-  Annotation: {
-    lightAccent: "oklch(0.67 0.07 205)",
-    darkAccent: "oklch(0.64 0.07 205)",
-    ink: "oklch(0.16 0.035 205)",
-  },
-  Alignment: {
-    lightAccent: "oklch(0.69 0.11 270.41)",
-    darkAccent: "oklch(0.69 0.11 270)",
-    ink: "oklch(0.18 0.045 270)",
-  },
-}
-
-const initialReviewStates: Record<CandidateId, CandidateReviewState> = {
-  "door-clearance": { decision: "unreviewed", isFollowUp: false },
-  "riser-note": { decision: "unreviewed", isFollowUp: false },
-  "grid-offset": { decision: "unreviewed", isFollowUp: false },
-}
-
-type TriageSessionSnapshot = {
-  triageStage: TriageStage
-  drawingSource: DrawingSource | null
-  selectedCandidateId: CandidateId
-  reviewStates: Record<CandidateId, CandidateReviewState>
-  activeRightPanelView: RightPanelView
-  reviewCandidateFilter: ReviewCandidateFilter
-  createdIssues: CreatedIssueSummary[]
-  nextIssueSequence: number
-}
+import {
+  candidates,
+  cloneInitialReviewStates,
+  formatIssueId,
+  getPriorityLabel,
+  getTypeAccent,
+  typeVisuals,
+} from "./data/drawingTriageData"
+import { DrawingTriageEntryGate } from "./components/DrawingTriageEntryGate"
+import type {
+  Candidate,
+  CandidateId,
+  CandidateReviewState,
+  CreatedIssueSummary,
+  DrawingSource,
+  PendingPanelFocus,
+  ReviewCandidateFilter,
+  ReviewDecision,
+  RightPanelView,
+  TriageSessionSnapshot,
+  TriageStage,
+} from "./types"
 
 const triageSessionStorageKey = "modelscope:drawing-triage-session"
-
-const candidates: Candidate[] = [
-  {
-    id: "door-clearance",
-    marker: 1,
-    type: "Clearance",
-    title: "Door swing near circulation path",
-    summary:
-      "The meeting-room door arc appears close to the main corridor clearance zone.",
-    confidence: "82% visual match",
-    risk: "Medium review priority",
-    region: "Grid C4 · Meeting 02",
-  },
-  {
-    id: "riser-note",
-    marker: 2,
-    type: "Annotation",
-    title: "Riser annotation may be incomplete",
-    summary:
-      "A service riser is drawn without a matching keynote on this sheet excerpt.",
-    confidence: "68% visual match",
-    risk: "Low review priority",
-    region: "Grid D2 · Core",
-  },
-  {
-    id: "grid-offset",
-    marker: 3,
-    type: "Alignment",
-    title: "Partition alignment differs at grid line",
-    summary:
-      "The north partition appears offset from the adjacent structural grid reference.",
-    confidence: "74% visual match",
-    risk: "Medium review priority",
-    region: "Grid B1 · Open office",
-  },
-]
-
-function cloneInitialReviewStates() {
-  return {
-    "door-clearance": { ...initialReviewStates["door-clearance"] },
-    "riser-note": { ...initialReviewStates["riser-note"] },
-    "grid-offset": { ...initialReviewStates["grid-offset"] },
-  }
-}
 
 function isCandidateId(value: unknown): value is CandidateId {
   return (
@@ -251,256 +152,6 @@ function writeTriageSessionSnapshot(snapshot: TriageSessionSnapshot) {
   window.sessionStorage.setItem(
     triageSessionStorageKey,
     JSON.stringify(snapshot),
-  )
-}
-
-function formatIssueId(sequence: number) {
-  return `MS-${String(sequence).padStart(3, "0")}`
-}
-
-function getTypeAccent(candidate: Candidate) {
-  const typeVisual = typeVisuals[candidate.type]
-  return `light-dark(${typeVisual.lightAccent}, ${typeVisual.darkAccent})`
-}
-
-function getPriorityLabel(candidate: Candidate) {
-  const priority = candidate.risk.split(" ")[0]
-  return priority || "Medium"
-}
-
-function DrawingTriageEntryGate({
-  stage,
-  drawingSource,
-  onUseSampleDrawing,
-  onSelectMockFile,
-  onRunTriage,
-  onChangeDrawing,
-}: {
-  stage: Exclude<TriageStage, "review">
-  drawingSource: DrawingSource | null
-  onUseSampleDrawing: (source: DrawingSource) => void
-  onSelectMockFile: (source: DrawingSource) => void
-  onRunTriage: () => void
-  onChangeDrawing: () => void
-}) {
-  const drawingSummary =
-    "A-102 Level 02 floor plan · Rev P03 · 1:100 · Architecture"
-  const scanningSteps = [
-    "Detecting visual cues",
-    "Checking drawing context",
-    "Preparing review candidates",
-  ]
-
-  return (
-    <main
-      id="workspace-content"
-      aria-labelledby="drawing-triage-heading"
-      className="grid min-h-0 flex-1 grid-cols-[248px_minmax(0,1fr)_316px] overflow-hidden max-[1160px]:grid-cols-[220px_minmax(0,1fr)_280px] max-[900px]:grid-cols-1 max-[900px]:overflow-y-auto max-[900px]:overflow-x-hidden"
-    >
-      <aside className="scrollbar-thin order-3 min-h-[180px] overflow-y-auto border-border bg-panel max-[900px]:border-t max-[900px]:bg-panel-subtle/35 min-[901px]:order-1 min-[901px]:border-r">
-        <div className="border-border p-4 max-[900px]:p-3 min-[901px]:border-b">
-          <div className="max-[900px]:mx-auto max-[900px]:w-full max-[900px]:max-w-[720px]">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <FileStack className="size-4" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.08em]">
-                Drawing context
-              </span>
-            </div>
-            <h2 className="mt-4 text-sm font-semibold max-[900px]:mt-2">
-              {drawingSource ? "Level 02 floor plan" : "No artifact loaded"}
-            </h2>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              {drawingSource
-                ? "A-102 · Rev P03 · 1:100 · Architecture"
-                : "Waiting for a local demo drawing selection."}
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-5 p-4 max-[900px]:mx-auto max-[900px]:w-full max-[900px]:max-w-[720px] max-[900px]:space-y-3 max-[900px]:p-3 max-[900px]:pt-0">
-          <section aria-labelledby="intake-heading">
-            <h3
-              id="intake-heading"
-              className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground"
-            >
-              Intake
-            </h3>
-            <dl className="mt-3 grid grid-cols-[72px_1fr] gap-x-2 gap-y-2 text-[11px]">
-              <dt className="text-muted-foreground">Source</dt>
-              <dd className="font-medium">{drawingSource ?? "Not selected"}</dd>
-              <dt className="text-muted-foreground">Status</dt>
-              <dd>
-                {stage === "empty" && "Waiting"}
-                {stage === "selected" && "Ready to scan"}
-                {stage === "scanning" && "Scanning"}
-              </dd>
-              <dt className="text-muted-foreground">Processing</dt>
-              <dd>Mock/local only</dd>
-            </dl>
-          </section>
-
-          <div className="border-t border-border pt-3 text-[10px] leading-relaxed text-muted-foreground">
-            Frontend demo only. No upload, storage, parsing, backend service, or
-            AI API is active.
-          </div>
-        </div>
-      </aside>
-
-      <section className="order-1 flex min-h-[440px] min-w-0 flex-col bg-canvas max-[900px]:min-h-[360px] max-[560px]:min-h-[300px] min-[901px]:order-2">
-        <header className="flex min-h-12 items-center gap-3 border-b border-border bg-panel/90 px-4 py-2">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <ScanSearch className="size-4 shrink-0 text-primary" />
-              <h1
-                id="drawing-triage-heading"
-                className="truncate text-sm font-semibold tracking-tight"
-              >
-                Drawing Triage
-              </h1>
-            </div>
-            <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
-              Local drawing intake
-            </p>
-          </div>
-        </header>
-
-        <div className="flex min-h-0 flex-1 items-center justify-center p-4 sm:p-6">
-          <section
-            aria-live={stage === "scanning" ? "polite" : undefined}
-            className="w-full max-w-[520px] border border-border bg-panel p-5 shadow-sm"
-          >
-            {stage === "empty" && (
-              <>
-                <div className="flex items-center gap-3">
-                  <span className="flex size-9 items-center justify-center rounded-md border border-border bg-panel-subtle text-primary">
-                    <FileText className="size-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <h2 className="text-base font-semibold">
-                      No drawing selected
-                    </h2>
-                    <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-                      Select a sample drawing or mock upload a drawing to run AI
-                      triage.
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-5 flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => onUseSampleDrawing("Sample drawing")}
-                  >
-                    Use sample drawing
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onSelectMockFile("Mock file")}
-                  >
-                    Select mock file
-                  </Button>
-                </div>
-                <p className="mt-4 text-[10px] font-medium text-muted-foreground">
-                  Frontend demo only · no real upload or storage yet
-                </p>
-              </>
-            )}
-
-            {stage === "selected" && (
-              <>
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 flex size-9 items-center justify-center rounded-md border border-border bg-accent text-accent-foreground">
-                    <Check className="size-4" />
-                  </span>
-                  <div className="min-w-0">
-                    <h2 className="text-base font-semibold">
-                      Drawing selected
-                    </h2>
-                    <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-                      {drawingSummary}
-                    </p>
-                    <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                      Source: {drawingSource}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-5 flex flex-wrap gap-2">
-                  <Button type="button" size="sm" onClick={onRunTriage}>
-                    Run AI triage
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={onChangeDrawing}
-                  >
-                    Change drawing
-                  </Button>
-                </div>
-              </>
-            )}
-
-            {stage === "scanning" && (
-              <>
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 flex size-9 items-center justify-center rounded-md border border-border bg-panel-subtle text-primary">
-                    <LoaderCircle className="size-4 animate-spin" />
-                  </span>
-                  <div className="min-w-0">
-                    <h2 className="text-base font-semibold">
-                      AI triage in progress
-                    </h2>
-                    <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-                      {drawingSummary}
-                    </p>
-                  </div>
-                </div>
-                <ol className="mt-5 space-y-2">
-                  {scanningSteps.map((step) => (
-                    <li
-                      key={step}
-                      className="flex items-center gap-2 text-[12px] font-medium text-foreground"
-                    >
-                      <Circle className="size-2.5 fill-primary text-primary" />
-                      {step}
-                    </li>
-                  ))}
-                </ol>
-              </>
-            )}
-          </section>
-        </div>
-      </section>
-
-      <aside className="scrollbar-thin order-2 min-h-[180px] overflow-y-auto border-border bg-panel max-[900px]:border-t min-[901px]:order-3 min-[901px]:border-l">
-        <div className="border-b border-border p-4">
-          <div className="max-[900px]:mx-auto max-[900px]:w-full max-[900px]:max-w-[720px]">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Bot className="size-4" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.08em]">
-                AI triage
-              </span>
-            </div>
-            <h2 className="mt-4 text-sm font-semibold">
-              {stage === "empty" && "Waiting for drawing input"}
-              {stage === "selected" && "Ready to run local triage"}
-              {stage === "scanning" && "Preparing review candidates"}
-            </h2>
-            <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
-              Candidate markers and issue controls appear only after the mock
-              scan completes.
-            </p>
-          </div>
-        </div>
-        <div className="mx-3 mt-3 border border-dashed border-border bg-panel-subtle/45 p-3 text-[10px] leading-relaxed text-muted-foreground max-[900px]:mx-auto max-[900px]:w-[calc(100%-1.5rem)] max-[900px]:max-w-[696px]">
-          No review candidates, created issues, or follow-up filters are shown
-          before review.
-        </div>
-      </aside>
-
-    </main>
   )
 }
 

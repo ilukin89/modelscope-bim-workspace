@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -36,6 +37,7 @@ import {
 } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
 import {
+  candidateTypeCounts,
   candidates,
   cloneInitialReviewStates,
   formatIssueId,
@@ -44,11 +46,15 @@ import {
   getTypeAccentForType,
   typeVisuals,
 } from "./data/drawingTriageData"
+import { DrawingTriageMarker } from "./components/DrawingTriageMarker"
 import { DrawingTriageEntryGate } from "./components/DrawingTriageEntryGate"
+import {
+  readTriageSessionSnapshot,
+  writeTriageSessionSnapshot,
+} from "./lib/triageSession"
 import type {
   Candidate,
   CandidateId,
-  CandidateReviewState,
   CandidateType,
   CreatedIssueSummary,
   DrawingSource,
@@ -59,8 +65,6 @@ import type {
   TriageSessionSnapshot,
   TriageStage,
 } from "./types"
-
-const triageSessionStorageKey = "modelscope:drawing-triage-session"
 
 const candidateMarkerPositions: Record<
   CandidateId,
@@ -92,235 +96,6 @@ const typeFilterOptions = [
   { filter: "coordination", type: "Coordination" },
 ] as const
 
-function isCandidateId(value: unknown): value is CandidateId {
-  return (
-    typeof value === "string" &&
-    candidates.some((candidate) => candidate.id === value)
-  )
-}
-
-function isDrawingSource(value: unknown): value is DrawingSource {
-  return value === "Sample drawing" || value === "Mock file"
-}
-
-function isTriageStage(value: unknown): value is TriageStage {
-  return (
-    value === "empty" ||
-    value === "selected" ||
-    value === "scanning" ||
-    value === "review"
-  )
-}
-
-function isRightPanelView(value: unknown): value is RightPanelView {
-  return value === "review_candidates" || value === "created_issues"
-}
-
-function isReviewCandidateFilter(
-  value: unknown,
-): value is ReviewCandidateFilter {
-  return (
-    value === "all" ||
-    value === "clearance" ||
-    value === "annotation" ||
-    value === "coordination" ||
-    value === "follow_up"
-  )
-}
-
-function isReviewDecision(value: unknown): value is ReviewDecision {
-  return value === "unreviewed" || value === "issue_created"
-}
-
-function readTriageSessionSnapshot(): TriageSessionSnapshot | null {
-  try {
-    const rawSnapshot = window.sessionStorage.getItem(triageSessionStorageKey)
-    if (!rawSnapshot) return null
-
-    const parsed = JSON.parse(rawSnapshot) as Partial<TriageSessionSnapshot>
-    const triageStage = isTriageStage(parsed.triageStage)
-      ? parsed.triageStage
-      : "empty"
-    const drawingSource = isDrawingSource(parsed.drawingSource)
-      ? parsed.drawingSource
-      : null
-    const reviewStates = cloneInitialReviewStates()
-
-    for (const candidate of candidates) {
-      const candidateState = parsed.reviewStates?.[candidate.id]
-      if (
-        candidateState &&
-        isReviewDecision(candidateState.decision) &&
-        typeof candidateState.isFollowUp === "boolean"
-      ) {
-        reviewStates[candidate.id] = {
-          decision: candidateState.decision,
-          isFollowUp: candidateState.isFollowUp,
-        }
-      }
-    }
-
-    const createdIssues = Array.isArray(parsed.createdIssues)
-      ? parsed.createdIssues.filter(
-          (issue): issue is CreatedIssueSummary =>
-            typeof issue.issueId === "string" && isCandidateId(issue.candidateId),
-        )
-      : []
-    const nextIssueSequence =
-      typeof parsed.nextIssueSequence === "number" &&
-      parsed.nextIssueSequence > 0
-        ? parsed.nextIssueSequence
-        : createdIssues.length + 1
-
-    return {
-      triageStage: triageStage === "scanning" ? "selected" : triageStage,
-      drawingSource,
-      selectedCandidateId: isCandidateId(parsed.selectedCandidateId)
-        ? parsed.selectedCandidateId
-        : "door-clearance",
-      reviewStates,
-      activeRightPanelView: isRightPanelView(parsed.activeRightPanelView)
-        ? parsed.activeRightPanelView
-        : "review_candidates",
-      reviewCandidateFilter: isReviewCandidateFilter(
-        parsed.reviewCandidateFilter,
-      )
-        ? parsed.reviewCandidateFilter
-        : "all",
-      createdIssues,
-      nextIssueSequence,
-    }
-  } catch {
-    return null
-  }
-}
-
-function writeTriageSessionSnapshot(snapshot: TriageSessionSnapshot) {
-  window.sessionStorage.setItem(
-    triageSessionStorageKey,
-    JSON.stringify(snapshot),
-  )
-}
-
-function Marker({
-  candidate,
-  reviewState,
-  selected,
-  x,
-  y,
-  onSelect,
-}: {
-  candidate: Candidate
-  reviewState: CandidateReviewState
-  selected: boolean
-  x: number
-  y: number
-  onSelect: (id: CandidateId) => void
-}) {
-  const accent = getTypeAccent(candidate)
-  const stroke = typeVisuals[candidate.type].darkAccent
-  const emphasis = reviewState.decision === "issue_created"
-  const isFollowUp =
-    reviewState.decision === "unreviewed" && reviewState.isFollowUp
-  const isIssueCreated = reviewState.decision === "issue_created"
-
-  return (
-    <g
-      role="button"
-      aria-label={`Review candidate ${candidate.marker}: ${candidate.title}`}
-      aria-pressed={selected}
-      className="cursor-pointer outline-none"
-      onClick={() => onSelect(candidate.id)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault()
-          onSelect(candidate.id)
-        }
-      }}
-      tabIndex={0}
-    >
-      <circle
-        cx={x}
-        cy={y}
-        r={selected ? 25 : 20}
-        fill={`color-mix(in oklab, ${accent} ${
-          selected ? "24%" : emphasis ? "19%" : "12%"
-        }, transparent)`}
-        stroke={stroke}
-        strokeWidth={selected ? 3 : emphasis ? 2.5 : 2}
-      />
-      <circle
-        cx={x}
-        cy={y}
-        r={12}
-        fill={`color-mix(in oklab, ${accent} ${
-          emphasis ? "34%" : "28%"
-        }, oklch(0.965 0.012 90))`}
-        stroke={stroke}
-        strokeWidth="2"
-      />
-      <text
-        x={x}
-        y={y + 4}
-        fill="oklch(0.25 0.018 220)"
-        fontSize="11"
-        fontWeight="700"
-        textAnchor="middle"
-      >
-        {candidate.marker}
-      </text>
-      {isFollowUp && (
-        <g
-          aria-label="Marked for follow-up"
-          transform={`translate(${x + 10} ${y - 25})`}
-        >
-          <rect
-            x="0"
-            y="0"
-            width="15"
-            height="15"
-            rx="3"
-            fill={`color-mix(in oklab, ${stroke} 40%, oklch(0.965 0.012 90))`}
-            stroke={stroke}
-            strokeWidth="1.5"
-          />
-          <path
-            d="M4.5 3.5h6v8l-3-2.1-3 2.1z"
-            fill={stroke}
-            stroke="none"
-          />
-        </g>
-      )}
-      {isIssueCreated && (
-        <g
-          aria-label="Issue created"
-          transform={`translate(${x + 10} ${y - 26})`}
-        >
-          <rect
-            x="0"
-            y="0"
-            width="18"
-            height="18"
-            rx="4"
-            fill={`color-mix(in oklab, ${stroke} 48%, oklch(0.965 0.012 90))`}
-            stroke={stroke}
-            strokeWidth="2"
-          />
-          <text
-            x="9"
-            y="13.4"
-            fill={stroke}
-            fontSize="12.5"
-            fontWeight="800"
-            textAnchor="middle"
-          >
-            !
-          </text>
-        </g>
-      )}
-    </g>
-  )
-}
 
 export function DrawingTriagePlaceholder() {
   const initialSessionRef = useRef<TriageSessionSnapshot | null | undefined>(
@@ -374,36 +149,34 @@ export function DrawingTriagePlaceholder() {
   const remainingReviewCount = candidates.filter(
     (candidate) => reviewStates[candidate.id].decision === "unreviewed",
   ).length
-  const createdIssueSummaries = createdIssues
-    .map((issue) => ({
-      issue,
-      candidate: candidates.find(
-        (candidate) => candidate.id === issue.candidateId,
-      ),
-    }))
-    .filter(
-      (
-        summary,
-      ): summary is {
-        issue: CreatedIssueSummary
-        candidate: Candidate
-      } =>
-        Boolean(summary.candidate) &&
-        reviewStates[summary.issue.candidateId].decision === "issue_created",
-    )
+  const createdIssueSummaries = useMemo(
+    () =>
+      createdIssues
+        .map((issue) => ({
+          issue,
+          candidate: candidates.find(
+            (candidate) => candidate.id === issue.candidateId,
+          ),
+        }))
+        .filter(
+          (
+            summary,
+          ): summary is {
+            issue: CreatedIssueSummary
+            candidate: Candidate
+          } =>
+            Boolean(summary.candidate) &&
+            reviewStates[summary.issue.candidateId].decision ===
+              "issue_created",
+        ),
+    [createdIssues, reviewStates],
+  )
   const followUpCandidates = candidates.filter(
     (candidate) =>
       reviewStates[candidate.id].decision === "unreviewed" &&
       reviewStates[candidate.id].isFollowUp,
   )
   const followUpCount = followUpCandidates.length
-  const candidateTypeCounts = candidates.reduce<Record<CandidateType, number>>(
-    (counts, candidate) => ({
-      ...counts,
-      [candidate.type]: counts[candidate.type] + 1,
-    }),
-    { Clearance: 0, Annotation: 0, Coordination: 0 },
-  )
   const visibleReviewCandidates = getReviewCandidates(reviewCandidateFilter)
   const activeDrawingSource = drawingSource ?? "Sample drawing"
   const activeDrawingFileName =
@@ -1106,7 +879,7 @@ export function DrawingTriagePlaceholder() {
                 const position = candidateMarkerPositions[candidate.id]
 
                 return (
-                  <Marker
+                  <DrawingTriageMarker
                     key={candidate.id}
                     candidate={candidate}
                     reviewState={reviewStates[candidate.id]}

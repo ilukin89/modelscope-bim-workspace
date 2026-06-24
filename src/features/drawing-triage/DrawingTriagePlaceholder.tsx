@@ -41,6 +41,7 @@ import {
   formatIssueId,
   getPriorityLabel,
   getTypeAccent,
+  getTypeAccentForType,
   typeVisuals,
 } from "./data/drawingTriageData"
 import { DrawingTriageEntryGate } from "./components/DrawingTriageEntryGate"
@@ -48,6 +49,7 @@ import type {
   Candidate,
   CandidateId,
   CandidateReviewState,
+  CandidateType,
   CreatedIssueSummary,
   DrawingSource,
   PendingPanelFocus,
@@ -60,11 +62,40 @@ import type {
 
 const triageSessionStorageKey = "modelscope:drawing-triage-session"
 
+const candidateMarkerPositions: Record<
+  CandidateId,
+  { x: number; y: number; region: { x: number; y: number; width: number; height: number } }
+> = {
+  "door-clearance": { x: 505, y: 286, region: { x: 455, y: 238, width: 62, height: 62 } },
+  "riser-note": { x: 640, y: 448, region: { x: 586, y: 428, width: 62, height: 70 } },
+  "grid-offset": { x: 310, y: 96, region: { x: 286, y: 82, width: 42, height: 100 } },
+  "furniture-access": { x: 405, y: 395, region: { x: 367, y: 360, width: 70, height: 70 } },
+  "room-label": { x: 228, y: 472, region: { x: 198, y: 444, width: 54, height: 52 } },
+  "service-door": { x: 675, y: 276, region: { x: 638, y: 236, width: 66, height: 62 } },
+  "revision-note": { x: 576, y: 110, region: { x: 545, y: 86, width: 62, height: 48 } },
+  "door-furniture-conflict": { x: 465, y: 472, region: { x: 438, y: 438, width: 54, height: 54 } },
+  "corridor-boundary": { x: 535, y: 322, region: { x: 500, y: 286, width: 70, height: 54 } },
+}
+
+const candidateFilterTypes: Record<
+  Exclude<ReviewCandidateFilter, "all" | "follow_up">,
+  CandidateType
+> = {
+  clearance: "Clearance",
+  annotation: "Annotation",
+  coordination: "Coordination",
+}
+
+const typeFilterOptions = [
+  { filter: "clearance", type: "Clearance" },
+  { filter: "annotation", type: "Annotation" },
+  { filter: "coordination", type: "Coordination" },
+] as const
+
 function isCandidateId(value: unknown): value is CandidateId {
   return (
-    value === "door-clearance" ||
-    value === "riser-note" ||
-    value === "grid-offset"
+    typeof value === "string" &&
+    candidates.some((candidate) => candidate.id === value)
   )
 }
 
@@ -88,7 +119,13 @@ function isRightPanelView(value: unknown): value is RightPanelView {
 function isReviewCandidateFilter(
   value: unknown,
 ): value is ReviewCandidateFilter {
-  return value === "all" || value === "follow_up"
+  return (
+    value === "all" ||
+    value === "clearance" ||
+    value === "annotation" ||
+    value === "coordination" ||
+    value === "follow_up"
+  )
 }
 
 function isReviewDecision(value: unknown): value is ReviewDecision {
@@ -360,12 +397,14 @@ export function DrawingTriagePlaceholder() {
       reviewStates[candidate.id].isFollowUp,
   )
   const followUpCount = followUpCandidates.length
-  const visibleReviewCandidates =
-    reviewCandidateFilter === "follow_up" ? followUpCandidates : candidates
-  const reviewSummaryTitle =
-    remainingReviewCount === 0
-      ? "Review decisions complete"
-      : `${remainingReviewCount} of ${candidates.length} observations to review`
+  const candidateTypeCounts = candidates.reduce<Record<CandidateType, number>>(
+    (counts, candidate) => ({
+      ...counts,
+      [candidate.type]: counts[candidate.type] + 1,
+    }),
+    { Clearance: 0, Annotation: 0, Coordination: 0 },
+  )
+  const visibleReviewCandidates = getReviewCandidates(reviewCandidateFilter)
   const activeDrawingSource = drawingSource ?? "Sample drawing"
   const activeDrawingFileName =
     activeDrawingSource === "Mock file"
@@ -377,6 +416,30 @@ export function DrawingTriagePlaceholder() {
       reviewStates[candidateId].decision === "issue_created" &&
       createdIssues.some((issue) => issue.candidateId === candidateId)
     )
+  }
+
+  function getReviewCandidates(filter: ReviewCandidateFilter) {
+    if (filter === "all") return candidates
+    if (filter === "follow_up") return followUpCandidates
+
+    return candidates.filter(
+      (candidate) => candidate.type === candidateFilterTypes[filter],
+    )
+  }
+
+  function setReviewFilter(filter: ReviewCandidateFilter) {
+    const filteredCandidates = getReviewCandidates(filter)
+
+    if (
+      filteredCandidates.length > 0 &&
+      !filteredCandidates.some(
+        (candidate) => candidate.id === selectedCandidateId,
+      )
+    ) {
+      setSelectedCandidateId(filteredCandidates[0].id)
+    }
+
+    setReviewCandidateFilter(filter)
   }
 
   function scrollPanelItemIntoView(
@@ -509,10 +572,11 @@ export function DrawingTriagePlaceholder() {
 
     if (
       targetView === "review_candidates" &&
-      reviewCandidateFilter === "follow_up" &&
-      !reviewStates[candidateId].isFollowUp
+      !getReviewCandidates(reviewCandidateFilter).some(
+        (candidate) => candidate.id === candidateId,
+      )
     ) {
-      setReviewCandidateFilter("all")
+      setReviewFilter("all")
     }
 
     setSelectedCandidateId(candidateId)
@@ -522,10 +586,11 @@ export function DrawingTriagePlaceholder() {
 
   function showReviewCandidates() {
     if (
-      reviewCandidateFilter === "follow_up" &&
-      !reviewStates[selectedCandidateId].isFollowUp
+      !getReviewCandidates(reviewCandidateFilter).some(
+        (candidate) => candidate.id === selectedCandidateId,
+      )
     ) {
-      setReviewCandidateFilter("all")
+      setReviewFilter("all")
     }
 
     setActiveRightPanelView("review_candidates")
@@ -553,10 +618,11 @@ export function DrawingTriagePlaceholder() {
 
   function focusReviewCandidate(candidateId: CandidateId) {
     if (
-      reviewCandidateFilter === "follow_up" &&
-      !reviewStates[candidateId].isFollowUp
+      !getReviewCandidates(reviewCandidateFilter).some(
+        (candidate) => candidate.id === candidateId,
+      )
     ) {
-      setReviewCandidateFilter("all")
+      setReviewFilter("all")
     }
     setActiveRightPanelView("review_candidates")
     setPendingPanelFocus({ candidateId, view: "review_candidates" })
@@ -565,6 +631,12 @@ export function DrawingTriagePlaceholder() {
   function viewIssueOnSheet(candidateId: CandidateId) {
     setSelectedCandidateId(candidateId)
     focusReviewCandidate(candidateId)
+  }
+
+  function viewCreatedIssue(candidateId: CandidateId) {
+    setSelectedCandidateId(candidateId)
+    setActiveRightPanelView("created_issues")
+    setPendingPanelFocus({ candidateId, view: "created_issues" })
   }
 
   function getDecisionLabel(decision: ReviewDecision) {
@@ -879,8 +951,9 @@ export function DrawingTriagePlaceholder() {
             >
               <title id="plan-title">Sample Level 02 architectural plan</title>
               <desc id="plan-description">
-                A mock office floor plan with three numbered review candidate
-                markers. The selected marker matches the selected review card.
+                A mock office floor plan with nine numbered candidate
+                observation markers. The selected marker matches the selected
+                review card.
               </desc>
               <rect
                 x="0"
@@ -1005,82 +1078,45 @@ export function DrawingTriagePlaceholder() {
                 <text x="695" y="488">TEA POINT</text>
               </g>
 
-              <g
-                fill="none"
-                strokeWidth="2"
-                opacity={selectedCandidateId === "door-clearance" ? 1 : 0.38}
-              >
-                <rect
-                  x="455"
-                  y="238"
-                  width="62"
-                  height="62"
-                  fill={`color-mix(in oklab, ${getTypeAccent(
-                    candidates[0],
-                  )} 12%, transparent)`}
-                  stroke={getTypeAccent(candidates[0])}
-                  strokeDasharray="5 4"
-                />
-              </g>
-              <g
-                fill="none"
-                strokeWidth="2"
-                opacity={selectedCandidateId === "riser-note" ? 1 : 0.38}
-              >
-                <rect
-                  x="586"
-                  y="428"
-                  width="62"
-                  height="70"
-                  fill={`color-mix(in oklab, ${getTypeAccent(
-                    candidates[1],
-                  )} 12%, transparent)`}
-                  stroke={getTypeAccent(candidates[1])}
-                  strokeDasharray="5 4"
-                />
-              </g>
-              <g
-                fill="none"
-                strokeWidth="2"
-                opacity={selectedCandidateId === "grid-offset" ? 1 : 0.38}
-              >
-                <rect
-                  x="286"
-                  y="82"
-                  width="42"
-                  height="100"
-                  fill={`color-mix(in oklab, ${getTypeAccent(
-                    candidates[2],
-                  )} 10%, transparent)`}
-                  stroke={getTypeAccent(candidates[2])}
-                  strokeDasharray="5 4"
-                />
-              </g>
+              {candidates.map((candidate) => {
+                const position = candidateMarkerPositions[candidate.id]
+                const typeAccent = getTypeAccent(candidate)
 
-              <Marker
-                candidate={candidates[0]}
-                reviewState={reviewStates[candidates[0].id]}
-                selected={selectedCandidateId === "door-clearance"}
-                x={505}
-                y={286}
-                onSelect={selectCandidateFromDrawing}
-              />
-              <Marker
-                candidate={candidates[1]}
-                reviewState={reviewStates[candidates[1].id]}
-                selected={selectedCandidateId === "riser-note"}
-                x={640}
-                y={448}
-                onSelect={selectCandidateFromDrawing}
-              />
-              <Marker
-                candidate={candidates[2]}
-                reviewState={reviewStates[candidates[2].id]}
-                selected={selectedCandidateId === "grid-offset"}
-                x={310}
-                y={96}
-                onSelect={selectCandidateFromDrawing}
-              />
+                return (
+                  <g
+                    key={`${candidate.id}-evidence`}
+                    fill="none"
+                    strokeWidth="2"
+                    opacity={selectedCandidateId === candidate.id ? 1 : 0.38}
+                  >
+                    <rect
+                      x={position.region.x}
+                      y={position.region.y}
+                      width={position.region.width}
+                      height={position.region.height}
+                      fill={`color-mix(in oklab, ${typeAccent} 12%, transparent)`}
+                      stroke={typeAccent}
+                      strokeDasharray="5 4"
+                    />
+                  </g>
+                )
+              })}
+
+              {candidates.map((candidate) => {
+                const position = candidateMarkerPositions[candidate.id]
+
+                return (
+                  <Marker
+                    key={candidate.id}
+                    candidate={candidate}
+                    reviewState={reviewStates[candidate.id]}
+                    selected={selectedCandidateId === candidate.id}
+                    x={position.x}
+                    y={position.y}
+                    onSelect={selectCandidateFromDrawing}
+                  />
+                )
+              })}
 
               <g transform="translate(755 75)">
                 <rect
@@ -1167,10 +1203,10 @@ export function DrawingTriagePlaceholder() {
             <div className="mt-4 flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-sm font-semibold">
-                  {reviewSummaryTitle}
+                  {candidates.length} candidate observations
                 </h2>
                 <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
-                  Mock visual cues for human assessment, not confirmed defects.
+                  Human review required before creating issues.
                 </p>
               </div>
               <span className="whitespace-nowrap rounded-sm bg-ai/15 px-2 py-1 text-[10px] font-semibold leading-none text-ai-foreground">
@@ -1185,6 +1221,11 @@ export function DrawingTriagePlaceholder() {
               <span>{followUpCount} follow-up</span>
               <span>{createdIssueSummaries.length} issues created</span>
             </div>
+            <p className="mt-2 text-[9px] font-medium text-muted-foreground">
+              {candidateTypeCounts.Clearance} Clearance ·{" "}
+              {candidateTypeCounts.Annotation} Annotation ·{" "}
+              {candidateTypeCounts.Coordination} Coordination
+            </p>
             <div
               className="mt-3 grid grid-cols-2 rounded-md border border-border bg-panel-subtle/55 p-0.5"
               role="tablist"
@@ -1236,11 +1277,37 @@ export function DrawingTriagePlaceholder() {
                     reviewCandidateFilter === "all" &&
                       "text-foreground underline decoration-border underline-offset-4",
                   )}
-                  onClick={() => setReviewCandidateFilter("all")}
+                  onClick={() => setReviewFilter("all")}
                 >
-                  All candidates
+                  All {candidates.length}
                 </button>
-                <span className="text-muted-foreground/45">·</span>
+                {typeFilterOptions.map(({ filter, type }) => {
+                  const active = reviewCandidateFilter === filter
+                  const typeAccent = getTypeAccentForType(type)
+
+                  return (
+                    <button
+                      key={filter}
+                      type="button"
+                      aria-pressed={active}
+                      className={cn(
+                        "rounded-sm border px-1.5 py-0.5 font-semibold outline-none ring-ring transition-colors hover:brightness-95 focus-visible:ring-2",
+                      )}
+                      style={{
+                        borderColor: active
+                          ? typeAccent
+                          : `color-mix(in oklab, ${typeAccent} 42%, var(--border))`,
+                        background: active
+                          ? `color-mix(in oklab, ${typeAccent} 14%, var(--card))`
+                          : `color-mix(in oklab, ${typeAccent} 7%, var(--card))`,
+                        color: `color-mix(in oklab, ${typeAccent} 72%, var(--foreground))`,
+                      }}
+                      onClick={() => setReviewFilter(filter)}
+                    >
+                      {type} {candidateTypeCounts[type]}
+                    </button>
+                  )
+                })}
                 <button
                   type="button"
                   aria-pressed={reviewCandidateFilter === "follow_up"}
@@ -1252,7 +1319,7 @@ export function DrawingTriagePlaceholder() {
                     reviewCandidateFilter === "follow_up" &&
                       "text-foreground underline decoration-border underline-offset-4",
                   )}
-                  onClick={() => setReviewCandidateFilter("follow_up")}
+                  onClick={() => setReviewFilter("follow_up")}
                 >
                   <Bookmark className="size-3" />
                   Follow-up only {followUpCount}
@@ -1266,7 +1333,11 @@ export function DrawingTriagePlaceholder() {
           <div className="space-y-2 p-3 max-[900px]:mx-auto max-[900px]:w-full max-[900px]:max-w-[560px]">
             {visibleReviewCandidates.length === 0 ? (
               <div className="border border-dashed border-border bg-panel-subtle/45 p-3 text-[10px] leading-relaxed text-muted-foreground">
-                No candidates are marked for follow-up.
+                {reviewCandidateFilter === "follow_up"
+                  ? "No candidates are marked for follow-up."
+                  : reviewCandidateFilter === "all"
+                    ? "No candidate observations in this review."
+                    : `No ${candidateFilterTypes[reviewCandidateFilter]} candidates in this review.`}
               </div>
             ) : (
               visibleReviewCandidates.map((candidate) => {
@@ -1440,16 +1511,16 @@ export function DrawingTriagePlaceholder() {
                       aria-pressed={decisionIsIssue}
                       onClick={() =>
                         decisionIsIssue
-                          ? setIssuePendingRemoval(candidate.id)
+                          ? viewCreatedIssue(candidate.id)
                           : convertCandidateToIssue(candidate.id)
                       }
                     >
                       {decisionIsIssue ? (
-                        <X className="size-4" />
+                        <FileStack className="size-4" />
                       ) : (
                         <AlertTriangle className="size-4" />
                       )}
-                      {decisionIsIssue ? "Remove issue" : "Convert to issue"}
+                      {decisionIsIssue ? "View issue" : "Convert to issue"}
                     </Button>
                     {!followUpDisabled && (
                       <Button
@@ -1568,7 +1639,7 @@ export function DrawingTriagePlaceholder() {
                         onClick={() => viewIssueOnSheet(issue.candidateId)}
                       >
                         <MapPin className="size-3.5" />
-                        View on sheet
+                        Locate on sheet
                       </Button>
                       <Button
                         type="button"

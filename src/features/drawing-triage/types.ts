@@ -1,4 +1,13 @@
-export type CandidateId = "door-clearance" | "riser-note" | "grid-offset"
+export type CandidateId =
+  | "door-clearance"
+  | "riser-note"
+  | "grid-offset"
+  | "furniture-access"
+  | "room-label"
+  | "service-door"
+  | "revision-note"
+  | "door-furniture-conflict"
+  | "corridor-boundary"
 
 export type CandidateType = "Clearance" | "Annotation" | "Coordination"
 
@@ -27,7 +36,12 @@ export type CreatedIssueSummary = {
 
 export type RightPanelView = "review_candidates" | "created_issues"
 
-export type ReviewCandidateFilter = "all" | "follow_up"
+export type ReviewCandidateFilter =
+  | "all"
+  | "clearance"
+  | "annotation"
+  | "coordination"
+  | "follow_up"
 
 export type TriageStage = "empty" | "selected" | "scanning" | "review"
 

@@ -23,7 +23,7 @@ export const typeVisuals: Record<
     darkAccent: "oklch(0.64 0.07 205)",
     ink: "oklch(0.16 0.035 205)",
   },
-  Alignment: {
+  Coordination: {
     lightAccent: "oklch(0.69 0.11 270.41)",
     darkAccent: "oklch(0.69 0.11 270)",
     ink: "oklch(0.18 0.045 270)",
@@ -62,7 +62,7 @@ export const candidates: Candidate[] = [
   {
     id: "grid-offset",
     marker: 3,
-    type: "Alignment",
+    type: "Coordination",
     title: "Partition alignment differs at grid line",
     summary:
       "The north partition appears offset from the adjacent structural grid reference.",

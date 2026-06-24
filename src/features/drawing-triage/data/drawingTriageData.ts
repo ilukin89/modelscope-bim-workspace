@@ -30,12 +30,6 @@ export const typeVisuals: Record<
   },
 }
 
-export const initialReviewStates: Record<CandidateId, CandidateReviewState> = {
-  "door-clearance": { decision: "unreviewed", isFollowUp: false },
-  "riser-note": { decision: "unreviewed", isFollowUp: false },
-  "grid-offset": { decision: "unreviewed", isFollowUp: false },
-}
-
 export const candidates: Candidate[] = [
   {
     id: "door-clearance",
@@ -70,14 +64,89 @@ export const candidates: Candidate[] = [
     risk: "Medium review priority",
     region: "Grid B1 · Open office",
   },
+  {
+    id: "furniture-access",
+    marker: 4,
+    type: "Clearance",
+    title: "Furniture overlaps required access zone",
+    summary:
+      "A workstation cluster appears to extend into the indicated access zone beside Focus 01.",
+    confidence: "77% visual match",
+    risk: "Medium review priority",
+    region: "Grid C3 · Focus 01",
+  },
+  {
+    id: "room-label",
+    marker: 5,
+    type: "Annotation",
+    title: "Room label missing near enclosed area",
+    summary:
+      "The small enclosed room at the south edge has no clearly associated room label in this excerpt.",
+    confidence: "71% visual match",
+    risk: "Low review priority",
+    region: "Grid B5 · Open office south",
+  },
+  {
+    id: "service-door",
+    marker: 6,
+    type: "Clearance",
+    title: "Service door clearance appears constrained",
+    summary:
+      "The service door swing near Meeting 03 appears close to adjacent furniture and circulation space.",
+    confidence: "79% visual match",
+    risk: "Medium review priority",
+    region: "Grid E3 · Meeting 03",
+  },
+  {
+    id: "revision-note",
+    marker: 7,
+    type: "Annotation",
+    title: "Revision note does not clarify changed zone",
+    summary:
+      "The revision callout identifies a change but does not clearly connect it to a specific plan area.",
+    confidence: "65% visual match",
+    risk: "Low review priority",
+    region: "Grid D1 · North partition",
+  },
+  {
+    id: "door-furniture-conflict",
+    marker: 8,
+    type: "Coordination",
+    title: "Door location conflicts with furniture layout",
+    summary:
+      "The shown door location may conflict with the furniture arrangement at the Focus 02 threshold.",
+    confidence: "76% visual match",
+    risk: "Medium review priority",
+    region: "Grid D5 · Focus 02",
+  },
+  {
+    id: "corridor-boundary",
+    marker: 9,
+    type: "Coordination",
+    title: "Room boundary appears inconsistent across corridor line",
+    summary:
+      "The room boundary line at the main corridor appears inconsistent with the adjoining room extents.",
+    confidence: "72% visual match",
+    risk: "Medium review priority",
+    region: "Grid D3 · Main corridor",
+  },
 ]
 
+export const initialReviewStates: Record<CandidateId, CandidateReviewState> =
+  Object.fromEntries(
+    candidates.map((candidate) => [
+      candidate.id,
+      { decision: "unreviewed", isFollowUp: false },
+    ]),
+  ) as Record<CandidateId, CandidateReviewState>
+
 export function cloneInitialReviewStates() {
-  return {
-    "door-clearance": { ...initialReviewStates["door-clearance"] },
-    "riser-note": { ...initialReviewStates["riser-note"] },
-    "grid-offset": { ...initialReviewStates["grid-offset"] },
-  }
+  return Object.fromEntries(
+    candidates.map((candidate) => [
+      candidate.id,
+      { ...initialReviewStates[candidate.id] },
+    ]),
+  ) as Record<CandidateId, CandidateReviewState>
 }
 
 export function formatIssueId(sequence: number) {
@@ -85,7 +154,11 @@ export function formatIssueId(sequence: number) {
 }
 
 export function getTypeAccent(candidate: Candidate) {
-  const typeVisual = typeVisuals[candidate.type]
+  return getTypeAccentForType(candidate.type)
+}
+
+export function getTypeAccentForType(type: CandidateType) {
+  const typeVisual = typeVisuals[type]
   return `light-dark(${typeVisual.lightAccent}, ${typeVisual.darkAccent})`
 }
 

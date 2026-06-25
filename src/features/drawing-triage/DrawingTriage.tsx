@@ -27,7 +27,6 @@ import { DrawingTriageDialogs } from "./components/DrawingTriageDialogs"
 import {
   DrawingTriageProjectEmptyState,
   DrawingTriageSheetEmptyState,
-  type DrawingTriageSheetSummary,
 } from "./components/DrawingTriageEmptyState"
 import {
   readTriageSessionSnapshot,
@@ -40,6 +39,7 @@ import type {
   CreatedIssueSummary,
   DrawingSheetId,
   DrawingSource,
+  DrawingTriageSheetSummary,
   PendingPanelFocus,
   ReviewCandidateFilter,
   ReviewDecision,

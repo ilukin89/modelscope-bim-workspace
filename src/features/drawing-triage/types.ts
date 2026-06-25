@@ -49,6 +49,15 @@ export type DrawingSource = "Sample drawing" | "Mock file"
 
 export type DrawingSheetId = "level-02" | "level-01" | "roof"
 
+export type DrawingTriageSheetSummary = {
+  id: DrawingSheetId
+  name: string
+  shortName: string
+  code: string
+  marker: string
+  status: "completed" | "not-scanned"
+}
+
 export type PendingPanelFocus = {
   candidateId: CandidateId
   view: RightPanelView

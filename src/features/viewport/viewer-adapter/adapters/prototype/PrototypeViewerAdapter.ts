@@ -21,16 +21,12 @@ import type {
 
 export class PrototypeViewerAdapter implements ViewerAdapter {
   private state: ViewerLifecycleState = "uninitialized"
-  private currentModelId: ViewerModelId | null = null
-  private activeTool: ViewerActiveTool = "select"
-  private cameraView: ViewerCameraView | null = null
   private selectedObjectId: ViewerObjectId | null = null
   private readonly highlightedObjects = new Map<
     ViewerObjectId,
     ViewerHighlightKind
   >()
   private readonly layerVisibility = new Map<ViewerLayerId, boolean>()
-  private currentFloorId: ViewerFloorId | null = null
 
   private readonly objectSelectedCallbacks =
     new Set<ViewerObjectSelectedCallback>()
@@ -50,45 +46,22 @@ export class PrototypeViewerAdapter implements ViewerAdapter {
     return this.state
   }
 
-  get modelId(): ViewerModelId | null {
-    return this.currentModelId
-  }
-
-  get selectedTool(): ViewerActiveTool {
-    return this.activeTool
-  }
-
-  get currentCameraView(): ViewerCameraView | null {
-    return this.cameraView === null
-      ? null
-      : this.cloneCameraView(this.cameraView)
-  }
-
-  get floorId(): ViewerFloorId | null {
-    return this.currentFloorId
-  }
-
-  async initialize(container: HTMLElement): Promise<void> {
-    void container
+  async initialize(container: HTMLElement): Promise<void>
+  async initialize(): Promise<void> {
     this.state = "initializing"
     this.state = "ready"
   }
 
   dispose(): void {
-    this.currentModelId = null
-    this.activeTool = "select"
-    this.cameraView = null
     this.selectedObjectId = null
     this.highlightedObjects.clear()
     this.layerVisibility.clear()
-    this.currentFloorId = null
     this.clearCallbacks()
     this.state = "disposed"
   }
 
   async loadModel(modelId: ViewerModelId): Promise<void> {
     this.state = "loading"
-    this.currentModelId = modelId
     this.state = "ready"
     this.emit(this.modelLoadedCallbacks, { modelId })
   }
@@ -98,8 +71,8 @@ export class PrototypeViewerAdapter implements ViewerAdapter {
     this.emit(this.layerVisibilityChangedCallbacks, { layerId, visible })
   }
 
-  showFloor(floorId: ViewerFloorId): void {
-    this.currentFloorId = floorId
+  showFloor(floorId: ViewerFloorId): void
+  showFloor(): void {
   }
 
   selectObject(objectId: ViewerObjectId): void {
@@ -120,12 +93,11 @@ export class PrototypeViewerAdapter implements ViewerAdapter {
     this.emit(this.objectSelectedCallbacks, { objectId: null })
   }
 
-  setActiveTool(tool: ViewerActiveTool): void {
-    this.activeTool = tool
+  setActiveTool(tool: ViewerActiveTool): void
+  setActiveTool(): void {
   }
 
   setCameraView(view: ViewerCameraView): void {
-    this.cameraView = this.cloneCameraView(view)
     this.emit(this.cameraChangedCallbacks, this.cloneCameraView(view))
   }
 

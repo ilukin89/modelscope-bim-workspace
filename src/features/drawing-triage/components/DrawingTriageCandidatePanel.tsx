@@ -13,7 +13,6 @@ import {
   candidateFilterTypes,
   candidateTypeCounts,
   candidates,
-  getPriorityLabel,
   getTypeAccent,
   getTypeAccentForType,
   typeVisuals,
@@ -364,7 +363,7 @@ export function DrawingTriageCandidatePanel({
                       <span className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-[9px] text-muted-foreground">
                         <span>{candidate.confidence}</span>
                         <span aria-hidden="true">·</span>
-                        <span>{candidate.risk}</span>
+                        <span>{candidate.reviewPriority} review priority</span>
                       </span>
                       <span className="mt-2 flex items-center gap-1.5 text-[10px] font-semibold text-foreground">
                         <MapPin
@@ -524,7 +523,7 @@ export function DrawingTriageCandidatePanel({
                     <p>
                       Priority:{" "}
                       <span className="font-semibold text-foreground">
-                        {getPriorityLabel(candidate)}
+                        {candidate.reviewPriority}
                       </span>
                     </p>
                     <p>

@@ -177,20 +177,40 @@ ModelScope is a code-first UX Engineering prototype for complex BIM review workf
 
 Run before finishing:
 
-grep -rn "void [a-z]" src/ --include="_.ts" --include="_.tsx"
+```bash
+grep -rnE '^\s*void [A-Za-z_][A-Za-z0-9_]*;?\s*$' src/ --include="*.ts" --include="*.tsx"
+```
+
 → must return empty
 
-grep -rn "^export const\|^export function" src/features/ --include="_.ts" --include="_.tsx" | awk -F': ' '{print $2}' | sort | uniq -d
+This check catches standalone `void paramName` statements used to silence unused parameters.
+Valid async fire-and-forget calls such as `void initializeAdapter()` inside React effects are allowed when intentional.
+
+```bash
+grep -rhoE '^export (const|function) [A-Za-z_][A-Za-z0-9_]+' src/features/ --include="*.ts" --include="*.tsx" \
+  | sed -E 's/^export (const|function) //' \
+  | sort \
+  | uniq -d
+```
+
 → must return empty
 
-npm run build → must pass
+```bash
+npm run build
+```
+
+→ must pass
 
 Then confirm:
 
 - no new broad `string` fields for controlled domain values
-- no new public class getters/methods unless required by interface or used
+- no new public class getters/methods unless required by interface or used by the app
 - no large inline JSX blocks added to workspace/orchestrator components
 - no parsing semantic values from display copy
+- no standalone `void paramName` statements used to silence unused parameters
+- unused parameters use the `_paramName` convention
+- intentional async fire-and-forget calls such as `void initializeAdapter()` are allowed in React effects
 - no inline prop types for components with more than two props
+- no UI behavior or visual changes hidden inside refactor-only work
 
 **Version**: 1.0.0 | **Ratified**: 2026-06-08 | **Last Amended**: 2026-06-25

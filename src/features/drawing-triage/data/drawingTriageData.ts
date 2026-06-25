@@ -3,7 +3,17 @@ import type {
   CandidateId,
   CandidateReviewState,
   CandidateType,
+  ReviewCandidateFilter,
 } from "../types"
+
+export const candidateFilterTypes = {
+  clearance: "Clearance",
+  annotation: "Annotation",
+  coordination: "Coordination",
+} as const satisfies Record<
+  Exclude<ReviewCandidateFilter, "all" | "follow_up">,
+  CandidateType
+>
 
 export const typeVisuals: Record<
   CandidateType,

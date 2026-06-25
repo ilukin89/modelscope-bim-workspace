@@ -207,7 +207,6 @@ Then confirm:
 - no new public class getters/methods unless required by interface or used by the app
 - no large inline JSX blocks added to workspace/orchestrator components
 - no parsing semantic values from display copy
-- no standalone `void paramName` statements used to silence unused parameters
 - unused parameters use the `_paramName` convention
 - intentional async fire-and-forget calls such as `void initializeAdapter()` are allowed in React effects
 - no inline prop types for components with more than two props

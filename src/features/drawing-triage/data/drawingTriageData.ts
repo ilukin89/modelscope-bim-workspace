@@ -3,8 +3,43 @@ import type {
   CandidateId,
   CandidateReviewState,
   CandidateType,
+  DrawingSheetId,
+  DrawingTriageSheetSummary,
   ReviewCandidateFilter,
 } from "../types"
+import type { ProjectId } from "@/types"
+
+export const supportedDrawingProjectId =
+  "residential-tower-a" satisfies ProjectId
+
+export const drawingSheets: DrawingTriageSheetSummary[] = [
+  {
+    id: "level-02",
+    name: "Level 02 floor plan",
+    shortName: "Level 02",
+    code: "A-102",
+    marker: "02",
+    status: "completed",
+  },
+  {
+    id: "level-01",
+    name: "Level 01 floor plan",
+    shortName: "Level 01",
+    code: "A-101",
+    marker: "01",
+    status: "not-scanned",
+  },
+  {
+    id: "roof",
+    name: "Roof plan",
+    shortName: "Roof",
+    code: "A-301",
+    marker: "R",
+    status: "not-scanned",
+  },
+]
+
+export const completedSampleSheetId: DrawingSheetId = "level-02"
 
 export const candidateFilterTypes = {
   clearance: "Clearance",

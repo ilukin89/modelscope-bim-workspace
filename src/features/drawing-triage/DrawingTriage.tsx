@@ -1,6 +1,5 @@
 import {
   useEffect,
-  useMemo,
   useRef,
   useState,
   type RefObject,
@@ -16,10 +15,9 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import {
-  candidateFilterTypes,
   candidates,
-  cloneInitialReviewStates,
-  formatIssueId,
+  completedSampleSheetId,
+  drawingSheets,
 } from "./data/drawingTriageData"
 import { DrawingTriageEntryGate } from "./components/DrawingTriageEntryGate"
 import { DrawingTriageCandidatePanel } from "./components/DrawingTriageCandidatePanel"
@@ -29,57 +27,13 @@ import {
   DrawingTriageProjectEmptyState,
   DrawingTriageSheetEmptyState,
 } from "./components/DrawingTriageEmptyState"
-import {
-  readTriageSessionSnapshot,
-  writeTriageSessionSnapshot,
-} from "./lib/triageSession"
+import { useDrawingTriageWorkflow } from "./hooks/useDrawingTriageWorkflow"
 import type {
-  Candidate,
   CandidateId,
-  CreatedIssueSummary,
-  DrawingSheetId,
-  DrawingSource,
-  DrawingTriageSheetSummary,
-  PendingPanelFocus,
-  ReviewCandidateFilter,
-  ReviewDecision,
-  RightPanelView,
-  TriageSessionSnapshot,
-  TriageStage,
+  CandidateReviewState,
 } from "./types"
 import type { ProjectData, ProjectId } from "@/types"
 import { DrawingTriageSamplePlan } from "./components/DrawingTriageSamplePlan"
-
-const supportedDrawingProjectId = "residential-tower-a" satisfies ProjectId
-
-const drawingSheets: DrawingTriageSheetSummary[] = [
-  {
-    id: "level-02",
-    name: "Level 02 floor plan",
-    shortName: "Level 02",
-    code: "A-102",
-    marker: "02",
-    status: "completed",
-  },
-  {
-    id: "level-01",
-    name: "Level 01 floor plan",
-    shortName: "Level 01",
-    code: "A-101",
-    marker: "01",
-    status: "not-scanned",
-  },
-  {
-    id: "roof",
-    name: "Roof plan",
-    shortName: "Roof",
-    code: "A-301",
-    marker: "R",
-    status: "not-scanned",
-  },
-]
-
-const completedSampleSheetId: DrawingSheetId = "level-02"
 
 type DrawingTriageProps = {
   selectedProject: ProjectData
@@ -91,133 +45,62 @@ export function DrawingTriage({
   onProjectChange,
 }: DrawingTriageProps) {
   const selectedProjectId = selectedProject.id
-  const isSupportedProject = selectedProjectId === supportedDrawingProjectId
-  const initialSessionRef = useRef<TriageSessionSnapshot | null | undefined>(
-    undefined,
-  )
-  if (initialSessionRef.current === undefined) {
-    initialSessionRef.current = readTriageSessionSnapshot()
-  }
-  const initialSession = initialSessionRef.current
-  const [triageStage, setTriageStage] = useState<TriageStage>(
-    initialSession?.triageStage ?? "empty",
-  )
-  const [drawingSource, setDrawingSource] = useState<DrawingSource | null>(
-    initialSession?.drawingSource ?? null,
-  )
-  const [activeSheetId, setActiveSheetId] = useState<DrawingSheetId>(
-    initialSession?.activeSheetId ?? completedSampleSheetId,
-  )
-  const [selectedCandidateId, setSelectedCandidateId] =
-    useState<CandidateId>(
-      initialSession?.selectedCandidateId ?? "door-clearance",
-    )
-  const [reviewStates, setReviewStates] = useState(
-    initialSession?.reviewStates ?? cloneInitialReviewStates(),
-  )
-  const [activeRightPanelView, setActiveRightPanelView] =
-    useState<RightPanelView>(
-      initialSession?.activeRightPanelView ?? "review_candidates",
-    )
-  const [reviewCandidateFilter, setReviewCandidateFilter] =
-    useState<ReviewCandidateFilter>(
-      initialSession?.reviewCandidateFilter ?? "all",
-    )
-  const [createdIssues, setCreatedIssues] = useState<CreatedIssueSummary[]>(
-    initialSession?.createdIssues ?? [],
-  )
-  const [pendingPanelFocus, setPendingPanelFocus] =
-    useState<PendingPanelFocus | null>(null)
   const [changeDrawingDialogOpen, setChangeDrawingDialogOpen] = useState(false)
   const [removeDrawingDialogOpen, setRemoveDrawingDialogOpen] = useState(false)
   const [issuePendingRemoval, setIssuePendingRemoval] =
     useState<CandidateId | null>(null)
-  const nextIssueSequence = useRef(initialSession?.nextIssueSequence ?? 1)
   const candidateCardRefs = useRef<
     Partial<Record<CandidateId, HTMLElement | null>>
   >({})
   const issueCardRefs = useRef<
     Partial<Record<CandidateId, HTMLElement | null>>
   >({})
-  const previousProjectId = useRef<ProjectId>(selectedProjectId)
-  const selectedCandidate =
-    candidates.find((candidate) => candidate.id === selectedCandidateId) ??
-    candidates[0]
-  const selectedReviewState = reviewStates[selectedCandidate.id]
-  const remainingReviewCount = candidates.filter(
-    (candidate) => reviewStates[candidate.id].decision === "unreviewed",
-  ).length
-  const createdIssueSummaries = useMemo(
-    () =>
-      createdIssues
-        .map((issue) => ({
-          issue,
-          candidate: candidates.find(
-            (candidate) => candidate.id === issue.candidateId,
-          ),
-        }))
-        .filter(
-          (
-            summary,
-          ): summary is {
-            issue: CreatedIssueSummary
-            candidate: Candidate
-          } =>
-            Boolean(summary.candidate) &&
-            reviewStates[summary.issue.candidateId].decision ===
-              "issue_created",
-        ),
-    [createdIssues, reviewStates],
-  )
-  const followUpCandidates = candidates.filter(
-    (candidate) =>
-      reviewStates[candidate.id].decision === "unreviewed" &&
-      reviewStates[candidate.id].isFollowUp,
-  )
-  const followUpCount = followUpCandidates.length
-  const visibleReviewCandidates = getReviewCandidates(reviewCandidateFilter)
-  const activeDrawingSource = drawingSource ?? "Sample drawing"
-  const activeDrawingFileName =
-    activeDrawingSource === "Mock file"
-      ? "mock-a102-level-02.pdf"
-      : "MS_A102_review.pdf"
-  const activeSheet =
-    drawingSheets.find((sheet) => sheet.id === activeSheetId) ??
-    drawingSheets[0]
-  const isCompletedSampleSheet = activeSheetId === completedSampleSheetId
-  const sampleReviewAvailable =
-    isSupportedProject && isCompletedSampleSheet && triageStage === "review"
-
-  function candidateHasCreatedIssue(candidateId: CandidateId) {
-    return (
-      reviewStates[candidateId].decision === "issue_created" &&
-      createdIssues.some((issue) => issue.candidateId === candidateId)
-    )
-  }
-
-  function getReviewCandidates(filter: ReviewCandidateFilter) {
-    if (filter === "all") return candidates
-    if (filter === "follow_up") return followUpCandidates
-
-    return candidates.filter(
-      (candidate) => candidate.type === candidateFilterTypes[filter],
-    )
-  }
-
-  function setReviewFilter(filter: ReviewCandidateFilter) {
-    const filteredCandidates = getReviewCandidates(filter)
-
-    if (
-      filteredCandidates.length > 0 &&
-      !filteredCandidates.some(
-        (candidate) => candidate.id === selectedCandidateId,
-      )
-    ) {
-      setSelectedCandidateId(filteredCandidates[0].id)
-    }
-
-    setReviewCandidateFilter(filter)
-  }
+  const {
+    state: {
+      activeDrawingFileName,
+      activeDrawingSource,
+      activeRightPanelView,
+      activeSheet,
+      activeSheetId,
+      createdIssueSummaries,
+      drawingSource,
+      followUpCount,
+      isSupportedProject,
+      pendingPanelFocus,
+      remainingReviewCount,
+      reviewCandidateFilter,
+      reviewStates,
+      sampleReviewAvailable,
+      selectedCandidate,
+      selectedCandidateId,
+      selectedReviewState,
+      triageStage,
+      visibleReviewCandidates,
+    },
+    actions: {
+      changeDrawing,
+      clearPendingPanelFocus,
+      convertCandidateToIssue,
+      openLevel02Sample,
+      openResidentialTowerSample,
+      removeCandidateIssue,
+      removeDrawing,
+      runTriage,
+      selectCandidate,
+      selectCandidateFromDrawing,
+      selectDrawingSource,
+      selectSheet,
+      setReviewFilter,
+      showCreatedIssues,
+      showReviewCandidates,
+      toggleFollowUp,
+      viewCreatedIssue,
+      viewIssueOnSheet,
+    },
+  } = useDrawingTriageWorkflow({
+    selectedProjectId,
+    onProjectChange,
+  })
 
   function scrollPanelItemIntoView(
     refs: RefObject<Partial<Record<CandidateId, HTMLElement | null>>>,
@@ -243,262 +126,26 @@ export function DrawingTriage({
 
     window.requestAnimationFrame(() => {
       scrollPanelItemIntoView(refs, pendingPanelFocus.candidateId)
-      setPendingPanelFocus((current) =>
-        current?.candidateId === pendingPanelFocus.candidateId &&
-        current.view === pendingPanelFocus.view
-          ? null
-          : current,
+      clearPendingPanelFocus(
+        pendingPanelFocus.candidateId,
+        pendingPanelFocus.view,
       )
     })
   }, [
     activeRightPanelView,
+    clearPendingPanelFocus,
     createdIssueSummaries.length,
     pendingPanelFocus,
     selectedCandidateId,
   ])
 
-  useEffect(() => {
-    if (triageStage !== "scanning") {
-      return
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setTriageStage("review")
-    }, 850)
-
-    return () => window.clearTimeout(timeoutId)
-  }, [triageStage])
-
-  useEffect(() => {
-    const previous = previousProjectId.current
-    previousProjectId.current = selectedProjectId
-
-    if (
-      selectedProjectId === supportedDrawingProjectId &&
-      previous !== supportedDrawingProjectId
-    ) {
-      setActiveSheetId(completedSampleSheetId)
-      setDrawingSource((current) => current ?? "Sample drawing")
-      setTriageStage("review")
-    }
-  }, [selectedProjectId])
-
-  useEffect(() => {
-    if (!isSupportedProject) {
-      return
-    }
-
-    writeTriageSessionSnapshot({
-      triageStage,
-      drawingSource,
-      activeSheetId,
-      selectedCandidateId,
-      reviewStates,
-      activeRightPanelView,
-      reviewCandidateFilter,
-      createdIssues,
-      nextIssueSequence: nextIssueSequence.current,
-    })
-  }, [
-    activeRightPanelView,
-    activeSheetId,
-    createdIssues,
-    drawingSource,
-    isSupportedProject,
-    reviewCandidateFilter,
-    reviewStates,
-    selectedCandidateId,
-    triageStage,
-  ])
-
-  function updateReviewDecision(
-    candidateId: CandidateId,
-    decision: ReviewDecision,
-  ) {
-    setSelectedCandidateId(candidateId)
-    setReviewStates((current) => ({
-      ...current,
-      [candidateId]: {
-        ...current[candidateId],
-        decision,
-        isFollowUp:
-          decision === "issue_created" ? false : current[candidateId].isFollowUp,
-      },
-    }))
-  }
-
-  function convertCandidateToIssue(candidateId: CandidateId) {
-    const issueId = formatIssueId(nextIssueSequence.current)
-    nextIssueSequence.current += 1
-
-    updateReviewDecision(candidateId, "issue_created")
-    setCreatedIssues((current) => {
-      if (current.some((issue) => issue.candidateId === candidateId)) {
-        return current
-      }
-
-      return [...current, { issueId, candidateId }]
-    })
-  }
-
-  function removeCandidateIssue(candidateId: CandidateId) {
-    updateReviewDecision(candidateId, "unreviewed")
-    setCreatedIssues((current) =>
-      current.filter((issue) => issue.candidateId !== candidateId),
-    )
-    setActiveRightPanelView("review_candidates")
-    setPendingPanelFocus({ candidateId, view: "review_candidates" })
-  }
-
-  function toggleFollowUp(candidateId: CandidateId) {
-    setSelectedCandidateId(candidateId)
-    setReviewStates((current) => ({
-      ...current,
-      [candidateId]: {
-        ...current[candidateId],
-        isFollowUp: !current[candidateId].isFollowUp,
-      },
-    }))
-  }
-
-  function selectCandidateFromDrawing(candidateId: CandidateId) {
-    const targetView =
-      activeRightPanelView === "created_issues" &&
-      candidateHasCreatedIssue(candidateId)
-        ? "created_issues"
-        : "review_candidates"
-
-    if (
-      targetView === "review_candidates" &&
-      !getReviewCandidates(reviewCandidateFilter).some(
-        (candidate) => candidate.id === candidateId,
-      )
-    ) {
-      setReviewFilter("all")
-    }
-
-    setSelectedCandidateId(candidateId)
-    setActiveRightPanelView(targetView)
-    setPendingPanelFocus({ candidateId, view: targetView })
-  }
-
-  function showReviewCandidates() {
-    if (
-      !getReviewCandidates(reviewCandidateFilter).some(
-        (candidate) => candidate.id === selectedCandidateId,
-      )
-    ) {
-      setReviewFilter("all")
-    }
-
-    setActiveRightPanelView("review_candidates")
-    setPendingPanelFocus({
-      candidateId: selectedCandidateId,
-      view: "review_candidates",
-    })
-  }
-
-  function showCreatedIssues() {
-    const selectedIssueCandidateId = candidateHasCreatedIssue(selectedCandidateId)
-      ? selectedCandidateId
-      : createdIssueSummaries[0]?.issue.candidateId
-
-    if (selectedIssueCandidateId) {
-      setSelectedCandidateId(selectedIssueCandidateId)
-      setPendingPanelFocus({
-        candidateId: selectedIssueCandidateId,
-        view: "created_issues",
-      })
-    }
-
-    setActiveRightPanelView("created_issues")
-  }
-
-  function viewIssueOnSheet(candidateId: CandidateId) {
-    setSelectedCandidateId(candidateId)
-    setActiveRightPanelView("created_issues")
-    setPendingPanelFocus({ candidateId, view: "created_issues" })
-  }
-
-  function viewCreatedIssue(candidateId: CandidateId) {
-    setSelectedCandidateId(candidateId)
-    setActiveRightPanelView("created_issues")
-    setPendingPanelFocus({ candidateId, view: "created_issues" })
-  }
-
-  function getDecisionLabel(decision: ReviewDecision) {
+  function getDecisionLabel(decision: CandidateReviewState["decision"]) {
     if (decision === "issue_created") return "Issue created"
     return "Needs review"
   }
 
-  function resetReviewState() {
-    setSelectedCandidateId("door-clearance")
-    setReviewStates(cloneInitialReviewStates())
-    setActiveRightPanelView("review_candidates")
-    setReviewCandidateFilter("all")
-    setCreatedIssues([])
-    setPendingPanelFocus(null)
-    candidateCardRefs.current = {}
-    issueCardRefs.current = {}
-    nextIssueSequence.current = 1
-  }
-
-  function selectDrawingSource(source: DrawingSource) {
-    resetReviewState()
-    setActiveSheetId(completedSampleSheetId)
-    setDrawingSource(source)
-    setTriageStage("selected")
-  }
-
-  function changeDrawing() {
-    resetReviewState()
-    setActiveSheetId(completedSampleSheetId)
-    setDrawingSource(null)
-    setTriageStage("empty")
-  }
-
   function requestChangeDrawing() {
     setChangeDrawingDialogOpen(true)
-  }
-
-  function removeDrawing() {
-    resetReviewState()
-    setActiveSheetId(completedSampleSheetId)
-    setDrawingSource(null)
-    setTriageStage("empty")
-  }
-
-  function runTriage() {
-    setTriageStage("scanning")
-  }
-
-  function openLevel02Sample() {
-    setActiveSheetId(completedSampleSheetId)
-    setDrawingSource("Sample drawing")
-    setTriageStage("review")
-  }
-
-  function openResidentialTowerSample() {
-    if (selectedProjectId !== supportedDrawingProjectId) {
-      onProjectChange(supportedDrawingProjectId)
-    }
-
-    openLevel02Sample()
-  }
-
-  function selectSheet(sheetId: DrawingSheetId) {
-    setActiveSheetId(sheetId)
-
-    if (sheetId === completedSampleSheetId) {
-      setDrawingSource((current) => current ?? "Sample drawing")
-      setTriageStage("review")
-      return
-    }
-
-    setActiveRightPanelView("review_candidates")
-    setReviewCandidateFilter("all")
-    setPendingPanelFocus(null)
-    setTriageStage("review")
   }
 
   if (!isSupportedProject) {
@@ -684,7 +331,7 @@ export function DrawingTriage({
         visibleReviewCandidates={visibleReviewCandidates}
         onConvertCandidateToIssue={convertCandidateToIssue}
         onReviewFilterChange={setReviewFilter}
-        onSelectCandidate={setSelectedCandidateId}
+        onSelectCandidate={selectCandidate}
         onShowCreatedIssues={showCreatedIssues}
         onShowReviewCandidates={showReviewCandidates}
         onToggleFollowUp={toggleFollowUp}

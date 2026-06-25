@@ -1,8 +1,7 @@
 import { Check, FileStack } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { DrawingTriageSheetSummary } from "./DrawingTriageEmptyState"
-import type { DrawingSheetId } from "../types"
+import type { DrawingSheetId, DrawingTriageSheetSummary } from "../types"
 
 type DrawingTriageContextPanelProps = {
   activeDrawingFileName: string

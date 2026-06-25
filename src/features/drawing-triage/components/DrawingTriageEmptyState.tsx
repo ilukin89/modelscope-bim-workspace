@@ -1,16 +1,7 @@
 import { Bot, Check, FileStack, ScanSearch } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { DrawingSheetId } from "../types"
-
-export type DrawingTriageSheetSummary = {
-  id: DrawingSheetId
-  name: string
-  shortName: string
-  code: string
-  marker: string
-  status: "completed" | "not-scanned"
-}
+import type { DrawingSheetId, DrawingTriageSheetSummary } from "../types"
 
 type DrawingTriageProjectEmptyStateProps = {
   projectName: string

@@ -1038,7 +1038,7 @@ function DrawingTriageCardSpecimen({
           }}
         >
           <TriangleAlert className="mt-px size-3 shrink-0" />
-          <span>Issue created by an explicit human review decision.</span>
+          <span>Issue created by user (username) on DD/MM/YY, hh:mm</span>
         </div>
       )}
 

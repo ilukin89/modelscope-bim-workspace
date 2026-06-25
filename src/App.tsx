@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { X } from "lucide-react"
 import { TopBar } from "@/components/layout/TopBar"
 import { DesignSystemPanel } from "@/components/workspace/DesignSystemPanel"
-import { DrawingTriagePlaceholder } from "@/features/drawing-triage/DrawingTriagePlaceholder"
+import { DrawingTriage } from "@/features/drawing-triage/DrawingTriage"
 import { ModelExplorer } from "@/features/model-explorer/ModelExplorer"
 import { ObjectInspector } from "@/features/object-inspector/ObjectInspector"
 import { StatusBar } from "@/features/workspace/StatusBar"
@@ -422,7 +422,10 @@ function App() {
             )}
           </main>
         ) : view === "workspace" ? (
-          <DrawingTriagePlaceholder />
+          <DrawingTriage
+            selectedProject={selectedProject}
+            onProjectChange={selectProject}
+          />
         ) : (
           <DesignSystemPanel />
         )}

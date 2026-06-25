@@ -91,7 +91,7 @@ src/
 
   features/
     drawing-triage/
-      DrawingTriagePlaceholder.tsx
+      DrawingTriage.tsx
 
     model-explorer/
       ModelExplorer.tsx

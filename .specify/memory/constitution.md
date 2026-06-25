@@ -139,4 +139,46 @@ All future work should protect the main portfolio message:
 
 ModelScope is a code-first UX Engineering prototype for complex BIM review workflows. It demonstrates how product thinking, UX structure, frontend implementation, future backend boundaries, and AI-assisted development can be organized through a spec-driven workflow.
 
-**Version**: 1.0.0 | **Ratified**: 2026-06-08 | **Last Amended**: 2026-06-08
+## TypeScript and React implementation rules
+
+- Use standard TypeScript conventions for unused parameters.
+  Prefix unused interface implementation parameters with `_`, for example `_container: HTMLElement`.
+  Do not use `void paramName` as a workaround for unused parameters.
+
+- Do not add public class getters, methods, or properties unless they are required by an interface or used by the application.
+
+- Before declaring a new constant, helper, or utility, check whether the same concept already exists in the feature data file, shared types file, or nearby module.
+  Prefer importing an existing source of truth over redeclaring a duplicate.
+
+- Do not parse semantic values from display strings.
+  If the UI needs priority, status, type, severity, or decision state, model it as an explicit typed field or union.
+
+- Avoid broad `string` fields for controlled domain values.
+  Use literal unions for stable categories such as status, priority, severity, review decision, candidate type, or workflow stage.
+
+- Inline prop types are allowed only for very small components.
+  If a component has more than two props, define a named props type above the component.
+
+- Keep React components focused.
+  If a component grows because of large render-only JSX blocks, extract presentational subcomponents instead of adding more inline markup.
+
+- A main workspace component may orchestrate state and compose child components, but it should not contain large SVGs, long card lists, dialog markup, and panel markup in the same file.
+
+- Build passing is necessary but not sufficient.
+  Refactor PRs must also check for duplicated constants, stale helpers, dead public API, and AI workaround patterns.
+
+- If a function or component exceeds roughly 150 lines, check whether it mixes state, rendering, data mapping, and side effects. Extract render-only sections before adding more logic.
+
+## Implementation Quality Checklist
+
+Before finishing, check:
+
+- no `void paramName` unused-parameter workaround
+- no duplicated constants/helpers inside the same feature
+- no new broad `string` fields for controlled domain values
+- no new public class getters/methods unless required by interface or used
+- no large inline JSX blocks added to workspace/orchestrator components
+- no parsing semantic values from display copy
+- `npm run build` passes
+
+**Version**: 1.0.0 | **Ratified**: 2026-06-08 | **Last Amended**: 2026-06-25

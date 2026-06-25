@@ -16,6 +16,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import {
+  candidateFilterTypes,
   candidates,
   cloneInitialReviewStates,
   formatIssueId,
@@ -35,7 +36,6 @@ import {
 import type {
   Candidate,
   CandidateId,
-  CandidateType,
   CreatedIssueSummary,
   DrawingSheetId,
   DrawingSource,
@@ -80,15 +80,6 @@ const drawingSheets: DrawingTriageSheetSummary[] = [
 ]
 
 const completedSampleSheetId: DrawingSheetId = "level-02"
-
-const candidateFilterTypes: Record<
-  Exclude<ReviewCandidateFilter, "all" | "follow_up">,
-  CandidateType
-> = {
-  clearance: "Clearance",
-  annotation: "Annotation",
-  coordination: "Coordination",
-}
 
 type DrawingTriageProps = {
   selectedProject: ProjectData

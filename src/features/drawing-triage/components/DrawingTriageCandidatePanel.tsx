@@ -10,6 +10,7 @@ import type { CSSProperties, MutableRefObject } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
+  candidateFilterTypes,
   candidateTypeCounts,
   candidates,
   getPriorityLabel,
@@ -21,26 +22,21 @@ import type {
   Candidate,
   CandidateId,
   CandidateReviewState,
-  CandidateType,
   CreatedIssueSummary,
   ReviewCandidateFilter,
   RightPanelView,
 } from "../types"
 
-const candidateFilterTypes: Record<
-  Exclude<ReviewCandidateFilter, "all" | "follow_up">,
-  CandidateType
-> = {
-  clearance: "Clearance",
-  annotation: "Annotation",
-  coordination: "Coordination",
-}
-
-const typeFilterOptions = [
-  { filter: "clearance", type: "Clearance" },
-  { filter: "annotation", type: "Annotation" },
-  { filter: "coordination", type: "Coordination" },
-] as const
+const typeFilterOptions = Object.entries(candidateFilterTypes) as Array<
+  [
+    keyof typeof candidateFilterTypes,
+    (typeof candidateFilterTypes)[keyof typeof candidateFilterTypes],
+  ]
+>
+const candidateTypeFilterOptions = typeFilterOptions.map(([filter, type]) => ({
+  filter,
+  type,
+}))
 
 type CreatedIssueWithCandidate = {
   issue: CreatedIssueSummary
@@ -190,7 +186,7 @@ export function DrawingTriageCandidatePanel({
               >
                 All {candidates.length}
               </button>
-              {typeFilterOptions.map(({ filter, type }) => {
+              {candidateTypeFilterOptions.map(({ filter, type }) => {
                 const active = reviewCandidateFilter === filter
                 const typeAccent = getTypeAccentForType(type)
 

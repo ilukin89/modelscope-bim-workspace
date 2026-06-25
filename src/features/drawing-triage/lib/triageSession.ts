@@ -6,6 +6,7 @@ import type {
   CandidateId,
   CreatedIssueSummary,
   DrawingSource,
+  DrawingSheetId,
   ReviewCandidateFilter,
   ReviewDecision,
   RightPanelView,
@@ -24,6 +25,10 @@ function isCandidateId(value: unknown): value is CandidateId {
 
 function isDrawingSource(value: unknown): value is DrawingSource {
   return value === "Sample drawing" || value === "Mock file"
+}
+
+function isDrawingSheetId(value: unknown): value is DrawingSheetId {
+  return value === "level-02" || value === "level-01" || value === "roof"
 }
 
 function isTriageStage(value: unknown): value is TriageStage {
@@ -98,6 +103,9 @@ export function readTriageSessionSnapshot(): TriageSessionSnapshot | null {
     return {
       triageStage: triageStage === "scanning" ? "selected" : triageStage,
       drawingSource,
+      activeSheetId: isDrawingSheetId(parsed.activeSheetId)
+        ? parsed.activeSheetId
+        : "level-02",
       selectedCandidateId: isCandidateId(parsed.selectedCandidateId)
         ? parsed.selectedCandidateId
         : "door-clearance",

@@ -47,6 +47,8 @@ export type TriageStage = "empty" | "selected" | "scanning" | "review"
 
 export type DrawingSource = "Sample drawing" | "Mock file"
 
+export type DrawingSheetId = "level-02" | "level-01" | "roof"
+
 export type PendingPanelFocus = {
   candidateId: CandidateId
   view: RightPanelView
@@ -55,6 +57,7 @@ export type PendingPanelFocus = {
 export type TriageSessionSnapshot = {
   triageStage: TriageStage
   drawingSource: DrawingSource | null
+  activeSheetId?: DrawingSheetId
   selectedCandidateId: CandidateId
   reviewStates: Record<CandidateId, CandidateReviewState>
   activeRightPanelView: RightPanelView

@@ -118,6 +118,20 @@ function getGroupingConfig(mode: AiFindingGroupingMode) {
   return statusGroups
 }
 
+type InspectorAiFindingButtonProps = {
+  finding: ReviewIssue
+  issueId?: ModelReviewIssue["id"]
+  selected: boolean
+  status: AiFindingWorkflowStatus
+  onSelect: () => void
+}
+
+type ReviewCheckProps = {
+  label: string
+  detail: string
+  warning?: boolean
+}
+
 export function ModelReviewAiReviewPanel({
   aiFindingStatuses,
   aiFindings,
@@ -269,14 +283,90 @@ export function ModelReviewAiReviewPanel({
   )
 }
 
-function InspectorAiFindingButton({ finding, issueId, selected, status, onSelect }: { finding: ReviewIssue; issueId?: ModelReviewIssue["id"]; selected: boolean; status: AiFindingWorkflowStatus; onSelect: () => void }) {
+function InspectorAiFindingButton({
+  finding,
+  issueId,
+  selected,
+  status,
+  onSelect,
+}: InspectorAiFindingButtonProps) {
   const dismissed = status === "dismissed"
   const issueCreated = status === "issue-created"
   const severityMeta = findingSeverityMeta[finding.severity]
   const SeverityIcon = severityMeta.icon
-  return <button type="button" onClick={onSelect} aria-pressed={selected} className={cn("w-full border-l-2 border-l-transparent px-2 py-1.5 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring", dismissed && "opacity-60", selected ? "border-l-ai bg-ai/6 dark:bg-ai/10" : "hover:bg-muted/20 dark:hover:bg-muted/50", issueCreated && !selected && "bg-success/4 dark:bg-success/8")}><span className="flex min-w-0 items-center gap-2"><span className={cn("flex size-6 shrink-0 items-center justify-center rounded-sm", severityMeta.className)}><SeverityIcon className="size-3.5" /></span><span className="min-w-0 flex-1"><span className="flex min-w-0 items-center gap-1.5"><span className="truncate text-[10px] font-semibold">{finding.title}</span><span className="ml-auto font-mono text-[8px] text-muted-foreground">{finding.code}</span></span><span className="mt-0.5 block truncate font-mono text-[8px] text-muted-foreground">{finding.details.objectId} · {finding.location}</span></span>{status !== "active" && <span className={cn("shrink-0 rounded-sm border px-1 py-0.5 text-[7px] font-semibold uppercase tracking-wide", status === "issue-created" ? "inline-flex items-center gap-1 border-success/35 bg-success/8 text-success-foreground dark:bg-success/10" : "border-border/25 text-muted-foreground dark:border-border")}>{status === "issue-created" ? <><CheckCircle2 className="size-2.5" />{issueId ?? "Issue"}</> : statusLabel[status]}</span>}</span></button>
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={cn(
+        "w-full border-l-2 border-l-transparent px-2 py-1.5 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+        dismissed && "opacity-60",
+        selected
+          ? "border-l-ai bg-ai/6 dark:bg-ai/10"
+          : "hover:bg-muted/20 dark:hover:bg-muted/50",
+        issueCreated && !selected && "bg-success/4 dark:bg-success/8",
+      )}
+    >
+      <span className="flex min-w-0 items-center gap-2">
+        <span
+          className={cn(
+            "flex size-6 shrink-0 items-center justify-center rounded-sm",
+            severityMeta.className,
+          )}
+        >
+          <SeverityIcon className="size-3.5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-[10px] font-semibold">
+              {finding.title}
+            </span>
+            <span className="ml-auto font-mono text-[8px] text-muted-foreground">
+              {finding.code}
+            </span>
+          </span>
+          <span className="mt-0.5 block truncate font-mono text-[8px] text-muted-foreground">
+            {finding.details.objectId} · {finding.location}
+          </span>
+        </span>
+        {status !== "active" && (
+          <span
+            className={cn(
+              "shrink-0 rounded-sm border px-1 py-0.5 text-[7px] font-semibold uppercase tracking-wide",
+              status === "issue-created"
+                ? "inline-flex items-center gap-1 border-success/35 bg-success/8 text-success-foreground dark:bg-success/10"
+                : "border-border/25 text-muted-foreground dark:border-border",
+            )}
+          >
+            {status === "issue-created" ? (
+              <>
+                <CheckCircle2 className="size-2.5" />
+                {issueId ?? "Issue"}
+              </>
+            ) : (
+              statusLabel[status]
+            )}
+          </span>
+        )}
+      </span>
+    </button>
+  )
 }
 
-function ReviewCheck({ label, detail, warning = false }: { label: string; detail: string; warning?: boolean }) {
-  return <div className="flex items-center gap-2 border-b border-border/25 pb-2 dark:border-border">{warning ? <AlertTriangle className="size-3.5 text-warning" /> : <CheckCircle2 className="size-3.5 text-success" />}<div><p className="text-[10px] font-medium">{label}</p><p className="text-[9px] text-muted-foreground">{detail}</p></div></div>
+function ReviewCheck({ label, detail, warning = false }: ReviewCheckProps) {
+  return (
+    <div className="flex items-center gap-2 border-b border-border/25 pb-2 dark:border-border">
+      {warning ? (
+        <AlertTriangle className="size-3.5 text-warning" />
+      ) : (
+        <CheckCircle2 className="size-3.5 text-success" />
+      )}
+      <div>
+        <p className="text-[10px] font-medium">{label}</p>
+        <p className="text-[9px] text-muted-foreground">{detail}</p>
+      </div>
+    </div>
+  )
 }

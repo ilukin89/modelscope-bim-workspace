@@ -11,6 +11,8 @@ export type CandidateId =
 
 export type CandidateType = "Clearance" | "Annotation" | "Coordination"
 
+export type ReviewPriority = "Low" | "Medium" | "High"
+
 export type Candidate = {
   id: CandidateId
   marker: number
@@ -18,7 +20,7 @@ export type Candidate = {
   title: string
   summary: string
   confidence: string
-  risk: string
+  reviewPriority: ReviewPriority
   region: string
 }
 

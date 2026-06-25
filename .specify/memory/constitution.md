@@ -156,6 +156,10 @@ ModelScope is a code-first UX Engineering prototype for complex BIM review workf
 - Avoid broad `string` fields for controlled domain values.
   Use literal unions for stable categories such as status, priority, severity, review decision, candidate type, or workflow stage.
 
+- When a spec introduces new data entities or mock data,
+  define and lock the types file first.
+  Data files and components must not be written before the types they depend on are reviewed.
+
 - Inline prop types are allowed only for very small components.
   If a component has more than two props, define a named props type above the component.
 
@@ -171,14 +175,22 @@ ModelScope is a code-first UX Engineering prototype for complex BIM review workf
 
 ## Implementation Quality Checklist
 
-Before finishing, check:
+Run before finishing:
 
-- no `void paramName` unused-parameter workaround
-- no duplicated constants/helpers inside the same feature
+grep -rn "void [a-z]" src/ --include="_.ts" --include="_.tsx"
+→ must return empty
+
+grep -rn "^export const\|^export function" src/features/ --include="_.ts" --include="_.tsx" | awk -F': ' '{print $2}' | sort | uniq -d
+→ must return empty
+
+npm run build → must pass
+
+Then confirm:
+
 - no new broad `string` fields for controlled domain values
 - no new public class getters/methods unless required by interface or used
 - no large inline JSX blocks added to workspace/orchestrator components
 - no parsing semantic values from display copy
-- `npm run build` passes
+- no inline prop types for components with more than two props
 
 **Version**: 1.0.0 | **Ratified**: 2026-06-08 | **Last Amended**: 2026-06-25

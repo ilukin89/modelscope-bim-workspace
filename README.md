@@ -20,11 +20,6 @@ It explores two connected review modes:
 - **Model Review** — reviewing AI findings in a model-oriented workspace
 - **Drawing Triage** — reviewing AI-generated observations on 2D drawing sheets
 
-The core product principle is:
-
-> **AI suggests. A human decides.**
-> AI findings and candidates are never silently promoted into confirmed issues.
-
 ---
 
 ## Current Status
@@ -56,44 +51,6 @@ These limitations are intentional. The project is designed as a credible product
 
 ---
 
-## Why This Project Exists
-
-Many AI product demos make the same mistake:
-
-- AI appears “smart”
-- the UI looks polished
-- but the workflow is fake
-
-ModelScope focuses on the workflow around AI, not just the AI moment itself.
-
-The project asks:
-
-- What happens after AI finds something?
-- Who decides whether it becomes an issue?
-- How does the user trace an issue back to its source?
-- What happens if an issue is blocked, not actionable, or removed?
-- How does the viewport respond to user actions?
-
-ModelScope is designed around those product questions.
-
----
-
-## Core Product Idea
-
-ModelScope is built around a simple review loop:
-
-```txt
-AI finding / candidate
-→ human review
-→ visible context
-→ explicit decision
-→ issue tracking
-→ source traceability
-```
-
-AI output stays provisional until the reviewer acts.
-
----
 
 ## Main Workflows
 
@@ -206,9 +163,9 @@ flowchart TD
   end
 
   %% =========================
-  %% HUMAN DECISION GATE
+  %% USER DECISION 
   %% =========================
-  GATE[Human decision gate<br/>AI suggests → reviewer decides<br/>No silent promotion]
+  GATE[User decision<br/>AI suggests → reviewer decides<br/>No silent promotion]
 
   MR7 --> GATE
   DT6 --> GATE
@@ -269,7 +226,7 @@ flowchart TD
 
 ---
 
-## Human-in-the-Loop Review
+## user-in-the-Loop Review
 
 ModelScope separates AI output from confirmed issues.
 
@@ -285,7 +242,7 @@ They may include:
 - suggested action
 - review priority
 
-### Human decision
+### User decision
 
 Only the reviewer can decide whether an AI output becomes an issue.
 
@@ -347,7 +304,7 @@ The flow is intentionally lighter than Model Review issue management.
 
 ```txt
 AI candidate
-→ human review
+→ user review
 → convert to issue / dismiss / follow-up
 → Created issues sub-view
 → View on sheet

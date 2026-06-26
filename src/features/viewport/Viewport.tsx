@@ -17,9 +17,11 @@ import {
   ViewportToolStatus,
 } from "@/features/viewport/components/ViewportStatusOverlays"
 import { ViewerInitializationErrorBanner } from "@/features/viewport/components/ViewerInitializationErrorBanner"
+import { ViewportRendererFallbackBoundary } from "@/features/viewport/renderers/ViewportRendererFallbackBoundary"
 import { SvgViewportRenderer } from "@/features/viewport/renderers/svg/SvgViewportRenderer"
+import { ThreeViewportRenderer } from "@/features/viewport/renderers/three/ThreeViewportRenderer"
 import {
-  DEFAULT_VIEWPORT_RENDERER_MODE,
+  resolveViewportRendererMode,
   type ViewportRendererMode,
 } from "@/features/viewport/renderers/types"
 import { ViewportToolbar } from "@/features/viewport/ViewportToolbar"
@@ -106,8 +108,9 @@ export function Viewport({
     selectedObjectId,
     visibleLayerIds,
   })
-  const viewportRendererMode: ViewportRendererMode =
-    DEFAULT_VIEWPORT_RENDERER_MODE
+  const viewportRendererMode = resolveViewportRendererMode(
+    import.meta.env.VITE_VIEWPORT_RENDERER,
+  )
   const modelFocusRequestIssueId = modelFocusRequest?.issueId ?? null
   const modelFocusRequestLabel = modelFocusRequest?.label ?? null
   const modelFocusRequestNonce = modelFocusRequest?.nonce ?? null
@@ -153,28 +156,35 @@ export function Viewport({
   }
 
   const renderViewportRenderer = (rendererMode: ViewportRendererMode) => {
+    const rendererProps = {
+      activeTool,
+      aiReviewFindingCount,
+      aiReviewFindingSpatialCounts,
+      aiReviewVisualsActive,
+      floors,
+      modelFocusActive:
+        modelFocusActive &&
+        modelFocusRequestIssueId === selectedIssue.id,
+      modelFocusRequest,
+      previewActive: previewActive && selectedAiFindingActive,
+      selectedAiFindingActive,
+      selectedFloor,
+      selectedIssue,
+      visibleLayerIds,
+    }
     const svgRenderer = (
-      <SvgViewportRenderer
-        activeTool={activeTool}
-        aiReviewFindingCount={aiReviewFindingCount}
-        aiReviewFindingSpatialCounts={aiReviewFindingSpatialCounts}
-        aiReviewVisualsActive={aiReviewVisualsActive}
-        floors={floors}
-        modelFocusActive={
-          modelFocusActive &&
-          modelFocusRequestIssueId === selectedIssue.id
-        }
-        modelFocusRequest={modelFocusRequest}
-        previewActive={previewActive && selectedAiFindingActive}
-        selectedAiFindingActive={selectedAiFindingActive}
-        selectedFloor={selectedFloor}
-        selectedIssue={selectedIssue}
-        visibleLayerIds={visibleLayerIds}
-      />
+      <SvgViewportRenderer {...rendererProps} />
     )
 
     if (rendererMode === "three") {
-      return svgRenderer
+      return (
+        <ViewportRendererFallbackBoundary
+          fallback={svgRenderer}
+          resetKey={rendererMode}
+        >
+          <ThreeViewportRenderer {...rendererProps} />
+        </ViewportRendererFallbackBoundary>
+      )
     }
 
     return svgRenderer

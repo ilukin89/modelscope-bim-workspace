@@ -1,4 +1,5 @@
 import type { ViewportRendererProps } from "@/features/viewport/renderers/types"
+import type { HighlightKind } from "@/types"
 
 export function SvgViewportRenderer({
   activeTool,

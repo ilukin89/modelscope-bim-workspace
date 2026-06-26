@@ -17,7 +17,7 @@ export function StatusBar({
   selectedFloor,
 }: StatusBarProps) {
   return (
-    <footer className="flex h-6 shrink-0 items-center gap-4 border-t border-border bg-panel px-2.5 font-mono text-[9px] text-muted-foreground">
+    <footer className="flex h-6 w-full min-w-0 shrink-0 items-center gap-4 overflow-hidden border-t border-border bg-panel px-2.5 font-mono text-[9px] text-muted-foreground max-[900px]:hidden max-[520px]:gap-2">
       <StatusItem icon={MousePointer2} label={activeTool} />
       <StatusItem
         icon={Layers3}
@@ -27,11 +27,13 @@ export function StatusBar({
       <StatusItem
         icon={Eye}
         label={`${visibleObjects.toLocaleString()} visible`}
+        className="max-[420px]:hidden"
         testId="status-visible-objects"
       />
       <StatusItem
         icon={Layers3}
         label={`${hiddenLayers} hidden layers`}
+        className="max-[760px]:hidden"
         testId="status-hidden-layers"
       />
       <StatusItem
@@ -39,10 +41,10 @@ export function StatusBar({
         label="3 online"
         className="max-[640px]:hidden"
       />
-      <Separator orientation="vertical" className="ml-auto h-3" />
-      <div className="flex items-center gap-1.5">
+      <Separator orientation="vertical" className="ml-auto h-3 shrink-0" />
+      <div className="flex min-w-0 shrink items-center gap-1.5">
         <Circle className="size-2 fill-success text-success" />
-        Prototype v0.1.0
+        <span className="truncate">Prototype v0.1.0</span>
       </div>
     </footer>
   )
@@ -61,11 +63,11 @@ function StatusItem({
 }) {
   return (
     <div
-      className={`flex items-center gap-1.5 ${className ?? ""}`}
+      className={`flex min-w-0 shrink-0 items-center gap-1.5 ${className ?? ""}`}
       data-testid={testId}
     >
-      <Icon className="size-3" />
-      <span>{label}</span>
+      <Icon className="size-3 shrink-0" />
+      <span className="truncate">{label}</span>
     </div>
   )
 }

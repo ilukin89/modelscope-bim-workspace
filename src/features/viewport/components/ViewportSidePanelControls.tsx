@@ -103,6 +103,7 @@ export function ViewportSidePanelControls({
         <ViewportAiReviewAction
           aiReviewEntryState={aiReviewEntryState}
           aiReviewFindingCount={aiReviewFindingCount}
+          className="min-[901px]:max-[1160px]:hidden"
           onOpenAiReview={onOpenAiReview}
           onScanWithAi={onScanWithAi}
           scanning={scanning}
@@ -157,7 +158,7 @@ function RightInspectorControlGroup({
   )
 }
 
-function ViewportAiReviewAction({
+export function ViewportAiReviewAction({
   aiReviewEntryState,
   aiReviewFindingCount,
   className,
@@ -189,11 +190,11 @@ function ViewportAiReviewAction({
 
   return (
     <div
-      className={`absolute right-16 top-3 z-20 flex items-center max-[760px]:right-3 max-[760px]:top-14 max-[420px]:left-3 max-[420px]:right-auto ${className ?? ""}`}
+      className={`absolute right-16 top-3 z-20 flex max-w-[calc(100%-24px)] items-center overflow-hidden max-[900px]:left-1/2 max-[900px]:right-auto max-[900px]:max-w-[calc(100%-112px)] max-[900px]:-translate-x-1/2 ${className ?? ""}`}
     >
       <Button
         variant="outline"
-        className="h-9 gap-2 border-ai/40 bg-panel/95 px-2.5 text-[11px] font-semibold text-ai-foreground shadow-sm ring-1 ring-ai/10 hover:border-ai/50 hover:bg-ai/12 hover:text-ai-foreground disabled:opacity-80 dark:bg-panel/90"
+        className="h-9 max-w-full gap-2 overflow-hidden border-ai/40 bg-panel/95 px-2.5 text-[11px] font-semibold text-ai-foreground shadow-sm ring-1 ring-ai/10 hover:border-ai/50 hover:bg-ai/12 hover:text-ai-foreground disabled:opacity-80 dark:bg-panel/90"
         aria-label={ariaLabel}
         onClick={handleClick}
         disabled={scanning}
@@ -203,7 +204,7 @@ function ViewportAiReviewAction({
         ) : (
           <ScanSearch className="size-3.5" />
         )}
-        <span>{label}</span>
+        <span className="min-w-0 truncate">{label}</span>
       </Button>
     </div>
   )

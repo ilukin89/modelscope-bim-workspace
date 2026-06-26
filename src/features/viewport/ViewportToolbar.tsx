@@ -36,7 +36,7 @@ export function ViewportToolbar({
 }: ViewportToolbarProps) {
   return (
     <div
-      className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center rounded-md border border-border bg-panel p-1 shadow-lg shadow-background/20 max-[1160px]:static max-[1160px]:translate-x-0 max-[760px]:w-full"
+      className="absolute left-1/2 top-3 z-20 flex max-w-full -translate-x-1/2 items-center overflow-hidden rounded-md border border-border bg-panel p-1 shadow-lg shadow-background/20 max-[1160px]:static max-[1160px]:translate-x-0 max-[900px]:w-full"
       role="toolbar"
       aria-label="Viewport tools"
     >
@@ -52,14 +52,14 @@ export function ViewportToolbar({
                 aria-label={`${tool.label} tool`}
                 aria-pressed={active}
                 className={cn(
-                  "flex h-9 min-w-10 items-center justify-center gap-1.5 rounded-sm px-2 text-[10px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring max-[760px]:min-w-0 max-[760px]:flex-1 max-[760px]:px-1",
+                  "flex h-9 min-w-10 items-center justify-center gap-1.5 rounded-sm px-2 text-[10px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring max-[900px]:min-w-0 max-[900px]:flex-1 max-[900px]:px-1 max-[420px]:h-8",
                   active
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
                 <Icon className="size-3.5" strokeWidth={1.8} />
-                <span className="max-[760px]:hidden">{tool.label}</span>
+                <span className="max-[900px]:hidden">{tool.label}</span>
               </button>
             </TooltipTrigger>
             <TooltipContent side="bottom">

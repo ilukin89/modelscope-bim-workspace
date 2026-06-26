@@ -25,7 +25,7 @@ export function ViewportSelectionCard({
   return (
     <Card
       className={cn(
-        "absolute bottom-3 left-3 z-20 max-w-[260px] rounded-md bg-panel shadow-lg",
+        "absolute bottom-3 left-3 z-20 max-w-[min(260px,calc(100%-24px))] overflow-hidden rounded-md bg-panel shadow-lg max-[900px]:bottom-16 max-[900px]:max-w-[148px] max-[900px]:border-border max-[900px]:shadow-md",
         !selectedObjectVisible && "border-border opacity-75",
         selectedObjectVisible &&
           aiReviewVisualsActive &&
@@ -42,10 +42,10 @@ export function ViewportSelectionCard({
       )}
       data-selected-object-visible={selectedObjectVisible}
     >
-      <CardContent className="flex items-center gap-2 p-2.5">
+      <CardContent className="flex items-center gap-2 p-2.5 max-[900px]:gap-0 max-[900px]:px-2.5 max-[900px]:py-1.5">
         <span
           className={cn(
-            "flex size-6 items-center justify-center rounded-sm",
+            "flex size-6 items-center justify-center rounded-sm max-[900px]:hidden",
             !selectedObjectVisible && "bg-muted text-muted-foreground",
             selectedObjectVisible &&
               !aiReviewVisualsActive &&
@@ -79,12 +79,12 @@ export function ViewportSelectionCard({
           )}
         </span>
         <div className="min-w-0" data-testid="viewport-selection">
-          <p className="truncate text-[11px] font-semibold">
+          <p className="truncate text-[11px] font-semibold max-[900px]:text-[9px] max-[900px]:font-medium max-[900px]:text-muted-foreground">
             {aiReviewVisualsActive && !selectedAiFindingActive
               ? "AI review overview"
               : selectedIssue.object}
           </p>
-          <p className="truncate text-[9px] text-muted-foreground">
+          <p className="truncate text-[9px] text-muted-foreground max-[900px]:hidden">
             {!selectedObjectVisible
               ? `Selected object hidden by ${selectedDisciplineLabel} visibility`
               : aiReviewVisualsActive && !selectedAiFindingActive

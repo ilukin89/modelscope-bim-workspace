@@ -8,7 +8,6 @@ import {
   Ruler,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { ViewportModelSvg } from "@/features/viewport/components/ViewportModelSvg"
 import { ViewportSelectionCard } from "@/features/viewport/components/ViewportSelectionCard"
 import { ViewportSidePanelControls } from "@/features/viewport/components/ViewportSidePanelControls"
 import {
@@ -18,6 +17,11 @@ import {
   ViewportToolStatus,
 } from "@/features/viewport/components/ViewportStatusOverlays"
 import { ViewerInitializationErrorBanner } from "@/features/viewport/components/ViewerInitializationErrorBanner"
+import { SvgViewportRenderer } from "@/features/viewport/renderers/svg/SvgViewportRenderer"
+import {
+  DEFAULT_VIEWPORT_RENDERER_MODE,
+  type ViewportRendererMode,
+} from "@/features/viewport/renderers/types"
 import { ViewportToolbar } from "@/features/viewport/ViewportToolbar"
 import type { ViewportTool } from "@/features/viewport/types"
 import { usePrototypeViewerAdapterLifecycle } from "@/features/viewport/viewer-adapter/usePrototypeViewerAdapterLifecycle"
@@ -102,25 +106,17 @@ export function Viewport({
     selectedObjectId,
     visibleLayerIds,
   })
-  const architectureVisible = visibleLayerIds.includes("architecture")
-  const mechanicalVisible = visibleLayerIds.includes("mechanical")
-  const structureVisible = visibleLayerIds.includes("structure")
-  const electricalVisible = visibleLayerIds.includes("electrical")
+  const viewportRendererMode: ViewportRendererMode =
+    DEFAULT_VIEWPORT_RENDERER_MODE
+  const modelFocusRequestIssueId = modelFocusRequest?.issueId ?? null
+  const modelFocusRequestLabel = modelFocusRequest?.label ?? null
+  const modelFocusRequestNonce = modelFocusRequest?.nonce ?? null
   const selectedObjectVisible = visibleLayerIds.includes(
     selectedIssue.discipline,
   )
   const selectedDisciplineLabel =
     selectedIssue.discipline.charAt(0).toUpperCase() +
     selectedIssue.discipline.slice(1)
-  const selectedFloorIndex = Math.max(
-    floors.findIndex((floor) => floor.label === selectedFloor),
-    0,
-  )
-  const floorMarkerY =
-    floors.length > 1
-      ? 195 + (selectedFloorIndex / (floors.length - 1)) * 220
-      : 305
-  const sectionActive = activeTool === "Section"
   const toolMode = {
     Orbit: { label: "Orbit mode", icon: Orbit },
     Pan: { label: "Pan mode", icon: Hand },
@@ -156,13 +152,41 @@ export function Viewport({
     )
   }
 
+  const renderViewportRenderer = (rendererMode: ViewportRendererMode) => {
+    const svgRenderer = (
+      <SvgViewportRenderer
+        activeTool={activeTool}
+        aiReviewFindingCount={aiReviewFindingCount}
+        aiReviewFindingSpatialCounts={aiReviewFindingSpatialCounts}
+        aiReviewVisualsActive={aiReviewVisualsActive}
+        floors={floors}
+        modelFocusActive={
+          modelFocusActive &&
+          modelFocusRequestIssueId === selectedIssue.id
+        }
+        modelFocusRequest={modelFocusRequest}
+        previewActive={previewActive && selectedAiFindingActive}
+        selectedAiFindingActive={selectedAiFindingActive}
+        selectedFloor={selectedFloor}
+        selectedIssue={selectedIssue}
+        visibleLayerIds={visibleLayerIds}
+      />
+    )
+
+    if (rendererMode === "three") {
+      return svgRenderer
+    }
+
+    return svgRenderer
+  }
+
   useEffect(() => {
-    if (!modelFocusRequest) {
+    if (modelFocusRequestLabel === null || modelFocusRequestNonce === null) {
       return
     }
 
     setModelFocusActive(true)
-    showViewportFeedback(`${modelFocusRequest.label} framed in model`, "frame")
+    showViewportFeedback(`${modelFocusRequestLabel} framed in model`, "frame")
 
     if (modelFocusTimeout.current) {
       clearTimeout(modelFocusTimeout.current)
@@ -171,7 +195,7 @@ export function Viewport({
       () => setModelFocusActive(false),
       1800,
     )
-  }, [modelFocusRequest?.nonce])
+  }, [modelFocusRequestLabel, modelFocusRequestNonce])
 
   return (
     <section className="viewport-grid relative min-h-0 min-w-0 overflow-hidden">
@@ -224,31 +248,7 @@ export function Viewport({
             onRetry={retryViewerInitialization}
           />
         )}
-        <ViewportModelSvg
-          activeTool={activeTool}
-          architectureVisible={architectureVisible}
-          electricalVisible={electricalVisible}
-          floorMarkerY={floorMarkerY}
-          mechanicalVisible={mechanicalVisible}
-          sectionActive={sectionActive}
-          aiReviewFindingCount={aiReviewFindingCount}
-          aiReviewFindingSpatialCounts={aiReviewFindingSpatialCounts}
-          selectedDisciplineLabel={selectedDisciplineLabel}
-          selectedFloor={selectedFloor}
-          selectedFloorIndex={selectedFloorIndex}
-          selectedIssueHighlight={selectedIssue.highlight}
-          selectedIssueObject={selectedIssue.object}
-          selectedObjectVisible={selectedObjectVisible}
-          previewActive={previewActive && selectedAiFindingActive}
-          modelFocusNonce={modelFocusRequest?.nonce ?? null}
-          modelFocusActive={
-            modelFocusActive &&
-            modelFocusRequest?.issueId === selectedIssue.id
-          }
-          aiReviewVisualsActive={aiReviewVisualsActive}
-          selectedAiFindingActive={selectedAiFindingActive}
-          structureVisible={structureVisible}
-        />
+        {renderViewportRenderer(viewportRendererMode)}
       </div>
 
       <ViewportSelectionCard

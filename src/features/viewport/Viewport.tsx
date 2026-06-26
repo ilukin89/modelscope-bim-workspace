@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { lazy, Suspense, useEffect, useRef, useState } from "react"
 import {
   BoxSelect,
   Hand,
@@ -19,7 +19,6 @@ import {
 import { ViewerInitializationErrorBanner } from "@/features/viewport/components/ViewerInitializationErrorBanner"
 import { ViewportRendererFallbackBoundary } from "@/features/viewport/renderers/ViewportRendererFallbackBoundary"
 import { SvgViewportRenderer } from "@/features/viewport/renderers/svg/SvgViewportRenderer"
-import { ThreeViewportRenderer } from "@/features/viewport/renderers/three/ThreeViewportRenderer"
 import {
   resolveViewportRendererMode,
   type ViewportRendererMode,
@@ -35,6 +34,14 @@ import type {
   ReviewIssue,
 } from "@/types"
 import { cn } from "@/lib/utils"
+
+const ThreeViewportRenderer = lazy(() =>
+  import(
+    "@/features/viewport/renderers/three/ThreeViewportRenderer"
+  ).then((module) => ({
+    default: module.ThreeViewportRenderer,
+  })),
+)
 
 interface ViewportProps {
   activeTool: ViewportTool
@@ -182,7 +189,17 @@ export function Viewport({
           fallback={svgRenderer}
           resetKey={rendererMode}
         >
-          <ThreeViewportRenderer {...rendererProps} />
+          <Suspense
+            fallback={
+              <div
+                className="h-full w-full"
+                aria-hidden="true"
+                data-renderer-loading="three"
+              />
+            }
+          >
+            <ThreeViewportRenderer {...rendererProps} />
+          </Suspense>
         </ViewportRendererFallbackBoundary>
       )
     }

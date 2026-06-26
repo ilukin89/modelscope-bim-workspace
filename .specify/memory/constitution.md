@@ -90,6 +90,56 @@ The current project uses:
 
 These choices should remain stable unless a future spec explicitly documents a change.
 
+### Three.js Renderer Boundary
+
+An optional Three.js renderer may be introduced only within a dedicated viewport renderer
+or adapter boundary. The only approved dependencies for that renderer are:
+
+- `three`
+- `@react-three/fiber`
+- `@react-three/drei`
+
+No other 3D, WebGL, rendering, physics, or model-viewer packages may be added without a
+separate constitution amendment.
+
+The existing SVG renderer remains the default renderer. The Three.js renderer must live
+behind an explicit renderer mode flag:
+
+- `"svg" | "three"`
+
+Switching the Three.js renderer to default requires a separate PR with explicit acceptance
+criteria, fallback behavior, and manual QA evidence. The SVG renderer must remain available
+as fallback until a separate default-renderer decision PR.
+
+Three.js, React Three Fiber, and Drei imports are only allowed inside a dedicated viewport
+renderer or adapter boundary, for example:
+
+- `src/features/viewport/renderers/three/**`
+- `src/features/viewport/adapters/three/**`
+
+This is a folder-scoped boundary, not a two-file import limit; small internal renderer
+components may live inside the dedicated Three renderer folder.
+
+Three.js types, classes, objects, and concepts such as `Vector3`, `Mesh`, `Scene`,
+`Camera`, `Material`, `Geometry`, or React Three Fiber hooks must not appear in shared
+product state, app-level components, Object Inspector, Model Explorer, AI Review hooks,
+issue lifecycle hooks, Drawing Triage hooks, or generic viewport shell files.
+
+Files outside the Three renderer boundary must communicate with the renderer through plain
+domain props only, such as:
+
+- `activeTool`
+- `selectedFloor`
+- `visibleLayerIds`
+- `selectedObjectId`
+- `selectedIssueId`
+- `previewState`
+- `aiFindingMarkers`
+- `modelFocusRequest`
+
+The renderer may visualize product state, but it must not own Model Review workflow logic,
+issue lifecycle logic, AI finding decisions, Drawing Triage decisions, or persistence logic.
+
 ### UI and Interaction Constraints
 
 - No fake clickable UI.
@@ -212,4 +262,4 @@ Then confirm:
 - no inline prop types for components with more than two props
 - no UI behavior or visual changes hidden inside refactor-only work
 
-**Version**: 1.0.0 | **Ratified**: 2026-06-08 | **Last Amended**: 2026-06-25
+**Version**: 1.1.0 | **Ratified**: 2026-06-08 | **Last Amended**: 2026-06-26

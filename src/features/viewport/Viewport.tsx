@@ -1,4 +1,11 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react"
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react"
 import {
   BoxSelect,
   Hand,
@@ -100,6 +107,9 @@ export function Viewport({
   const [viewportFeedback, setViewportFeedback] =
     useState<ViewportFeedback | null>(null)
   const [modelFocusActive, setModelFocusActive] = useState(false)
+  const [rendererInitializationError, setRendererInitializationError] =
+    useState<Error | null>(null)
+  const [rendererRetryAttempt, setRendererRetryAttempt] = useState(0)
   const viewportFeedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   )
@@ -118,6 +128,8 @@ export function Viewport({
   const viewportRendererMode = resolveViewportRendererMode(
     import.meta.env.VITE_VIEWPORT_RENDERER,
   )
+  const showViewerUnavailableBanner = viewportRendererMode === "three"
+  const rendererFallbackResetKey = `${viewportRendererMode}:${rendererRetryAttempt}`
   const modelFocusRequestIssueId = modelFocusRequest?.issueId ?? null
   const modelFocusRequestLabel = modelFocusRequest?.label ?? null
   const modelFocusRequestNonce = modelFocusRequest?.nonce ?? null
@@ -162,6 +174,12 @@ export function Viewport({
     )
   }
 
+  const handleViewerRetry = useCallback(() => {
+    setRendererInitializationError(null)
+    setRendererRetryAttempt((attempt) => attempt + 1)
+    retryViewerInitialization()
+  }, [retryViewerInitialization])
+
   const renderViewportRenderer = (rendererMode: ViewportRendererMode) => {
     const rendererProps = {
       activeTool,
@@ -187,7 +205,8 @@ export function Viewport({
       return (
         <ViewportRendererFallbackBoundary
           fallback={svgRenderer}
-          resetKey={rendererMode}
+          onError={setRendererInitializationError}
+          resetKey={rendererFallbackResetKey}
         >
           <Suspense
             fallback={
@@ -270,11 +289,18 @@ export function Viewport({
         ref={viewportHostRef}
         className="absolute inset-0 z-[1] flex items-center justify-center p-10 max-[680px]:p-4"
       >
-        {Boolean(viewerInitializationError) && (
+        {showViewerUnavailableBanner && Boolean(viewerInitializationError) && (
           <ViewerInitializationErrorBanner
-            onRetry={retryViewerInitialization}
+            onRetry={handleViewerRetry}
           />
         )}
+        {showViewerUnavailableBanner &&
+          Boolean(rendererInitializationError) &&
+          !viewerInitializationError && (
+            <ViewerInitializationErrorBanner
+              onRetry={handleViewerRetry}
+            />
+          )}
         {renderViewportRenderer(viewportRendererMode)}
       </div>
 

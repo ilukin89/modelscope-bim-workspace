@@ -3,7 +3,37 @@ import { ProceduralBimScene } from "@/features/viewport/renderers/three/componen
 import { useViewportTheme } from "@/features/viewport/renderers/three/utils/useViewportTheme"
 import type { ViewportRendererProps } from "@/features/viewport/renderers/types"
 
+let cachedWebGlAvailabilityError: Error | null | undefined
+
+function assertWebGlAvailable() {
+  if (typeof document === "undefined") {
+    return
+  }
+
+  if (cachedWebGlAvailabilityError !== undefined) {
+    if (cachedWebGlAvailabilityError) {
+      throw cachedWebGlAvailabilityError
+    }
+
+    return
+  }
+
+  const canvas = document.createElement("canvas")
+  const context =
+    canvas.getContext("webgl2") ?? canvas.getContext("webgl")
+
+  cachedWebGlAvailabilityError = context
+    ? null
+    : new Error("Three viewport renderer requires WebGL support.")
+
+  if (cachedWebGlAvailabilityError) {
+    throw cachedWebGlAvailabilityError
+  }
+}
+
 export function ThreeViewportRenderer(props: ViewportRendererProps) {
+  assertWebGlAvailable()
+
   const viewportTheme = useViewportTheme()
   const { aiReviewFindingCount, modelFocusRequest, selectedIssue } = props
   const focusLabel = modelFocusRequest?.label ?? selectedIssue.object

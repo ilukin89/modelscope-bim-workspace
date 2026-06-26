@@ -1,51 +1,66 @@
 import type { ViewportTool } from "@/features/viewport/types"
-import type { FloorName, HighlightKind } from "@/types"
+import type {
+  FloorName,
+  FloorState,
+  HighlightKind,
+  LayerId,
+  ReviewIssue,
+} from "@/types"
 
-interface ViewportModelSvgProps {
+interface SvgViewportRendererProps {
   activeTool: ViewportTool
   aiReviewFindingCount: number
   aiReviewFindingSpatialCounts: Record<HighlightKind, number>
   aiReviewVisualsActive: boolean
-  architectureVisible: boolean
-  electricalVisible: boolean
-  floorMarkerY: number
-  mechanicalVisible: boolean
+  floors: FloorState[]
   modelFocusActive: boolean
-  modelFocusNonce: number | null
+  modelFocusRequest: {
+    issueId: ReviewIssue["id"]
+    label: string
+    nonce: number
+  } | null
   previewActive: boolean
-  sectionActive: boolean
-  selectedDisciplineLabel: string
   selectedFloor: FloorName
-  selectedFloorIndex: number
-  selectedIssueHighlight: HighlightKind
-  selectedIssueObject: string
+  selectedIssue: ReviewIssue
   selectedAiFindingActive: boolean
-  selectedObjectVisible: boolean
-  structureVisible: boolean
+  visibleLayerIds: LayerId[]
 }
 
-export function ViewportModelSvg({
+export function SvgViewportRenderer({
   activeTool,
   aiReviewFindingCount,
   aiReviewFindingSpatialCounts,
   aiReviewVisualsActive,
-  architectureVisible,
-  electricalVisible,
-  floorMarkerY,
-  mechanicalVisible,
+  floors,
   modelFocusActive,
-  modelFocusNonce,
+  modelFocusRequest,
   previewActive,
-  sectionActive,
-  selectedDisciplineLabel,
   selectedFloor,
-  selectedFloorIndex,
-  selectedIssueHighlight,
-  selectedIssueObject,
+  selectedIssue,
   selectedAiFindingActive,
-  selectedObjectVisible,
-  structureVisible,
-}: ViewportModelSvgProps) {
+  visibleLayerIds,
+}: SvgViewportRendererProps) {
+  const architectureVisible = visibleLayerIds.includes("architecture")
+  const mechanicalVisible = visibleLayerIds.includes("mechanical")
+  const structureVisible = visibleLayerIds.includes("structure")
+  const electricalVisible = visibleLayerIds.includes("electrical")
+  const selectedObjectVisible = visibleLayerIds.includes(
+    selectedIssue.discipline,
+  )
+  const selectedDisciplineLabel =
+    selectedIssue.discipline.charAt(0).toUpperCase() +
+    selectedIssue.discipline.slice(1)
+  const selectedFloorIndex = Math.max(
+    floors.findIndex((floor) => floor.label === selectedFloor),
+    0,
+  )
+  const floorMarkerY =
+    floors.length > 1
+      ? 195 + (selectedFloorIndex / (floors.length - 1)) * 220
+      : 305
+  const sectionActive = activeTool === "Section"
+  const selectedIssueHighlight = selectedIssue.highlight
+
   return (
     <svg
       viewBox="0 0 760 620"
@@ -53,8 +68,8 @@ export function ViewportModelSvg({
       role="img"
       aria-label={
         selectedObjectVisible
-          ? `Simplified 3D building model with ${selectedIssueObject} selected`
-          : `Simplified 3D building model; ${selectedIssueObject} is hidden by ${selectedDisciplineLabel} visibility`
+          ? `Simplified 3D building model with ${selectedIssue.object} selected`
+          : `Simplified 3D building model; ${selectedIssue.object} is hidden by ${selectedDisciplineLabel} visibility`
       }
       data-selected-object-visible={selectedObjectVisible}
     >
@@ -541,7 +556,7 @@ export function ViewportModelSvg({
 
         {selectedObjectVisible && modelFocusActive && (
           <ModelFocusOverlay
-            key={modelFocusNonce}
+            key={modelFocusRequest?.nonce ?? "model-focus"}
             kind={selectedIssueHighlight}
           />
         )}

@@ -1,7 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Eye, EyeOff } from "lucide-react"
+import { Eye, EyeOff, MoreHorizontal } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import type {
   ModelReviewIssue,
@@ -15,6 +27,7 @@ interface ModelReviewIssuesPanelProps {
   issues: ModelReviewIssue[]
   selectedIssueId: ReviewIssue["id"]
   onHideIssueFromModel: (issue: ModelReviewIssue) => void
+  onRemoveIssue: (issueId: ModelReviewIssue["id"]) => void
   onUpdateIssueStatus: (
     id: ModelReviewIssue["id"],
     status: ModelReviewIssueStatus,
@@ -26,6 +39,8 @@ const modelReviewIssueStatuses = [
   "Open",
   "In Review",
   "Resolved",
+  "Blocked",
+  "Closed as not actionable",
 ] as const satisfies readonly ModelReviewIssueStatus[]
 
 type ModelReviewIssueFilter = "All" | ModelReviewIssueStatus
@@ -38,7 +53,9 @@ const modelReviewIssueStatusPriority: Record<ModelReviewIssueStatus, number> =
   {
     Open: 0,
     "In Review": 1,
-    Resolved: 2,
+    Blocked: 2,
+    Resolved: 3,
+    "Closed as not actionable": 4,
   }
 
 const issueFilterOptions = [
@@ -52,6 +69,7 @@ export function ModelReviewIssuesPanel({
   issues,
   selectedIssueId,
   onHideIssueFromModel,
+  onRemoveIssue,
   onUpdateIssueStatus,
   onViewIssueInModel,
 }: ModelReviewIssuesPanelProps) {
@@ -60,13 +78,21 @@ export function ModelReviewIssuesPanel({
   const [issueSort, setIssueSort] =
     useState<ModelReviewIssueSort>("status-priority")
   const issueCounts = useMemo(
-    () => ({
-      All: issues.length,
-      Open: issues.filter((issue) => issue.status === "Open").length,
-      "In Review": issues.filter((issue) => issue.status === "In Review")
-        .length,
-      Resolved: issues.filter((issue) => issue.status === "Resolved").length,
-    }),
+    () =>
+      issues.reduce(
+        (counts, issue) => ({
+          ...counts,
+          [issue.status]: counts[issue.status] + 1,
+        }),
+        {
+          All: issues.length,
+          Open: 0,
+          "In Review": 0,
+          Resolved: 0,
+          Blocked: 0,
+          "Closed as not actionable": 0,
+        } satisfies Record<ModelReviewIssueFilter, number>,
+      ),
     [issues],
   )
   const filteredModelReviewIssues = useMemo(() => {
@@ -106,11 +132,9 @@ export function ModelReviewIssuesPanel({
     })
   }, [issueSort, issueStatusFilter, issues])
   const filteredIssueEmptyMessage =
-    issueStatusFilter === "Open"
-      ? "No open issues."
-      : issueStatusFilter === "In Review"
-        ? "No issues in review."
-        : "No resolved issues."
+    issueStatusFilter === "All"
+      ? "No issues."
+      : `No ${issueStatusFilter.toLowerCase()} issues.`
 
   useEffect(() => {
     if (!focusedIssueCardId || issueStatusFilter === "All") {
@@ -179,6 +203,7 @@ export function ModelReviewIssuesPanel({
               focusedInModel={focusedModelIssueId === issue.id}
               selected={issue.sourceFindingId === selectedIssueId}
               onHideFromModel={() => onHideIssueFromModel(issue)}
+              onRemoveIssue={() => onRemoveIssue(issue.id)}
               onUpdateIssueStatus={onUpdateIssueStatus}
               onViewInModel={() => onViewIssueInModel(issue)}
             />
@@ -203,6 +228,7 @@ function ModelReviewIssueCard({
   issue,
   selected,
   onHideFromModel,
+  onRemoveIssue,
   onUpdateIssueStatus,
   onViewInModel,
 }: {
@@ -211,6 +237,7 @@ function ModelReviewIssueCard({
   issue: ModelReviewIssue
   selected: boolean
   onHideFromModel: () => void
+  onRemoveIssue: () => void
   onUpdateIssueStatus: (
     id: ModelReviewIssue["id"],
     status: ModelReviewIssueStatus,
@@ -222,8 +249,12 @@ function ModelReviewIssueCard({
     issue.status === "Open"
       ? { label: "Send for Review", nextStatus: "In Review" as const }
       : issue.status === "In Review"
-        ? { label: "Mark Resolved", nextStatus: "Resolved" as const }
-        : { label: "Reopen", nextStatus: "Open" as const }
+        ? { label: "Mark as resolved", nextStatus: "Resolved" as const }
+        : issue.status === "Blocked"
+          ? { label: "Return to review", nextStatus: "In Review" as const }
+          : { label: "Reopen issue", nextStatus: "Open" as const }
+  const canMarkOutcome =
+    issue.status === "Open" || issue.status === "In Review"
 
   useEffect(() => {
     if (!focusedForDetails) {
@@ -267,17 +298,61 @@ function ModelReviewIssueCard({
               ? "warning"
               : issue.status === "In Review"
                 ? "default"
-                : "success"
+                : issue.status === "Resolved"
+                  ? "success"
+                  : issue.status === "Blocked"
+                    ? "destructive"
+                    : "outline"
           }
           className="text-[8px]"
         >
           {issue.status}
         </Badge>
-        {(focusedForDetails || focusedInModel) && (
-          <span className="ml-auto text-[9px] text-muted-foreground">
-            {focusedForDetails ? "Issue details" : "Shown in model"}
-          </span>
-        )}
+        <DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="ml-auto size-6 rounded-sm text-muted-foreground hover:bg-muted/45 hover:text-foreground"
+                  aria-label="Issue actions"
+                >
+                  <MoreHorizontal className="size-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="left">Issue actions</TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent align="end" className="w-52">
+            {canMarkOutcome && (
+              <>
+                <DropdownMenuItem
+                  className="text-[11px]"
+                  onClick={() => onUpdateIssueStatus(issue.id, "Blocked")}
+                >
+                  Mark as blocked
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-[11px]"
+                  onClick={() =>
+                    onUpdateIssueStatus(issue.id, "Closed as not actionable")
+                  }
+                >
+                  Close as not actionable
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            <DropdownMenuItem
+              className="text-[11px] text-destructive focus:bg-destructive/8 focus:text-destructive dark:focus:bg-destructive/10"
+              onClick={onRemoveIssue}
+            >
+              Remove issue
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       <p className="mt-2 text-[11px] font-medium">{issue.title}</p>
       <dl className="mt-2 grid grid-cols-[74px_minmax(0,1fr)] gap-x-2 gap-y-1 text-[9px]">
@@ -317,7 +392,11 @@ function ModelReviewIssueCard({
         <Button
           type="button"
           size="compact"
-          variant={issue.status === "Resolved" ? "outline" : "default"}
+          variant={
+            issue.status === "Open" || issue.status === "In Review"
+              ? "default"
+              : "outline"
+          }
           className="col-span-2 w-full justify-center"
           onClick={() =>
             onUpdateIssueStatus(issue.id, lifecycleAction.nextStatus)

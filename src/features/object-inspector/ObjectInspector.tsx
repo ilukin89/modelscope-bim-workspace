@@ -28,6 +28,7 @@ interface ObjectInspectorProps {
   aiGroupingMode: AiFindingGroupingMode
   aiFindingStatus: AiFindingWorkflowStatus
   aiScanStatus: AiScanStatus
+  focusedIssueCardId: ModelReviewIssue["id"] | null
   focusedModelIssueId: ModelReviewIssue["id"] | null
   modelReviewIssues: ModelReviewIssue[]
   onCreateIssue: () => void
@@ -64,6 +65,7 @@ export function ObjectInspector({
   aiGroupingMode,
   aiFindingStatus,
   aiScanStatus,
+  focusedIssueCardId,
   focusedModelIssueId,
   modelReviewIssues,
   onCreateIssue,
@@ -224,6 +226,7 @@ export function ObjectInspector({
           className="scrollbar-thin overflow-y-auto p-2"
         >
           <ModelReviewIssuesPanel
+            focusedIssueCardId={focusedIssueCardId}
             focusedModelIssueId={focusedModelIssueId}
             issues={modelReviewIssues}
             selectedIssueId={selectedIssue.id}

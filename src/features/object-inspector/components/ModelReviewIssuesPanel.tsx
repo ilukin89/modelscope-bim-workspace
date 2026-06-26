@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Eye, EyeOff } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -10,6 +10,7 @@ import type {
 } from "@/types"
 
 interface ModelReviewIssuesPanelProps {
+  focusedIssueCardId: ModelReviewIssue["id"] | null
   focusedModelIssueId: ModelReviewIssue["id"] | null
   issues: ModelReviewIssue[]
   selectedIssueId: ReviewIssue["id"]
@@ -46,6 +47,7 @@ const issueFilterOptions = [
 ] satisfies { value: ModelReviewIssueFilter; label: string }[]
 
 export function ModelReviewIssuesPanel({
+  focusedIssueCardId,
   focusedModelIssueId,
   issues,
   selectedIssueId,
@@ -110,6 +112,17 @@ export function ModelReviewIssuesPanel({
         ? "No issues in review."
         : "No resolved issues."
 
+  useEffect(() => {
+    if (!focusedIssueCardId || issueStatusFilter === "All") {
+      return
+    }
+
+    const focusedIssue = issues.find((issue) => issue.id === focusedIssueCardId)
+    if (focusedIssue && focusedIssue.status !== issueStatusFilter) {
+      setIssueStatusFilter("All")
+    }
+  }, [focusedIssueCardId, issueStatusFilter, issues])
+
   return issues.length > 0 ? (
     <>
       <div className="mb-2 space-y-1.5 px-0.5">
@@ -162,6 +175,7 @@ export function ModelReviewIssuesPanel({
             <ModelReviewIssueCard
               key={issue.id}
               issue={issue}
+              focusedForDetails={focusedIssueCardId === issue.id}
               focusedInModel={focusedModelIssueId === issue.id}
               selected={issue.sourceFindingId === selectedIssueId}
               onHideFromModel={() => onHideIssueFromModel(issue)}
@@ -184,6 +198,7 @@ export function ModelReviewIssuesPanel({
 }
 
 function ModelReviewIssueCard({
+  focusedForDetails,
   focusedInModel,
   issue,
   selected,
@@ -191,6 +206,7 @@ function ModelReviewIssueCard({
   onUpdateIssueStatus,
   onViewInModel,
 }: {
+  focusedForDetails: boolean
   focusedInModel: boolean
   issue: ModelReviewIssue
   selected: boolean
@@ -201,6 +217,7 @@ function ModelReviewIssueCard({
   ) => void
   onViewInModel: () => void
 }) {
+  const cardRef = useRef<HTMLDivElement | null>(null)
   const lifecycleAction =
     issue.status === "Open"
       ? { label: "Send for Review", nextStatus: "In Review" as const }
@@ -208,11 +225,24 @@ function ModelReviewIssueCard({
         ? { label: "Mark Resolved", nextStatus: "Resolved" as const }
         : { label: "Reopen", nextStatus: "Open" as const }
 
+  useEffect(() => {
+    if (!focusedForDetails) {
+      return
+    }
+
+    cardRef.current?.scrollIntoView({ block: "nearest" })
+    cardRef.current?.focus({ preventScroll: true })
+  }, [focusedForDetails, issue.id])
+
   return (
     <div
+      ref={cardRef}
+      tabIndex={-1}
       className={cn(
-        "rounded-md border p-2.5 shadow-[0_1px_0_color-mix(in_oklab,var(--foreground)_4%,transparent)] transition-colors duration-150",
-        focusedInModel
+        "rounded-md border p-2.5 shadow-[0_1px_0_color-mix(in_oklab,var(--foreground)_4%,transparent)] outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring",
+        focusedForDetails
+          ? "border-primary/45 bg-primary/10 ring-2 ring-primary/24 hover:border-primary/55 hover:bg-primary/14 dark:border-primary/55 dark:bg-primary/16 dark:ring-primary/30 dark:hover:bg-primary/20"
+          : focusedInModel
           ? "border-primary/34 bg-primary/12 hover:border-primary/50 hover:bg-primary/16 dark:border-primary/50 dark:bg-primary/16 dark:hover:border-primary/60 dark:hover:bg-primary/22"
           : selected
             ? "border-primary/28 bg-accent/52 hover:border-primary/36 hover:bg-primary/8 dark:border-primary/45 dark:bg-accent dark:hover:border-primary/55 dark:hover:bg-primary/12"
@@ -243,9 +273,9 @@ function ModelReviewIssueCard({
         >
           {issue.status}
         </Badge>
-        {focusedInModel && (
+        {(focusedForDetails || focusedInModel) && (
           <span className="ml-auto text-[9px] text-muted-foreground">
-            Shown in model
+            {focusedForDetails ? "Issue details" : "Shown in model"}
           </span>
         )}
       </div>

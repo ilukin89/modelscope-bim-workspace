@@ -93,6 +93,7 @@ function App() {
     clearAiScanResults,
     createModelReviewIssue,
     dismissAiFinding,
+    focusedIssueCardId,
     focusedModelIssueId,
     hideModelReviewIssue,
     modelFocusRequest,
@@ -305,6 +306,7 @@ function App() {
               aiGroupingMode={aiFindingGroupingMode}
               aiFindingStatus={selectedFindingStatus}
               aiScanStatus={aiScanStatus}
+              focusedIssueCardId={focusedIssueCardId}
               focusedModelIssueId={focusedModelIssueId}
               modelReviewIssues={modelReviewIssues}
               onCreateIssue={createModelReviewIssue}
@@ -395,6 +397,7 @@ function App() {
                 aiGroupingMode={aiFindingGroupingMode}
                 aiFindingStatus={selectedFindingStatus}
                 aiScanStatus={aiScanStatus}
+                focusedIssueCardId={focusedIssueCardId}
                 focusedModelIssueId={focusedModelIssueId}
                 modelReviewIssues={modelReviewIssues}
                 onCreateIssue={createModelReviewIssue}

@@ -13,6 +13,17 @@ import type {
 
 const initialAiScanStatus: AiScanStatus = "not_scanned"
 
+const modelReviewIssueStatusTransitionLabels: Partial<
+  Record<
+    ModelReviewIssueStatus,
+    Partial<Record<ModelReviewIssueStatus, string>>
+  >
+> = {
+  Open: { "In Review": "Issue sent for review" },
+  "In Review": { Resolved: "Issue resolved" },
+  Resolved: { Open: "Issue reopened" },
+}
+
 const getInitialFindingStatuses = (
   project: ProjectData,
 ): Record<ReviewIssue["id"], AiFindingWorkflowStatus> =>
@@ -25,6 +36,7 @@ const getInitialProjectAiReviewState = (
 ): ProjectAiReviewState => ({
   findingStatuses: getInitialFindingStatuses(project),
   modelReviewIssues: [],
+  nextIssueSequence: 1,
   previewIssueId: null,
   reviewHistory: [],
   scanStatus: initialAiScanStatus,
@@ -69,9 +81,14 @@ export function useAiReviewState({
   const [modelFocusRequest, setModelFocusRequest] = useState<{
     issueId: ReviewIssue["id"]
     label: string
+    modelReviewIssueId?: ModelReviewIssue["id"]
     nonce: number
   } | null>(null)
+  const [focusedIssueCardId, setFocusedIssueCardId] = useState<
+    ModelReviewIssue["id"] | null
+  >(null)
   const aiScanTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const modelFocusRequestNonce = useRef(0)
 
   const selectedAiReviewState =
     projectAiReviewStates[selectedProjectId] ??
@@ -93,11 +110,7 @@ export function useAiReviewState({
   const modelReviewIssues = aiReviewVisualsActive
     ? selectedAiReviewState.modelReviewIssues
     : []
-  const focusedModelIssueId = modelFocusRequest
-    ? (modelReviewIssues.find(
-        (issue) => issue.sourceFindingId === modelFocusRequest.issueId,
-      )?.id ?? null)
-    : null
+  const focusedModelIssueId = modelFocusRequest?.modelReviewIssueId ?? null
   const reviewHistory = aiReviewVisualsActive
     ? selectedAiReviewState.reviewHistory
     : []
@@ -199,7 +212,7 @@ export function useAiReviewState({
       return
     }
 
-    const issueNumber = selectedAiReviewState.modelReviewIssues.length + 1
+    const issueNumber = selectedAiReviewState.nextIssueSequence
     const issueId = `MR-${String(issueNumber).padStart(3, "0")}`
     const nextIssue: ModelReviewIssue = {
       id: issueId,
@@ -220,6 +233,7 @@ export function useAiReviewState({
         [selectedIssue.id]: "issue-created",
       },
       modelReviewIssues: [...state.modelReviewIssues, nextIssue],
+      nextIssueSequence: state.nextIssueSequence + 1,
     }))
     recordHistory(
       "Issue created",
@@ -240,13 +254,7 @@ export function useAiReviewState({
     }
 
     const historyLabel =
-      issue.status === "Open" && nextStatus === "In Review"
-        ? "Issue sent for review"
-        : issue.status === "In Review" && nextStatus === "Resolved"
-          ? "Issue resolved"
-          : issue.status === "Resolved" && nextStatus === "Open"
-            ? "Issue reopened"
-            : null
+      modelReviewIssueStatusTransitionLabels[issue.status]?.[nextStatus] ?? null
 
     if (!historyLabel) {
       return
@@ -273,6 +281,7 @@ export function useAiReviewState({
     }
 
     setActiveInspectorTab("issues")
+    setFocusedIssueCardId(existingIssue.id)
     recordHistory(
       "Issue details opened",
       `${existingIssue.id} from ${selectedIssue.code}`,
@@ -298,6 +307,12 @@ export function useAiReviewState({
         (issue) => issue.id !== existingIssue.id,
       ),
     }))
+    setFocusedIssueCardId((current) =>
+      current === existingIssue.id ? null : current,
+    )
+    setModelFocusRequest((current) =>
+      current?.modelReviewIssueId === existingIssue.id ? null : current,
+    )
     setActiveInspectorTab("ai")
     recordHistory(
       "Issue dropped",
@@ -350,7 +365,8 @@ export function useAiReviewState({
     setModelFocusRequest({
       issueId: issue.sourceFindingId,
       label: issue.id,
-      nonce: Date.now(),
+      modelReviewIssueId: issue.id,
+      nonce: (modelFocusRequestNonce.current += 1),
     })
     closeInspectorOnCompact()
     recordHistory(
@@ -378,6 +394,7 @@ export function useAiReviewState({
     updateSelectedProjectAiReviewState(() =>
       getInitialProjectAiReviewState(selectedProject),
     )
+    setFocusedIssueCardId(null)
     setModelFocusRequest(null)
     setActiveInspectorTab("ai")
   }
@@ -392,6 +409,7 @@ export function useAiReviewState({
           : state,
       )
     }
+    setFocusedIssueCardId(null)
     setModelFocusRequest(null)
   }
 
@@ -403,7 +421,7 @@ export function useAiReviewState({
     setModelFocusRequest({
       issueId: selectedIssue.id,
       label: selectedIssue.code,
-      nonce: Date.now(),
+      nonce: (modelFocusRequestNonce.current += 1),
     })
     closeInspectorOnCompact()
     recordHistory(
@@ -471,6 +489,7 @@ export function useAiReviewState({
     clearAiScanResults,
     createModelReviewIssue,
     dismissAiFinding,
+    focusedIssueCardId,
     focusedModelIssueId,
     hideModelReviewIssue,
     modelFocusRequest,

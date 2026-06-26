@@ -3,6 +3,7 @@ import { Component, type ReactNode } from "react"
 interface ViewportRendererFallbackBoundaryProps {
   children: ReactNode
   fallback: ReactNode
+  onError?: (error: Error) => void
   resetKey: string
 }
 
@@ -20,6 +21,10 @@ export class ViewportRendererFallbackBoundary extends Component<
 
   static getDerivedStateFromError(): ViewportRendererFallbackBoundaryState {
     return { hasError: true }
+  }
+
+  componentDidCatch(error: Error) {
+    this.props.onError?.(error)
   }
 
   componentDidUpdate(

@@ -1,30 +1,5 @@
-import type { ViewportTool } from "@/features/viewport/types"
-import type {
-  FloorName,
-  FloorState,
-  HighlightKind,
-  LayerId,
-  ReviewIssue,
-} from "@/types"
-
-interface SvgViewportRendererProps {
-  activeTool: ViewportTool
-  aiReviewFindingCount: number
-  aiReviewFindingSpatialCounts: Record<HighlightKind, number>
-  aiReviewVisualsActive: boolean
-  floors: FloorState[]
-  modelFocusActive: boolean
-  modelFocusRequest: {
-    issueId: ReviewIssue["id"]
-    label: string
-    nonce: number
-  } | null
-  previewActive: boolean
-  selectedFloor: FloorName
-  selectedIssue: ReviewIssue
-  selectedAiFindingActive: boolean
-  visibleLayerIds: LayerId[]
-}
+import type { ViewportRendererProps } from "@/features/viewport/renderers/types"
+import type { HighlightKind } from "@/types"
 
 export function SvgViewportRenderer({
   activeTool,
@@ -39,7 +14,7 @@ export function SvgViewportRenderer({
   selectedIssue,
   selectedAiFindingActive,
   visibleLayerIds,
-}: SvgViewportRendererProps) {
+}: ViewportRendererProps) {
   const architectureVisible = visibleLayerIds.includes("architecture")
   const mechanicalVisible = visibleLayerIds.includes("mechanical")
   const structureVisible = visibleLayerIds.includes("structure")

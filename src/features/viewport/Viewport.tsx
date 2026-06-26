@@ -16,7 +16,10 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { ViewportSelectionCard } from "@/features/viewport/components/ViewportSelectionCard"
-import { ViewportSidePanelControls } from "@/features/viewport/components/ViewportSidePanelControls"
+import {
+  ViewportAiReviewAction,
+  ViewportSidePanelControls,
+} from "@/features/viewport/components/ViewportSidePanelControls"
 import {
   ViewportCameraBadge,
   type ViewportFeedback,
@@ -147,6 +150,11 @@ export function Viewport({
     Comment: { label: "Comment mode", icon: MessageSquarePlus },
   }[activeTool]
   const ToolModeIcon = toolMode.icon
+  const aiReviewScanning = aiReviewEntryState === "scanning"
+  const showAiReviewAction =
+    aiReviewEntryState === "not_scanned" ||
+    aiReviewEntryState === "scanning" ||
+    aiReviewEntryState === "scanned_with_findings"
 
   useEffect(
     () => () => {
@@ -245,14 +253,28 @@ export function Viewport({
 
   return (
     <section className="viewport-grid relative min-h-0 min-w-0 overflow-hidden">
-      <div className="contents max-[1160px]:absolute max-[1160px]:left-1/2 max-[1160px]:top-3 max-[1160px]:z-20 max-[1160px]:flex max-[1160px]:w-max max-[1160px]:max-w-[calc(100%-24px)] max-[1160px]:-translate-x-1/2 max-[1160px]:flex-col max-[1160px]:items-stretch max-[1160px]:gap-2 max-[760px]:w-[min(288px,calc(100%-24px))]">
+      <div className="contents max-[1160px]:absolute max-[1160px]:left-1/2 max-[1160px]:top-3 max-[1160px]:z-20 max-[1160px]:flex max-[1160px]:w-max max-[1160px]:max-w-[calc(100%-24px)] max-[1160px]:-translate-x-1/2 max-[1160px]:flex-col max-[1160px]:items-stretch max-[1160px]:gap-2 max-[900px]:bottom-3 max-[900px]:top-auto max-[900px]:w-[min(288px,calc(100%-24px))]">
         <ViewportToolbar activeTool={activeTool} onToolChange={onToolChange} />
 
         <ViewportToolStatus
           activeTool={activeTool}
+          className="min-[901px]:max-[1160px]:hidden"
           Icon={ToolModeIcon}
           label={toolMode.label}
         />
+
+        {showAiReviewAction && (
+          <div className="hidden min-[901px]:max-[1160px]:flex min-[901px]:max-[1160px]:justify-center">
+            <ViewportAiReviewAction
+              aiReviewEntryState={aiReviewEntryState}
+              aiReviewFindingCount={aiReviewFindingCount}
+              className="static max-w-full translate-x-0 self-center"
+              onOpenAiReview={onOpenAiReview}
+              onScanWithAi={onScanWithAi}
+              scanning={aiReviewScanning}
+            />
+          </div>
+        )}
 
         <ViewportFeedbackToast feedback={viewportFeedback} />
       </div>

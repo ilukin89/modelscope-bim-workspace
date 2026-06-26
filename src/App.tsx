@@ -114,6 +114,7 @@ function App() {
     viewModelReviewIssue,
     dropModelReviewIssue,
     restoreAiFinding,
+    removeModelReviewIssue,
   } = useAiReviewState({
     selectedProject,
     selectedProjectId,
@@ -318,6 +319,7 @@ function App() {
               onGroupingModeChange={setAiFindingGroupingMode}
               onHideIssueFromModel={hideModelReviewIssue}
               onPreviewChange={togglePreviewChange}
+              onRemoveIssue={removeModelReviewIssue}
               onRescanAi={scanWithAi}
               onRestoreFinding={restoreAiFinding}
               onTabChange={setActiveInspectorTab}
@@ -409,6 +411,7 @@ function App() {
                 onGroupingModeChange={setAiFindingGroupingMode}
                 onHideIssueFromModel={hideModelReviewIssue}
                 onPreviewChange={togglePreviewChange}
+                onRemoveIssue={removeModelReviewIssue}
                 onRescanAi={scanWithAi}
                 onRestoreFinding={restoreAiFinding}
                 onTabChange={setActiveInspectorTab}

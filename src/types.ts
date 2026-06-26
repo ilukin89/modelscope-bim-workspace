@@ -84,7 +84,12 @@ export type AiScanStatus =
   | "scanning"
   | "scanned_with_findings"
 
-export type ModelReviewIssueStatus = "Open" | "In Review" | "Resolved"
+export type ModelReviewIssueStatus =
+  | "Open"
+  | "In Review"
+  | "Resolved"
+  | "Blocked"
+  | "Closed as not actionable"
 
 export interface ModelReviewIssue {
   id: string

@@ -19,9 +19,20 @@ const modelReviewIssueStatusTransitionLabels: Partial<
     Partial<Record<ModelReviewIssueStatus, string>>
   >
 > = {
-  Open: { "In Review": "Issue sent for review" },
-  "In Review": { Resolved: "Issue resolved" },
+  Open: {
+    "In Review": "Issue sent for review",
+    Blocked: "Issue blocked",
+    "Closed as not actionable": "Issue closed as not actionable",
+  },
+  "In Review": {
+    Open: "Issue returned",
+    Resolved: "Issue resolved",
+    Blocked: "Issue blocked",
+    "Closed as not actionable": "Issue closed as not actionable",
+  },
   Resolved: { Open: "Issue reopened" },
+  Blocked: { Open: "Issue returned", "In Review": "Issue returned" },
+  "Closed as not actionable": { Open: "Issue reopened" },
 }
 
 const getInitialFindingStatuses = (
@@ -288,9 +299,9 @@ export function useAiReviewState({
     )
   }
 
-  const dropModelReviewIssue = () => {
+  const removeModelReviewIssue = (issueId: ModelReviewIssue["id"]) => {
     const existingIssue = selectedAiReviewState.modelReviewIssues.find(
-      (issue) => issue.sourceFindingId === selectedIssue.id,
+      (issue) => issue.id === issueId,
     )
 
     if (!existingIssue) {
@@ -301,7 +312,7 @@ export function useAiReviewState({
       ...state,
       findingStatuses: {
         ...state.findingStatuses,
-        [selectedIssue.id]: "active",
+        [existingIssue.sourceFindingId]: "active",
       },
       modelReviewIssues: state.modelReviewIssues.filter(
         (issue) => issue.id !== existingIssue.id,
@@ -313,11 +324,23 @@ export function useAiReviewState({
     setModelFocusRequest((current) =>
       current?.modelReviewIssueId === existingIssue.id ? null : current,
     )
-    setActiveInspectorTab("ai")
     recordHistory(
-      "Issue dropped",
-      `${existingIssue.id} removed from ${selectedIssue.code}`,
+      "Issue removed",
+      `${existingIssue.id} removed from ${existingIssue.sourceFindingCode}`,
     )
+  }
+
+  const dropModelReviewIssue = () => {
+    const existingIssue = selectedAiReviewState.modelReviewIssues.find(
+      (issue) => issue.sourceFindingId === selectedIssue.id,
+    )
+
+    if (!existingIssue) {
+      return
+    }
+
+    removeModelReviewIssue(existingIssue.id)
+    setActiveInspectorTab("ai")
   }
 
   const dismissAiFinding = () => {
@@ -510,5 +533,6 @@ export function useAiReviewState({
     viewModelReviewIssue,
     dropModelReviewIssue,
     restoreAiFinding,
+    removeModelReviewIssue,
   }
 }

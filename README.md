@@ -496,40 +496,6 @@ The project is organized by product feature area instead of treating the app as 
 
 ---
 
-## What This Prototype Demonstrates
-
-ModelScope is strongest as a portfolio project for:
-
-- B2B SaaS UX
-- AI-assisted workflow design
-- human-in-the-loop product logic
-- stateful interaction design
-- viewport-first interface design
-- issue traceability
-- frontend architecture discipline
-- honest prototype scoping
-
----
-
-## What This Prototype Does Not Yet Solve
-
-ModelScope does not currently solve:
-
-- real IFC upload
-- real model parsing
-- real object picking from BIM data
-- backend persistence
-- real user accounts
-- permissions / roles
-- team collaboration
-- real AI inference
-- production-grade issue management
-- notifications or workflow automation
-
-These are future layers, not hidden assumptions.
-
----
-
 ## Next Likely Directions
 
 Possible next steps:
@@ -540,19 +506,5 @@ Possible next steps:
 - document Three.js renderer boundaries before adding dependencies
 - add lightweight backend persistence later
 - keep issue management focused and avoid unnecessary enterprise bloat
-
----
-
-## Portfolio Framing
-
-ModelScope is not meant to show only polished UI screens.
-
-It is meant to show:
-
-- how AI-assisted review should behave in a real product
-- how human judgment and traceability can be preserved
-- how issue workflows can stay lightweight but credible
-- how a prototype can be honest about mocked capabilities
-- how product logic, UI hierarchy, and code structure can evolve together
 
 ---

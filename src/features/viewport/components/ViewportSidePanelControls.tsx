@@ -14,6 +14,7 @@ type AiReviewEntryState =
 
 interface ViewportSidePanelControlsProps {
   aiReviewEntryState: AiReviewEntryState
+  aiReviewFindingCount: number
   compactInspectorOpen: boolean
   onExpandExplorer: () => void
   onOpenAiReview: () => void
@@ -26,6 +27,7 @@ interface ViewportSidePanelControlsProps {
 
 export function ViewportSidePanelControls({
   aiReviewEntryState,
+  aiReviewFindingCount,
   compactInspectorOpen,
   onExpandExplorer,
   onOpenAiReview,
@@ -36,8 +38,10 @@ export function ViewportSidePanelControls({
   showInspectorExpand,
 }: ViewportSidePanelControlsProps) {
   const scanning = aiReviewEntryState === "scanning"
-  const showScanAction =
-    aiReviewEntryState === "not_scanned" || aiReviewEntryState === "scanning"
+  const showAiReviewAction =
+    aiReviewEntryState === "not_scanned" ||
+    aiReviewEntryState === "scanning" ||
+    aiReviewEntryState === "scanned_with_findings"
   const openCompactInspector = () => {
     if (
       aiReviewEntryState !== "scanned_with_findings" &&
@@ -95,12 +99,19 @@ export function ViewportSidePanelControls({
         </Tooltip>
       </div>
 
+      {showAiReviewAction && (
+        <ViewportAiReviewAction
+          aiReviewEntryState={aiReviewEntryState}
+          aiReviewFindingCount={aiReviewFindingCount}
+          onOpenAiReview={onOpenAiReview}
+          onScanWithAi={onScanWithAi}
+          scanning={scanning}
+        />
+      )}
+
       {showInspectorExpand && (
         <RightInspectorControlGroup
           onOpenInspector={onOpenInspector}
-          onScanWithAi={onScanWithAi}
-          scanning={scanning}
-          showScanAction={showScanAction}
           className="max-[901px]:hidden"
         />
       )}
@@ -108,10 +119,6 @@ export function ViewportSidePanelControls({
       {!compactInspectorOpen && (
         <RightInspectorControlGroup
           onOpenInspector={openCompactInspector}
-          onScanWithAi={onScanWithAi}
-          hideScanOnMobile
-          scanning={scanning}
-          showScanAction={showScanAction}
           className="min-[901px]:hidden"
         />
       )}
@@ -122,29 +129,14 @@ export function ViewportSidePanelControls({
 function RightInspectorControlGroup({
   className,
   onOpenInspector,
-  onScanWithAi,
-  hideScanOnMobile = false,
-  scanning,
-  showScanAction,
 }: {
   className?: string
-  hideScanOnMobile?: boolean
   onOpenInspector: () => void
-  onScanWithAi: () => void
-  scanning: boolean
-  showScanAction: boolean
 }) {
   return (
     <div
       className={`absolute right-3 top-3 z-20 flex items-center gap-2 ${className ?? ""}`}
     >
-      {showScanAction && (
-        <ScanActionButton
-          className={hideScanOnMobile ? "max-[680px]:hidden" : undefined}
-          onScanWithAi={onScanWithAi}
-          scanning={scanning}
-        />
-      )}
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
@@ -165,29 +157,54 @@ function RightInspectorControlGroup({
   )
 }
 
-function ScanActionButton({
+function ViewportAiReviewAction({
+  aiReviewEntryState,
+  aiReviewFindingCount,
   className,
+  onOpenAiReview,
   onScanWithAi,
   scanning,
 }: {
+  aiReviewEntryState: AiReviewEntryState
+  aiReviewFindingCount: number
   className?: string
+  onOpenAiReview: () => void
   onScanWithAi: () => void
   scanning: boolean
 }) {
+  const hasFindings = aiReviewEntryState === "scanned_with_findings"
+  const label = scanning
+    ? "Scanning..."
+    : hasFindings
+      ? aiReviewFindingCount > 0
+        ? `${aiReviewFindingCount} findings`
+        : "Review findings"
+      : "Scan with AI"
+  const ariaLabel = scanning
+    ? "AI scan in progress"
+    : hasFindings
+      ? "Review AI findings"
+      : "Scan with AI"
+  const handleClick = hasFindings ? onOpenAiReview : onScanWithAi
+
   return (
-    <Button
-      variant="outline"
-      className={`h-9 gap-2 border-ai/35 bg-ai/10 px-2.5 text-[11px] font-semibold text-ai-foreground hover:border-ai/45 hover:bg-ai/16 hover:text-ai-foreground ${className ?? ""}`}
-      aria-label={scanning ? "AI scan in progress" : "Scan with AI"}
-      onClick={onScanWithAi}
-      disabled={scanning}
+    <div
+      className={`absolute right-16 top-3 z-20 flex items-center max-[760px]:right-3 max-[760px]:top-14 max-[420px]:left-3 max-[420px]:right-auto ${className ?? ""}`}
     >
-      {scanning ? (
-        <Loader2 className="size-3.5 animate-spin" />
-      ) : (
-        <ScanSearch className="size-3.5" />
-      )}
-      <span>{scanning ? "Scanning..." : "Scan with AI"}</span>
-    </Button>
+      <Button
+        variant="outline"
+        className="h-9 gap-2 border-ai/40 bg-panel/95 px-2.5 text-[11px] font-semibold text-ai-foreground shadow-sm ring-1 ring-ai/10 hover:border-ai/50 hover:bg-ai/12 hover:text-ai-foreground disabled:opacity-80 dark:bg-panel/90"
+        aria-label={ariaLabel}
+        onClick={handleClick}
+        disabled={scanning}
+      >
+        {scanning ? (
+          <Loader2 className="size-3.5 animate-spin" />
+        ) : (
+          <ScanSearch className="size-3.5" />
+        )}
+        <span>{label}</span>
+      </Button>
+    </div>
   )
 }

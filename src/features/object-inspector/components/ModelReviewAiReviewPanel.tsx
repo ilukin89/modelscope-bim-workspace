@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronRight,
   CircleAlert,
+  Info,
   Loader2,
   RefreshCw,
   ScanSearch,
@@ -27,7 +28,12 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { aiReviewContent } from "@/features/object-inspector/data/aiReviewContent"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { getAiReviewContent } from "@/features/object-inspector/data/aiReviewContent"
 import { getFindingGroupKey } from "@/lib/findingUtils"
 import { cn } from "@/lib/utils"
 import type {
@@ -112,6 +118,40 @@ const statusLabel: Record<AiFindingWorkflowStatus, string> = {
   "follow-up": "Follow-up",
 }
 
+function getConfidenceMeta(confidence: number) {
+  if (confidence >= 85) {
+    return {
+      className:
+        "border-success/25 bg-success/8 text-success-foreground dark:border-success/35 dark:bg-success/10",
+      guidance: "Strong signal. Review evidence before creating an issue.",
+      label: "High",
+      progressClassName: "bg-success/20 [&>div]:bg-success",
+      variant: "success",
+    } as const
+  }
+
+  if (confidence >= 70) {
+    return {
+      className:
+        "border-warning/30 bg-warning/10 text-warning-foreground dark:border-warning/40 dark:bg-warning/12",
+      guidance:
+        "Inspect highlighted object and evidence checks before creating an issue.",
+      label: "Medium",
+      progressClassName: "bg-warning/20 [&>div]:bg-warning",
+      variant: "warning",
+    } as const
+  }
+
+  return {
+    className:
+      "border-border/35 bg-muted/14 text-foreground dark:border-border dark:bg-muted/25",
+    guidance: "Treat this as a lead. Verify manually before creating an issue.",
+    label: "Low",
+    progressClassName: "bg-muted [&>div]:bg-muted-foreground",
+    variant: "outline",
+  } as const
+}
+
 function getGroupingConfig(mode: AiFindingGroupingMode) {
   if (mode === "severity") return severityGroups
   if (mode === "type") return typeGroups
@@ -158,7 +198,10 @@ export function ModelReviewAiReviewPanel({
   const [clearAiFindingsDialogOpen, setClearAiFindingsDialogOpen] = useState(false)
   const [removeIssueDialogOpen, setRemoveIssueDialogOpen] = useState(false)
   const selectedFinding = aiFindings.find((finding) => finding.id === selectedFindingId) ?? null
-  const activeReview = selectedFinding ? aiReviewContent[selectedFinding.highlight] : null
+  const activeReview = selectedFinding ? getAiReviewContent(selectedFinding) : null
+  const activeConfidence = activeReview
+    ? getConfidenceMeta(activeReview.confidence)
+    : null
   const existingIssue = modelReviewIssues.find((issue) => issue.sourceFindingId === selectedFinding?.id)
   const hasAiFindings = aiFindings.length > 0
   const aiScanning = aiScanStatus === "scanning"
@@ -227,7 +270,7 @@ export function ModelReviewAiReviewPanel({
                   <div className="flex items-start gap-2"><div className="min-w-0 flex-1"><p className="mt-1 text-[10px] font-semibold leading-snug">{selectedFinding.title}</p><p className="mt-1 truncate font-mono text-[9px] text-muted-foreground">{selectedFinding.code} · {selectedFinding.details.objectId} · {selectedFinding.location}</p></div><Badge variant={findingDismissed ? "outline" : issueCreated ? "success" : aiFindingStatus === "follow-up" ? "warning" : "ai"} className={cn("shrink-0 px-1.5 py-0 text-[8px] uppercase", !findingDismissed && !issueCreated && aiFindingStatus !== "follow-up" && "bg-ai/8")}>{statusLabel[aiFindingStatus]}</Badge></div>
                   {existingIssue && <p className="mt-2 font-mono text-[9px] text-muted-foreground">Linked issue {existingIssue.id} · source {selectedFinding.code}</p>}
                   {existingIssue && issueCreated && <div className="mt-3 rounded-md border border-success/30 bg-success/8 px-2.5 py-2 text-success-foreground ring-1 ring-success/10 dark:border-success/40 dark:bg-success/10"><div className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 size-3 shrink-0 text-success" /><div className="min-w-0"><p className="text-[10px] leading-snug">{selectedFinding.title} ({selectedFinding.code}) has been added to the issues list.</p></div></div></div>}
-                  <div className="mt-3 flex items-center gap-2 text-ai-foreground"><span className="text-[10px] font-semibold">AI suggestion</span>{!findingDismissed && <Sparkles className="size-3" />}</div><p className="mt-2 text-[10px] leading-relaxed text-foreground/85">{activeReview.suggestion}</p><div className="mt-3 flex items-center gap-2"><span className="text-[9px] text-muted-foreground">Confidence</span><Progress value={activeReview.confidence} aria-label="AI suggestion confidence" className="h-1.5 bg-ai/20" /><span className="font-mono text-[9px] text-ai-foreground">{activeReview.confidence}%</span></div>
+                  <div className="mt-3 flex items-center gap-2 text-ai-foreground"><span className="text-[10px] font-semibold">AI suggestion</span>{!findingDismissed && <Sparkles className="size-3" />}</div><p className="mt-2 text-[10px] leading-relaxed text-foreground/85">{activeReview.suggestion}</p>{activeConfidence && <div className={cn("mt-3 rounded-md border px-2.5 py-2", activeConfidence.className)}><div className="flex items-center gap-2"><div className="flex min-w-0 flex-1 items-center gap-1.5"><span className="text-[9px] font-semibold">Suggestion confidence</span><Tooltip><TooltipTrigger asChild><button type="button" className="rounded-sm opacity-70 outline-none transition hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring" aria-label="Suggestion confidence scale"><Info className="size-3" /></button></TooltipTrigger><TooltipContent side="top" className="max-w-72 border border-border/60 bg-popover/95 p-2.5 text-popover-foreground shadow-md ring-1 ring-warning/10"><div className="space-y-2 text-[10px] leading-snug"><p className="font-semibold text-foreground">Suggestion confidence scale</p><div className="space-y-1.5"><div className="flex items-start gap-2"><span className="mt-1 size-1.5 shrink-0 rounded-full bg-success" /><p><span className="font-semibold">High 85-100</span><span className="text-muted-foreground"> · Strong signal, review evidence.</span></p></div><div className="flex items-start gap-2"><span className="mt-1 size-1.5 shrink-0 rounded-full bg-warning" /><p><span className="font-semibold">Medium 70-84</span><span className="text-muted-foreground"> · Inspect evidence before creating issue.</span></p></div><div className="flex items-start gap-2"><span className="mt-1 size-1.5 shrink-0 rounded-full bg-muted-foreground" /><p><span className="font-semibold">Low below 70</span><span className="text-muted-foreground"> · Verify manually.</span></p></div></div><p className="border-t border-border/50 pt-1.5 text-muted-foreground">Use this as review guidance, not an automatic decision.</p></div></TooltipContent></Tooltip></div><Badge variant={activeConfidence.variant} className="shrink-0 px-1.5 py-0 text-[8px]"><span>{activeConfidence.label}</span><span className="font-mono">{activeReview.confidence}%</span></Badge></div><Progress value={activeReview.confidence} aria-label={`${activeConfidence.label} suggestion confidence`} className={cn("mt-2 h-1.5", activeConfidence.progressClassName)} /><p className="mt-1.5 text-[9px] font-medium leading-relaxed">{activeConfidence.guidance}</p></div>}
                   <div className="mt-3 grid grid-cols-2 gap-2">{findingNeedsReview && <><Button size="compact" variant={previewActive ? "secondary" : "default"} className="col-span-2 w-full" onClick={onPreviewChange}>{previewActive ? "Exit preview" : "Preview change"}</Button><Button variant="outline" size="compact" className="col-span-2 w-full justify-center border-ai/30 bg-card px-2 text-[10px] text-ai-foreground shadow-none hover:border-ai/40 hover:bg-ai/5 hover:text-ai-foreground dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted dark:hover:text-foreground" onClick={onCreateIssue}>Create issue</Button><Button variant="ghost" size="compact" className="col-span-2 mx-auto h-auto w-auto px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted/45 hover:text-foreground" onClick={onDismissFinding}>Dismiss</Button></>}{issueCreated && <><Button size="compact" className="col-span-2 w-full" onClick={onViewCreatedIssueDetails}>View issue details</Button><Button type="button" variant="outline" size="compact" className="col-span-2 w-full justify-center border-primary/35 bg-background px-2 text-[10px] text-primary shadow-none ring-1 ring-primary/8 hover:border-primary/45 hover:bg-primary/8 hover:text-primary hover:ring-primary/14 dark:border-primary/45 dark:ring-primary/10" onClick={onViewFindingInModel}>View in model</Button><Button variant="ghost" size="compact" className="col-span-2 w-full text-destructive hover:bg-destructive/8 hover:text-destructive dark:hover:bg-destructive/10" onClick={() => setRemoveIssueDialogOpen(true)}>Remove issue</Button></>}{findingDismissed && <><Button size="compact" className="col-span-2 w-full" onClick={onRestoreFinding}>Restore finding</Button><Button type="button" variant="outline" size="compact" className="col-span-2 w-full justify-center border-primary/35 bg-background px-2 text-[10px] text-primary shadow-none ring-1 ring-primary/8 hover:border-primary/45 hover:bg-primary/8 hover:text-primary hover:ring-primary/14 dark:border-primary/45 dark:ring-primary/10" onClick={onViewFindingInModel}>View in model</Button></>}</div>
                 </CardContent></Card><div className="mt-3 space-y-2">{activeReview.checks.map(([label, detail, warning]) => <ReviewCheck key={label} label={label} detail={detail} warning={warning} />)}</div></div>
               </> : <div className="hidden h-full min-h-0 items-center justify-center p-3 min-[1421px]:flex"><div className="rounded-md border border-dashed border-border/22 bg-muted/8 p-3 text-[10px] text-muted-foreground dark:border-border dark:bg-transparent">Select a finding from the AI Review Queue to review evidence, preview a change, create an issue, or dismiss the suggestion.</div></div>}

@@ -2,7 +2,7 @@ import { ContactShadows, Edges, OrbitControls } from "@react-three/drei"
 import { DoubleSide } from "three"
 import type { ViewportTheme } from "@/features/viewport/renderers/three/utils/useViewportTheme"
 import type { ViewportRendererProps } from "@/features/viewport/renderers/types"
-import type { HighlightKind, LayerId } from "@/types"
+import type { HighlightKind, LayerId, ReviewIssue } from "@/types"
 
 type Vector3Tuple = [number, number, number]
 
@@ -17,6 +17,12 @@ type LayerVisualConfig = {
 type MarkerData = {
   highlight: HighlightKind
   position: Vector3Tuple
+}
+
+type FindingViewportTarget = {
+  markerPosition: Vector3Tuple
+  objectAnchor: Vector3Tuple
+  previewPosition: Vector3Tuple
 }
 
 type SceneThemeTokens = {
@@ -355,6 +361,58 @@ const siteLightPositions: Vector3Tuple[] = [
   [2.42, 0.026, 1.36],
 ]
 
+const viewportTargetOffsetsByFindingId: Record<
+  ReviewIssue["id"],
+  FindingViewportTarget
+> = {
+  "res-issue-1": {
+    markerPosition: [1.58, 0.78, 0.72],
+    objectAnchor: [1.45, 0.72, 0.74],
+    previewPosition: [0.98, 0.86, -0.54],
+  },
+  "res-issue-5": {
+    markerPosition: [-0.7, 0.82, 1.02],
+    objectAnchor: [-0.86, 0.66, 0.92],
+    previewPosition: [-0.66, 0.78, 0.82],
+  },
+  "res-issue-6": {
+    markerPosition: [-2.08, 0.82, 1.42],
+    objectAnchor: [-2.12, 0.58, 1.32],
+    previewPosition: [-2.08, 0.74, 1.42],
+  },
+  "res-issue-8": {
+    markerPosition: [0.24, 0.72, -1.02],
+    objectAnchor: [0.16, 0.48, -1],
+    previewPosition: [0.18, 0.62, -1.06],
+  },
+  "res-issue-12": {
+    markerPosition: [0.74, 0.92, -0.28],
+    objectAnchor: [0.66, 0.82, -0.34],
+    previewPosition: [0.52, 0.86, -0.42],
+  },
+}
+
+const fallbackViewportTargetOffsetsByHighlight: Record<
+  HighlightKind,
+  FindingViewportTarget
+> = {
+  duct: {
+    markerPosition: [1.58, 0.78, 0.72],
+    objectAnchor: [1.45, 0.72, 0.74],
+    previewPosition: [0.98, 0.86, -0.54],
+  },
+  door: {
+    markerPosition: [-1.92, 0.36, 1.18],
+    objectAnchor: [-1.92, 0.34, 1.24],
+    previewPosition: [-1.76, 0.54, 1.08],
+  },
+  damper: {
+    markerPosition: [0.88, 0.92, -0.72],
+    objectAnchor: [0.88, 0.88, -0.72],
+    previewPosition: [0.74, 0.96, -0.82],
+  },
+}
+
 function getSelectedFloorIndex(
   floors: ViewportRendererProps["floors"],
   selectedFloor: ViewportRendererProps["selectedFloor"],
@@ -387,19 +445,61 @@ function createAiMarkers(
   return markerSlots.filter((marker) => counts[marker.highlight] > 0)
 }
 
-function getObjectAnchor(
-  highlight: HighlightKind,
+function addVector3(
+  [x, y, z]: Vector3Tuple,
+  [offsetX, offsetY, offsetZ]: Vector3Tuple,
+): Vector3Tuple {
+  return [x + offsetX, y + offsetY, z + offsetZ]
+}
+
+function addFloorY(
+  [x, yOffset, z]: Vector3Tuple,
   selectedFloorY: number,
 ): Vector3Tuple {
-  if (highlight === "door") {
-    return [-1.92, selectedFloorY + 0.34, 1.24]
+  return [x, selectedFloorY + yOffset, z]
+}
+
+function getStableIssueOffset(issueId: ReviewIssue["id"]): Vector3Tuple {
+  let hash = 0
+
+  for (const character of issueId) {
+    hash = (hash * 31 + character.charCodeAt(0)) % 997
   }
 
-  if (highlight === "damper") {
-    return [0.88, selectedFloorY + 0.88, -0.72]
-  }
+  return [
+    ((hash % 7) - 3) * 0.14,
+    ((Math.floor(hash / 7) % 3) - 1) * 0.04,
+    ((Math.floor(hash / 21) % 7) - 3) * 0.12,
+  ]
+}
 
-  return [1.45, selectedFloorY + 0.72, 0.74]
+function getFallbackViewportTargetOffsets(
+  selectedIssue: ReviewIssue,
+): FindingViewportTarget {
+  const fallbackTarget =
+    fallbackViewportTargetOffsetsByHighlight[selectedIssue.highlight]
+  const issueOffset = getStableIssueOffset(selectedIssue.id)
+
+  return {
+    markerPosition: addVector3(fallbackTarget.markerPosition, issueOffset),
+    objectAnchor: addVector3(fallbackTarget.objectAnchor, issueOffset),
+    previewPosition: addVector3(fallbackTarget.previewPosition, issueOffset),
+  }
+}
+
+function getFindingViewportTarget(
+  selectedIssue: ReviewIssue,
+  selectedFloorY: number,
+): FindingViewportTarget {
+  const targetOffsets =
+    viewportTargetOffsetsByFindingId[selectedIssue.id] ??
+    getFallbackViewportTargetOffsets(selectedIssue)
+
+  return {
+    markerPosition: addFloorY(targetOffsets.markerPosition, selectedFloorY),
+    objectAnchor: addFloorY(targetOffsets.objectAnchor, selectedFloorY),
+    previewPosition: addFloorY(targetOffsets.previewPosition, selectedFloorY),
+  }
 }
 
 function getLayerOpacity(
@@ -897,12 +997,16 @@ function ToolCue({
 function AiFindingMarkers({
   aiReviewFindingSpatialCounts,
   selectedAiFindingActive,
+  selectedAiFindingHighlight,
+  selectedAiFindingTarget,
   selectedFloorY,
   tokens,
 }: Pick<
   ViewportRendererProps,
   "aiReviewFindingSpatialCounts" | "selectedAiFindingActive"
 > & {
+  selectedAiFindingHighlight: HighlightKind
+  selectedAiFindingTarget: FindingViewportTarget
   selectedFloorY: number
   tokens: SceneThemeTokens
 }) {
@@ -910,14 +1014,19 @@ function AiFindingMarkers({
 
   return (
     <group>
-      {markers.map((marker, index) => {
-        const selected = selectedAiFindingActive && index === 0
+      {markers.map((marker) => {
+        const selected =
+          selectedAiFindingActive &&
+          marker.highlight === selectedAiFindingHighlight
+        const position = selected
+          ? selectedAiFindingTarget.markerPosition
+          : marker.position
         const markerColor = selected
           ? SELECTED_FLOOR_GLOW
           : tokens.highlightColors[marker.highlight]
 
         return (
-          <group key={marker.highlight} position={marker.position}>
+          <group key={marker.highlight} position={position}>
             <mesh position={[0, -0.22, 0]} scale={[0.018, 0.42, 0.018]}>
               <boxGeometry />
               <meshStandardMaterial
@@ -928,7 +1037,10 @@ function AiFindingMarkers({
                 transparent
               />
             </mesh>
-            <mesh rotation={[Math.PI / 4, Math.PI / 4, 0]} scale={selected ? 0.17 : 0.13}>
+            <mesh
+              rotation={[Math.PI / 4, Math.PI / 4, 0]}
+              scale={selected ? 0.17 : 0.13}
+            >
               <boxGeometry />
               <meshStandardMaterial
                 color={markerColor}
@@ -938,9 +1050,14 @@ function AiFindingMarkers({
                 roughness={0.38}
                 transparent
               />
-              <Edges color={selected ? tokens.marker.selectedEdge : markerColor} />
+              <Edges
+                color={selected ? tokens.marker.selectedEdge : markerColor}
+              />
             </mesh>
-            <mesh rotation={[Math.PI / 2, 0, 0]} scale={selected ? 1.18 : 0.9}>
+            <mesh
+              rotation={[Math.PI / 2, 0, 0]}
+              scale={selected ? 1.18 : 0.9}
+            >
               <torusGeometry args={[0.18, 0.01, 8, 48]} />
               <meshStandardMaterial
                 color={markerColor}
@@ -958,14 +1075,14 @@ function AiFindingMarkers({
 }
 
 function PreviewGhost({
-  selectedFloorY,
+  position,
   tokens,
 }: {
-  selectedFloorY: number
+  position: Vector3Tuple
   tokens: SceneThemeTokens
 }) {
   return (
-    <group position={[0.98, selectedFloorY + 0.86, -0.54]}>
+    <group position={position}>
       <mesh scale={[1.08, 0.22, 0.5]}>
         <boxGeometry />
         <meshStandardMaterial
@@ -1033,12 +1150,12 @@ function FocusRings({
 }
 
 function SelectedIssueHighlight({
-  selectedFloorY,
   selectedIssue,
+  target,
   tokens,
   visible,
 }: Pick<ViewportRendererProps, "selectedIssue"> & {
-  selectedFloorY: number
+  target: FindingViewportTarget
   tokens: SceneThemeTokens
   visible: boolean
 }) {
@@ -1047,10 +1164,9 @@ function SelectedIssueHighlight({
   }
 
   const color = tokens.highlightColors[selectedIssue.highlight]
-  const anchor = getObjectAnchor(selectedIssue.highlight, selectedFloorY)
 
   return (
-    <group position={anchor}>
+    <group position={target.objectAnchor}>
       <mesh scale={[0.58, 0.4, 0.42]}>
         <boxGeometry />
         <meshStandardMaterial
@@ -1065,11 +1181,19 @@ function SelectedIssueHighlight({
       </mesh>
       <mesh position={[0, 0.36, 0]} scale={[0.05, 0.05, 0.05]}>
         <sphereGeometry args={[1, 24, 24]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.72} />
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={0.72}
+        />
       </mesh>
       <mesh position={[0, 0.18, 0]} scale={[0.014, 0.34, 0.014]}>
         <boxGeometry />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.4} />
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={0.4}
+        />
       </mesh>
       <mesh rotation={[Math.PI / 2, 0, 0]} scale={1.08}>
         <torusGeometry args={[0.42, 0.014, 10, 72]} />
@@ -1103,6 +1227,10 @@ export function ProceduralBimScene({
   const tokens = sceneThemeTokens[theme]
   const selectedFloorIndex = getSelectedFloorIndex(floors, selectedFloor)
   const selectedFloorY = selectedFloorIndex * FLOOR_HEIGHT
+  const selectedFindingTarget = getFindingViewportTarget(
+    selectedIssue,
+    selectedFloorY,
+  )
   const selectedObjectVisible = visibleLayerIds.includes(
     selectedIssue.discipline,
   )
@@ -1153,8 +1281,8 @@ export function ProceduralBimScene({
         />
 
         <SelectedIssueHighlight
-          selectedFloorY={selectedFloorY}
           selectedIssue={selectedIssue}
+          target={selectedFindingTarget}
           tokens={tokens}
           visible={selectedObjectVisible}
         />
@@ -1163,13 +1291,18 @@ export function ProceduralBimScene({
           <AiFindingMarkers
             aiReviewFindingSpatialCounts={aiReviewFindingSpatialCounts}
             selectedAiFindingActive={selectedAiFindingActive}
+            selectedAiFindingHighlight={selectedIssue.highlight}
+            selectedAiFindingTarget={selectedFindingTarget}
             selectedFloorY={selectedFloorY}
             tokens={tokens}
           />
         )}
 
         {previewActive && (
-          <PreviewGhost selectedFloorY={selectedFloorY} tokens={tokens} />
+          <PreviewGhost
+            position={selectedFindingTarget.previewPosition}
+            tokens={tokens}
+          />
         )}
 
         <FocusRings

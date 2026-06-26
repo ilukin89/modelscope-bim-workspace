@@ -259,6 +259,7 @@ export function Viewport({
 
       <ViewportSidePanelControls
         aiReviewEntryState={aiReviewEntryState}
+        aiReviewFindingCount={aiReviewFindingCount}
         compactInspectorOpen={compactInspectorOpen}
         onExpandExplorer={onExpandExplorer}
         onOpenAiReview={onOpenAiReview}

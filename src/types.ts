@@ -108,6 +108,7 @@ export interface ModelReviewHistoryEvent {
 export interface ProjectAiReviewState {
   findingStatuses: Record<ReviewIssue["id"], AiFindingWorkflowStatus>
   modelReviewIssues: ModelReviewIssue[]
+  nextIssueSequence: number
   previewIssueId: ReviewIssue["id"] | null
   reviewHistory: ModelReviewHistoryEvent[]
   scanStatus: AiScanStatus

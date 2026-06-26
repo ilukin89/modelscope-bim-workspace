@@ -11,6 +11,7 @@ interface ViewportModelSvgProps {
   floorMarkerY: number
   mechanicalVisible: boolean
   modelFocusActive: boolean
+  modelFocusNonce: number | null
   previewActive: boolean
   sectionActive: boolean
   selectedDisciplineLabel: string
@@ -33,6 +34,7 @@ export function ViewportModelSvg({
   floorMarkerY,
   mechanicalVisible,
   modelFocusActive,
+  modelFocusNonce,
   previewActive,
   sectionActive,
   selectedDisciplineLabel,
@@ -537,10 +539,12 @@ export function ViewportModelSvg({
           selectedAiFindingActive &&
           previewActive && <PreviewChangeOverlay kind={selectedIssueHighlight} />}
 
-        {selectedObjectVisible &&
-          aiReviewVisualsActive &&
-          selectedAiFindingActive &&
-          modelFocusActive && <ModelFocusOverlay kind={selectedIssueHighlight} />}
+        {selectedObjectVisible && modelFocusActive && (
+          <ModelFocusOverlay
+            key={modelFocusNonce}
+            kind={selectedIssueHighlight}
+          />
+        )}
       </g>
 
       <g
@@ -954,7 +958,11 @@ function ModelFocusOverlay({ kind }: { kind: HighlightKind }) {
         : { x: 286, y: 260, width: 268, height: 120, labelX: 530, labelY: 350 }
 
   return (
-    <g data-testid="viewport-model-focus" data-focus-kind={kind}>
+    <g
+      data-testid="viewport-model-focus"
+      data-focus-kind={kind}
+      className="animate-pulse motion-reduce:animate-none"
+    >
       <rect
         x={frame.x}
         y={frame.y}

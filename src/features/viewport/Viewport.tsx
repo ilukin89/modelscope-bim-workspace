@@ -240,9 +240,8 @@ export function Viewport({
           selectedIssueObject={selectedIssue.object}
           selectedObjectVisible={selectedObjectVisible}
           previewActive={previewActive && selectedAiFindingActive}
+          modelFocusNonce={modelFocusRequest?.nonce ?? null}
           modelFocusActive={
-            aiReviewVisualsActive &&
-            selectedAiFindingActive &&
             modelFocusActive &&
             modelFocusRequest?.issueId === selectedIssue.id
           }

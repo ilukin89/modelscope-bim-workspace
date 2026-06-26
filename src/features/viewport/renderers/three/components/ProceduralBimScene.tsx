@@ -79,6 +79,12 @@ type SceneThemeTokens = {
     edge: string
   }
   shadowOpacity: number
+  siteLights: {
+    color: string
+    emissive: string
+    intensity: number
+    poolOpacity: number
+  }
   structure: {
     core: string
     hiddenEdge: string
@@ -96,7 +102,7 @@ const SELECTED_FLOOR_GLOW = "#22d3ee"
 
 const sceneThemeTokens: Record<ViewportTheme, SceneThemeTokens> = {
   dark: {
-    ambientLight: 0.34,
+    ambientLight: 0.32,
     background: "#071017",
     base: {
       edge: "#1f4657",
@@ -136,7 +142,7 @@ const sceneThemeTokens: Record<ViewportTheme, SceneThemeTokens> = {
       door: "#34d399",
       duct: SELECTED_FLOOR_GLOW,
     },
-    keyLight: 1.25,
+    keyLight: 1.32,
     layerVisuals: {
       architecture: {
         color: "#d7e2ef",
@@ -171,8 +177,8 @@ const sceneThemeTokens: Record<ViewportTheme, SceneThemeTokens> = {
       selectedEdge: "#e0faff",
     },
     pointLights: {
-      cyan: 0.68,
-      warm: 0.18,
+      cyan: 0.74,
+      warm: 0.22,
     },
     preview: {
       baseline: "#fbbf24",
@@ -188,6 +194,12 @@ const sceneThemeTokens: Record<ViewportTheme, SceneThemeTokens> = {
       edge: "#6b7f91",
     },
     shadowOpacity: 0.38,
+    siteLights: {
+      color: "#d89a4a",
+      emissive: "#f59e0b",
+      intensity: 0.18,
+      poolOpacity: 0.09,
+    },
     structure: {
       core: "#a9b8c8",
       hiddenEdge: "#26313c",
@@ -276,7 +288,7 @@ const sceneThemeTokens: Record<ViewportTheme, SceneThemeTokens> = {
     },
     pointLights: {
       cyan: 0.24,
-      warm: 0.12,
+      warm: 0.08,
     },
     preview: {
       baseline: "#b45309",
@@ -292,6 +304,12 @@ const sceneThemeTokens: Record<ViewportTheme, SceneThemeTokens> = {
       edge: "#728592",
     },
     shadowOpacity: 0.16,
+    siteLights: {
+      color: "#a76516",
+      emissive: "#fde68a",
+      intensity: 0.02,
+      poolOpacity: 0.035,
+    },
     structure: {
       core: "#7b8ea0",
       hiddenEdge: "#b5c2cc",
@@ -328,6 +346,13 @@ const columnPositions: Vector3Tuple[] = [
   [-0.78, 0, 1.28],
   [0.78, 0, 1.28],
   [2.18, 0, 1.28],
+]
+
+const siteLightPositions: Vector3Tuple[] = [
+  [-2.36, 0.026, 1.6],
+  [-1.12, 0.026, 1.78],
+  [1.14, 0.026, 1.76],
+  [2.42, 0.026, 1.36],
 ]
 
 function getSelectedFloorIndex(
@@ -410,6 +435,34 @@ function BasePlate({ tokens }: { tokens: SceneThemeTokens }) {
           transparent
         />
       </mesh>
+    </group>
+  )
+}
+
+function SiteLights({ tokens }: { tokens: SceneThemeTokens }) {
+  return (
+    <group>
+      {siteLightPositions.map((position, index) => (
+        <group key={index} position={position}>
+          <pointLight
+            color={tokens.siteLights.color}
+            decay={2}
+            distance={1.45}
+            intensity={tokens.siteLights.intensity}
+            position={[0, 0.16, 0]}
+          />
+          <mesh position={[0, 0.006, 0]} scale={[0.52, 0.01, 0.18]}>
+            <cylinderGeometry args={[1, 1, 1, 32]} />
+            <meshStandardMaterial
+              color={tokens.siteLights.color}
+              emissive={tokens.siteLights.emissive}
+              emissiveIntensity={0.16}
+              opacity={tokens.siteLights.poolOpacity}
+              transparent
+            />
+          </mesh>
+        </group>
+      ))}
     </group>
   )
 }
@@ -1086,6 +1139,7 @@ export function ProceduralBimScene({
         scale={modelFocusActive ? 1.035 : 1}
       >
         <BasePlate tokens={tokens} />
+        <SiteLights tokens={tokens} />
         <FloorStack
           floors={floors}
           selectedFloorIndex={selectedFloorIndex}

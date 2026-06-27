@@ -80,15 +80,13 @@ export function ViewportSelectionCard({
         </span>
         <div className="min-w-0" data-testid="viewport-selection">
           <p className="truncate text-[11px] font-semibold max-[900px]:text-[9px] max-[900px]:font-medium max-[900px]:text-muted-foreground">
-            {aiReviewVisualsActive && !selectedAiFindingActive
-              ? "AI review overview"
-              : selectedIssue.object}
+            {selectedIssue.object}
           </p>
           <p className="truncate text-[9px] text-muted-foreground max-[900px]:hidden">
             {!selectedObjectVisible
               ? `Selected object hidden by ${selectedDisciplineLabel} visibility`
               : aiReviewVisualsActive && !selectedAiFindingActive
-                ? `${aiReviewFindingCount} findings clustered in model`
+                ? `AI review overview · ${aiReviewFindingCount} findings clustered`
                 : aiReviewVisualsActive
                 ? `${previewActive ? "Preview" : selectedIssue.code} · ${
                     selectedIssue.location

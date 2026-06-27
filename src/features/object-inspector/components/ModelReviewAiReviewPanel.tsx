@@ -159,13 +159,20 @@ function getGroupingConfig(mode: AiFindingGroupingMode) {
 }
 
 function ConfidenceScalePopover() {
+  const [open, setOpen] = useState(false)
+
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
           className="flex size-5 shrink-0 items-center justify-center rounded-sm opacity-75 outline-none transition hover:opacity-100 focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Suggestion confidence scale"
+          aria-expanded={open}
+          onClick={(event) => {
+            event.preventDefault()
+            setOpen((current) => !current)
+          }}
         >
           <Info className="size-3" />
         </button>

@@ -187,7 +187,11 @@ export function ViewportSidePanelControls({
         <ViewportAiReviewAction
           aiReviewEntryState={aiReviewEntryState}
           aiReviewFindingCount={aiReviewFindingCount}
-          className="min-[901px]:max-[1160px]:hidden"
+          className={cn(
+            "min-[901px]:max-[1160px]:hidden",
+            !showInspectorExpand && "min-[901px]:hidden",
+            compactInspectorOpen && "max-[900px]:hidden",
+          )}
           onOpenAiReview={onOpenAiReview}
           onScanWithAi={onScanWithAi}
           scanning={scanning}
@@ -495,7 +499,7 @@ export function ViewportAiReviewAction({
       ref={assistantPopoverRef}
       id="viewport-ai-scan-nudge"
       className={cn(
-        "absolute w-[min(278px,calc(100vw-24px))] rounded-md border border-primary/35 bg-panel p-2.5 text-foreground shadow-lg ring-1 ring-primary/14",
+        "absolute w-[min(278px,calc(100vw-24px))] rounded-md border border-primary/35 bg-panel p-2.5 text-foreground shadow-xl ring-1 ring-primary/18",
         "animate-in fade-in-0 zoom-in-95 duration-200",
         "motion-reduce:animate-none motion-reduce:transition-opacity",
         popoverAlignment === "left" ? "left-0" : "right-0",
@@ -549,7 +553,7 @@ export function ViewportAiReviewAction({
       <Button
         type="button"
         variant="outline"
-        className="mt-2.5 h-7 w-full justify-center gap-2 border-primary/30 bg-background/80 px-2 text-[10px] font-semibold text-primary shadow-none backdrop-blur transition-colors hover:border-primary/50 hover:bg-primary/10 hover:text-primary"
+        className="mt-2.5 h-7 w-full justify-center gap-2 border-primary/35 bg-background px-2 text-[10px] font-semibold text-primary shadow-sm ring-1 ring-primary/10 transition-colors hover:border-primary/50 hover:bg-primary/10 hover:text-primary"
         aria-label="Scan model"
         onClick={startScan}
       >
@@ -579,8 +583,8 @@ export function ViewportAiReviewAction({
             <button
               type="button"
               className={cn(
-                "-mr-1 h-8 rounded-l-md rounded-r-sm border border-primary/40 bg-primary/12 px-2.5 text-[10px] font-semibold text-primary shadow-md ring-1 ring-primary/16",
-                "transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-primary/55 hover:bg-primary/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "-mr-1 h-8 rounded-l-md rounded-r-sm border border-primary/40 bg-panel px-2.5 text-[10px] font-semibold text-primary shadow-lg ring-1 ring-primary/18",
+                "transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-primary/55 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 "motion-reduce:transform-none motion-reduce:transition-opacity",
               )}
               aria-label="Open AI review scan assistant"
@@ -599,7 +603,7 @@ export function ViewportAiReviewAction({
                 variant="outline"
                 size="icon"
                 className={cn(
-                  "relative size-[46px] touch-none rounded-full border-primary/30 bg-background/80 text-primary shadow-md ring-1 ring-primary/12 backdrop-blur",
+                  "relative size-[46px] touch-none rounded-full border-primary/35 bg-panel text-primary shadow-lg ring-1 ring-primary/18",
                   "cursor-grab transition-all duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.03] hover:border-primary/50 hover:bg-primary/10 hover:text-primary hover:shadow-primary/10 focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing",
                   "motion-reduce:transform-none",
                   assistantDragging && "cursor-grabbing scale-[1.03]",
@@ -636,7 +640,7 @@ export function ViewportAiReviewAction({
     >
       <Button
         variant="outline"
-        className="h-9 max-w-full gap-2 overflow-hidden border-ai/40 bg-panel/95 px-2.5 text-[11px] font-semibold text-ai-foreground shadow-sm ring-1 ring-ai/10 hover:border-ai/50 hover:bg-ai/12 hover:text-ai-foreground disabled:opacity-80 dark:bg-panel/90"
+        className="h-9 max-w-full gap-2 overflow-hidden border-ai/45 bg-panel px-2.5 text-[11px] font-semibold text-ai-foreground shadow-md ring-1 ring-ai/16 hover:border-ai/55 hover:bg-ai/12 hover:text-ai-foreground disabled:opacity-80"
         aria-label={ariaLabel}
         onClick={handleClick}
         disabled={scanning}

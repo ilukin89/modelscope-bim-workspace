@@ -171,7 +171,22 @@ export function ObjectInspector({
           <TabsTrigger value="issues">
             Issues {modelReviewIssues.length}
           </TabsTrigger>
-          <TabsTrigger value="ai">AI Review</TabsTrigger>
+          <TabsTrigger
+            value="ai"
+            className="gap-1"
+            aria-label={
+              aiFindings.length > 0
+                ? `AI Review, ${aiFindings.length} findings`
+                : "AI Review"
+            }
+          >
+            <span className="min-w-0 truncate">AI Review</span>
+            {aiFindings.length > 0 && (
+              <span className="font-mono text-[9px] text-ai-foreground">
+                {aiFindings.length}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
 

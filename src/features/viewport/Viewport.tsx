@@ -3,17 +3,11 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react"
-import {
-  BoxSelect,
-  Hand,
-  Layers3,
-  MessageSquarePlus,
-  Orbit,
-  Ruler,
-} from "lucide-react"
+import { Layers3 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { ViewportSelectionCard } from "@/features/viewport/components/ViewportSelectionCard"
 import {
@@ -24,7 +18,6 @@ import {
   ViewportCameraBadge,
   type ViewportFeedback,
   ViewportFeedbackToast,
-  ViewportToolStatus,
 } from "@/features/viewport/components/ViewportStatusOverlays"
 import { ViewerInitializationErrorBanner } from "@/features/viewport/components/ViewerInitializationErrorBanner"
 import { ViewportRendererFallbackBoundary } from "@/features/viewport/renderers/ViewportRendererFallbackBoundary"
@@ -113,6 +106,9 @@ export function Viewport({
   const [rendererInitializationError, setRendererInitializationError] =
     useState<Error | null>(null)
   const [rendererRetryAttempt, setRendererRetryAttempt] = useState(0)
+  const [toolbarSafeWidth, setToolbarSafeWidth] = useState<number | null>(null)
+  const viewportFrameRef = useRef<HTMLElement | null>(null)
+  const viewportContextRef = useRef<HTMLDivElement | null>(null)
   const viewportFeedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   )
@@ -142,14 +138,6 @@ export function Viewport({
   const selectedDisciplineLabel =
     selectedIssue.discipline.charAt(0).toUpperCase() +
     selectedIssue.discipline.slice(1)
-  const toolMode = {
-    Orbit: { label: "Orbit mode", icon: Orbit },
-    Pan: { label: "Pan mode", icon: Hand },
-    Section: { label: "Section plane active", icon: BoxSelect },
-    Measure: { label: "Measure mode", icon: Ruler },
-    Comment: { label: "Comment mode", icon: MessageSquarePlus },
-  }[activeTool]
-  const ToolModeIcon = toolMode.icon
   const aiReviewScanning = aiReviewEntryState === "scanning"
   const showAiReviewAction =
     aiReviewEntryState === "not_scanned" ||
@@ -167,6 +155,54 @@ export function Viewport({
     },
     [],
   )
+
+  useLayoutEffect(() => {
+    const frame = viewportFrameRef.current
+
+    if (!frame) {
+      return
+    }
+
+    const updateToolbarSafeWidth = () => {
+      if (window.matchMedia("(max-width: 1160px)").matches) {
+        setToolbarSafeWidth(null)
+        return
+      }
+
+      const frameRect = frame.getBoundingClientRect()
+      const contextRect =
+        viewportContextRef.current?.getBoundingClientRect() ?? null
+      const centerX = frameRect.left + frameRect.width / 2
+      const edgeInset = 12
+      const overlayGap = 10
+      const safeLeft =
+        contextRect && contextRect.width > 0
+          ? Math.max(frameRect.left + edgeInset, contextRect.right + overlayGap)
+          : frameRect.left + edgeInset
+      const safeRight = frameRect.right - edgeInset
+      const centeredWidth = Math.floor(
+        Math.min(centerX - safeLeft, safeRight - centerX) * 2,
+      )
+
+      setToolbarSafeWidth(Math.max(112, centeredWidth))
+    }
+
+    updateToolbarSafeWidth()
+
+    const resizeObserver = new ResizeObserver(updateToolbarSafeWidth)
+    resizeObserver.observe(frame)
+
+    if (viewportContextRef.current) {
+      resizeObserver.observe(viewportContextRef.current)
+    }
+
+    window.addEventListener("resize", updateToolbarSafeWidth)
+
+    return () => {
+      resizeObserver.disconnect()
+      window.removeEventListener("resize", updateToolbarSafeWidth)
+    }
+  }, [])
 
   const showViewportFeedback = (
     message: string,
@@ -252,23 +288,32 @@ export function Viewport({
   }, [modelFocusRequestLabel, modelFocusRequestNonce])
 
   return (
-    <section className="viewport-grid relative min-h-0 min-w-0 overflow-hidden">
-      <div className="contents max-[1160px]:absolute max-[1160px]:left-1/2 max-[1160px]:top-3 max-[1160px]:z-20 max-[1160px]:flex max-[1160px]:w-max max-[1160px]:max-w-[calc(100%-24px)] max-[1160px]:-translate-x-1/2 max-[1160px]:flex-col max-[1160px]:items-stretch max-[1160px]:gap-2 max-[900px]:bottom-3 max-[900px]:top-auto max-[900px]:w-[min(288px,calc(100%-24px))]">
-        <ViewportToolbar activeTool={activeTool} onToolChange={onToolChange} />
-
-        <ViewportToolStatus
-          activeTool={activeTool}
-          className="min-[901px]:max-[1160px]:hidden"
-          Icon={ToolModeIcon}
-          label={toolMode.label}
-        />
+    <section
+      ref={viewportFrameRef}
+      className="viewport-grid relative min-h-0 min-w-0 overflow-hidden"
+    >
+      <div className="contents max-[1160px]:absolute max-[1160px]:left-1/2 max-[1160px]:top-3 max-[1160px]:z-20 max-[1160px]:flex max-[1160px]:w-max max-[1160px]:max-w-[calc(100%-24px)] max-[1160px]:-translate-x-1/2 max-[1160px]:items-center max-[1160px]:gap-2 min-[901px]:max-[1160px]:flex-row max-[900px]:bottom-3 max-[900px]:top-auto max-[900px]:w-[min(288px,calc(100%-24px))] max-[900px]:flex-col max-[900px]:items-stretch">
+        <div
+          className="pointer-events-none absolute left-1/2 top-3 z-20 flex max-w-[calc(100%-24px)] -translate-x-1/2 justify-center max-[1160px]:static max-[1160px]:translate-x-0 min-[901px]:max-[1160px]:w-[112px] max-[900px]:w-full"
+          style={
+            toolbarSafeWidth === null
+              ? undefined
+              : { width: `${toolbarSafeWidth}px` }
+          }
+        >
+          <ViewportToolbar
+            activeTool={activeTool}
+            className="pointer-events-auto"
+            onToolChange={onToolChange}
+          />
+        </div>
 
         {showAiReviewAction && (
-          <div className="hidden min-[901px]:max-[1160px]:flex min-[901px]:max-[1160px]:justify-center">
+          <div className="hidden min-[901px]:max-[1160px]:flex min-[901px]:max-[1160px]:shrink-0">
             <ViewportAiReviewAction
               aiReviewEntryState={aiReviewEntryState}
               aiReviewFindingCount={aiReviewFindingCount}
-              className="static max-w-full translate-x-0 self-center"
+              className="static max-w-full translate-x-0"
               onOpenAiReview={onOpenAiReview}
               onScanWithAi={onScanWithAi}
               scanning={aiReviewScanning}
@@ -293,6 +338,7 @@ export function Viewport({
       />
 
       <div
+        ref={viewportContextRef}
         className={cn(
           "absolute top-3 z-10 max-[1160px]:hidden",
           showExplorerExpand ? "left-14" : "left-3",

@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -30,26 +31,104 @@ type AssistantPopoverAlignment = "left" | "right"
 type AssistantDragState = {
   boundsHeight: number
   boundsWidth: number
+  bottomInset: number
+  leftInset: number
+  rightInset: number
   startBottom: number
   startRight: number
   startX: number
   startY: number
+  topInset: number
   widgetHeight: number
   widgetWidth: number
 }
 
 const assistantMargin = 12
+const assistantDesktopSafeBottom = 72
+const assistantDesktopSafeTop = 112
+const assistantHomeBottomRatio = 0.28
+const assistantLabelTailMinSafeWidth = 260
+const assistantCompactSafeBottom = 132
 const assistantPopoverOffset = 8
 const assistantPopoverWidth = 278
 const assistantPopoverEstimatedHeight = 158
-const clampAssistantPosition = (
+const clampAssistantAxisPosition = (
   value: number,
+  minValue: number,
   maxValue: number,
-) =>
-  Math.min(
-    Math.max(value, assistantMargin),
-    Math.max(maxValue, assistantMargin),
+) => {
+  const normalizedMax = Math.max(maxValue, 0)
+  const normalizedMin = Math.min(minValue, normalizedMax)
+
+  return Math.min(Math.max(value, normalizedMin), normalizedMax)
+}
+const getAssistantSafeInsets = () => ({
+  bottom: window.matchMedia("(max-width: 900px)").matches
+    ? assistantCompactSafeBottom
+    : assistantDesktopSafeBottom,
+  left: assistantMargin,
+  right: assistantMargin,
+  top: assistantDesktopSafeTop,
+})
+const getAssistantSafeWidth = (boundsRect: DOMRect) => {
+  const safeInsets = getAssistantSafeInsets()
+
+  return Math.max(boundsRect.width - safeInsets.left - safeInsets.right, 0)
+}
+const getAssistantHomePosition = (
+  widgetRect: DOMRect,
+  boundsRect: DOMRect,
+): AssistantPosition => {
+  const safeInsets = getAssistantSafeInsets()
+  const maxBottom =
+    boundsRect.height - widgetRect.height - safeInsets.top
+  const midLowBottom = Math.round(
+    Math.max(
+      safeInsets.bottom,
+      boundsRect.height * assistantHomeBottomRatio,
+    ),
   )
+
+  return {
+    bottom: clampAssistantAxisPosition(
+      midLowBottom,
+      safeInsets.bottom,
+      maxBottom,
+    ),
+    right: clampAssistantAxisPosition(
+      safeInsets.right,
+      safeInsets.right,
+      boundsRect.width - widgetRect.width - safeInsets.left,
+    ),
+  }
+}
+const getClampedAssistantPosition = (
+  position: AssistantPosition,
+  widgetRect: DOMRect,
+  boundsRect: DOMRect,
+): AssistantPosition => {
+  const safeInsets = getAssistantSafeInsets()
+  const maxBottom =
+    boundsRect.height - widgetRect.height - safeInsets.top
+  const homePosition = getAssistantHomePosition(widgetRect, boundsRect)
+  const bottom =
+    position.bottom > maxBottom || position.bottom < safeInsets.bottom
+      ? homePosition.bottom
+      : position.bottom
+
+  return {
+    bottom: clampAssistantAxisPosition(
+      bottom,
+      safeInsets.bottom,
+      maxBottom,
+    ),
+    right: clampAssistantAxisPosition(
+      position.right,
+      safeInsets.right,
+      boundsRect.width - widgetRect.width - safeInsets.left,
+    ),
+  }
+}
 const getAssistantPopoverAlignment = (
   widgetRect: DOMRect,
   boundsRect: DOMRect,
@@ -188,8 +267,8 @@ export function ViewportSidePanelControls({
           aiReviewEntryState={aiReviewEntryState}
           aiReviewFindingCount={aiReviewFindingCount}
           className={cn(
-            "min-[901px]:max-[1160px]:hidden",
-            !showInspectorExpand && "min-[901px]:hidden",
+            aiReviewEntryState !== "not_scanned" &&
+              "min-[901px]:max-[1160px]:hidden",
             compactInspectorOpen && "max-[900px]:hidden",
           )}
           onOpenAiReview={onOpenAiReview}
@@ -305,21 +384,18 @@ export function ViewportAiReviewAction({
         boundsRect,
         assistantPopoverWidth,
       )
-      const nextBottom = boundsRect.bottom - widgetRect.bottom
-      const nextRight = clampAssistantPosition(
-        boundsRect.right - widgetRect.right,
-        boundsRect.width - widgetRect.width - assistantMargin,
+      const nextPosition = getClampedAssistantPosition(
+        {
+          bottom: boundsRect.bottom - widgetRect.bottom,
+          right: boundsRect.right - widgetRect.right,
+        },
+        widgetRect,
+        boundsRect,
       )
 
       setPopoverPlacement(nextPlacement)
       setPopoverAlignment(nextAlignment)
-      setAssistantPosition({
-        bottom: clampAssistantPosition(
-          nextBottom,
-          boundsRect.height - widgetRect.height - assistantMargin,
-        ),
-        right: nextRight,
-      })
+      setAssistantPosition(nextPosition)
     }
 
     setLabelTailVisible(false)
@@ -342,13 +418,18 @@ export function ViewportAiReviewAction({
 
     const widgetRect = widget.getBoundingClientRect()
     const boundsRect = boundsElement.getBoundingClientRect()
+    const safeInsets = getAssistantSafeInsets()
     assistantDragState.current = {
+      bottomInset: safeInsets.bottom,
       boundsHeight: boundsRect.height,
       boundsWidth: boundsRect.width,
+      leftInset: safeInsets.left,
+      rightInset: safeInsets.right,
       startBottom: boundsRect.bottom - widgetRect.bottom,
       startRight: boundsRect.right - widgetRect.right,
       startX: event.clientX,
       startY: event.clientY,
+      topInset: safeInsets.top,
       widgetHeight: widgetRect.height,
       widgetWidth: widgetRect.width,
     }
@@ -366,6 +447,72 @@ export function ViewportAiReviewAction({
 
     return () => window.clearTimeout(hideLabelTail)
   }, [labelTailVisible, showIntroCard])
+
+  useLayoutEffect(() => {
+    if (!showIntroCard || assistantDragging) return undefined
+
+    const keepAssistantInSafeArea = () => {
+      const widget = assistantWidgetRef.current
+      const boundsElement = widget?.offsetParent as HTMLElement | null
+      if (!widget || !boundsElement) return
+
+      const widgetRect = widget.getBoundingClientRect()
+      const boundsRect = boundsElement.getBoundingClientRect()
+
+      if (
+        labelTailVisible &&
+        !introExpanded &&
+        getAssistantSafeWidth(boundsRect) < assistantLabelTailMinSafeWidth
+      ) {
+        setLabelTailVisible(false)
+        return
+      }
+
+      setAssistantPosition((current) => {
+        const requestedPosition =
+          current ?? getAssistantHomePosition(widgetRect, boundsRect)
+        const nextPosition = getClampedAssistantPosition(
+          requestedPosition,
+          widgetRect,
+          boundsRect,
+        )
+
+        if (
+          current?.bottom === nextPosition.bottom &&
+          current.right === nextPosition.right
+        ) {
+          return current
+        }
+
+        return nextPosition
+      })
+    }
+
+    keepAssistantInSafeArea()
+
+    const widget = assistantWidgetRef.current
+    const boundsElement = widget?.offsetParent as HTMLElement | null
+    const resizeObserver = new ResizeObserver(keepAssistantInSafeArea)
+
+    if (widget) {
+      resizeObserver.observe(widget)
+    }
+    if (boundsElement) {
+      resizeObserver.observe(boundsElement)
+    }
+
+    window.addEventListener("resize", keepAssistantInSafeArea)
+
+    return () => {
+      resizeObserver.disconnect()
+      window.removeEventListener("resize", keepAssistantInSafeArea)
+    }
+  }, [
+    assistantDragging,
+    introExpanded,
+    labelTailVisible,
+    showIntroCard,
+  ])
 
   useEffect(() => {
     if (!introExpanded) return undefined
@@ -412,21 +559,24 @@ export function ViewportAiReviewAction({
         nextBottom += overflowBottom
       }
 
-      nextBottom = clampAssistantPosition(
-        nextBottom,
-        boundsRect.height - widgetRect.height - assistantMargin,
+      const nextPosition = getClampedAssistantPosition(
+        {
+          bottom: nextBottom,
+          right: boundsRect.right - widgetRect.right,
+        },
+        widgetRect,
+        boundsRect,
       )
 
       setAssistantPosition((current) => {
-        const nextRight = current?.right ?? boundsRect.right - widgetRect.right
-        if (current?.bottom === nextBottom && current.right === nextRight) {
+        if (
+          current?.bottom === nextPosition.bottom &&
+          current.right === nextPosition.right
+        ) {
           return current
         }
 
-        return {
-          bottom: nextBottom,
-          right: nextRight,
-        }
+        return nextPosition
       })
     }
 
@@ -470,13 +620,15 @@ export function ViewportAiReviewAction({
       }
 
       setAssistantPosition({
-        bottom: clampAssistantPosition(
+        bottom: clampAssistantAxisPosition(
           drag.startBottom - deltaY,
-          drag.boundsHeight - drag.widgetHeight - assistantMargin,
+          drag.bottomInset,
+          drag.boundsHeight - drag.widgetHeight - drag.topInset,
         ),
-        right: clampAssistantPosition(
+        right: clampAssistantAxisPosition(
           drag.startRight - deltaX,
-          drag.boundsWidth - drag.widgetWidth - assistantMargin,
+          drag.rightInset,
+          drag.boundsWidth - drag.widgetWidth - drag.leftInset,
         ),
       })
     }

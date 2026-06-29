@@ -25,6 +25,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { supabase } from "@/lib/supabase"
 import type { AppView, ProjectData, ProjectId } from "@/types"
 import type { WorkspaceMode } from "@/types"
 import { cn } from "@/lib/utils"
@@ -267,6 +268,14 @@ export function TopBar({
             {darkMode ? "Use light theme" : "Use dark theme"}
           </TooltipContent>
         </Tooltip>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground max-[420px]:px-1.5 max-[420px]:text-[10px]"
+          onClick={() => void supabase.auth.signOut()}
+        >
+          Sign out
+        </Button>
       </div>
     </header>
   )

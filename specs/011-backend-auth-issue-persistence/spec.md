@@ -187,12 +187,19 @@ Drawing Triage logic changes, or real backend code.
   and MUST NOT treat scan findings as issues.
 - **FR-006**: The backend MUST persist user decisions on findings, including at
   minimum create issue, dismiss, follow-up, restore, and issue-removal outcomes.
+  The `mark_follow_up` decision type is reserved; the current frontend has no
+  visible UI action for it, and this documentation-only phase MUST NOT add one.
+  A future spec must explicitly introduce the frontend action before users can
+  produce this decision type.
 - **FR-007**: The current finding status MUST be derivable from durable decision
   and issue records, even if a denormalized status is also stored.
 - **FR-008**: An issue MUST exist only after explicit user action.
 - **FR-009**: Issue creation from a finding MUST preserve
   `source_finding_id`, `source_scan_run_id`, acting user, project, and creation
   time.
+  The current frontend embeds `sourceIssue: ReviewIssue` on
+  `ModelReviewIssue`, but backend persistence MUST store durable references
+  rather than the embedded source object.
 - **FR-010**: Browser-local issue ID generation MUST NOT be the long-term
   source of permanent issue IDs once backend persistence exists.
 - **FR-011**: Issue creation MUST be atomic from the user's perspective: issue
@@ -208,6 +215,9 @@ Drawing Triage logic changes, or real backend code.
   issue removal or restoration.
 - **FR-015**: Source lineage MUST support returning from a created issue to its
   source AI finding and model context.
+  Future frontend integration MUST reconstruct that view model from backend
+  issue, finding, and scan-run records rather than relying on the embedded
+  `sourceIssue` object.
 - **FR-016**: Transient UI state such as selected tabs, panel open state,
   grouping controls, hover state, viewport preview toggles, and scan animation
   timing MUST remain frontend-only in this persistence slice.

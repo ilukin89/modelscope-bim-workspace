@@ -135,6 +135,11 @@ Every state-changing action on a finding should append a decision record:
 - restore finding
 - remove issue link or remove from tracker
 
+`mark_follow_up` is a reserved decision type. The current frontend has no
+visible UI action for it, and this PR must not add one. A future spec must
+explicitly introduce the frontend action before the UI can produce this
+decision.
+
 The first UI does not need to collect rationale text. The backend shape can
 allow a nullable note for a future confirmation screen.
 
@@ -150,6 +155,12 @@ When the user chooses `Create issue`, the backend should atomically persist:
 
 If any part fails, the UI must not show a created issue or mark the finding as
 `issue-created`.
+
+The current frontend local state embeds the full
+`sourceIssue: ReviewIssue` object on `ModelReviewIssue`. Backend persistence
+must store only durable references, specifically `source_finding_id` and
+`source_scan_run_id`; future frontend integration should reconstruct the view
+model from backend records instead of persisting the embedded object.
 
 ### 7. Replace Browser-Owned Permanent IDs
 
@@ -190,6 +201,11 @@ Keep frontend-only:
 - preview toggle
 - scan animation timing
 
+The current frontend displays only a small number of recent review history
+entries. Backend persistence must store the full append-only history without
+that display limit. Pagination or "load more" behavior belongs to a future
+frontend integration spec, not this backend persistence constraint.
+
 ## Future Data Concept Plan
 
 | Concept | Responsibility | Key relationship |
@@ -228,6 +244,15 @@ Minimal fields:
 - `owner_user_id` or demo owner reference
 - `created_at`
 - `updated_at`
+
+Seed candidates must match the current frontend demo project IDs:
+
+- `residential-tower-a`
+- `civic-center-east`
+- `transit-hub-02`
+
+Seeding different IDs would break the existing frontend demo without a
+coordinated frontend fixture change.
 
 The first backend slice does not add model upload, file storage, BIM parsing,
 or model version management.
@@ -280,6 +305,11 @@ Minimal fields:
 - `source_payload`
 - `current_status`
 - `created_at`
+
+`ReviewIssue` in the current frontend (`src/types.ts`) does not include a
+`confidence` field, so backend-returned confidence values have no frontend
+display target yet. `confidence` should be nullable in `ai_findings` and may
+remain unpopulated until a future spec adds explicit frontend support.
 
 `current_status` is optional as a stored optimization. Decisions and linked
 issues remain the audit source.

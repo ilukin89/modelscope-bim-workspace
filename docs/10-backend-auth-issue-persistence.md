@@ -106,6 +106,16 @@ Recommended approach:
 - allow the app to resolve a demo session to the demo user without public
   signup, forgot password, invites, or account settings
 
+Seeded project IDs should stay aligned with the current frontend fixture
+projects:
+
+- `residential-tower-a`
+- `civic-center-east`
+- `transit-hub-02`
+
+Seeding different project IDs would break the existing frontend demo unless a
+coordinated frontend change updates the fixture references at the same time.
+
 The demo user is not a product feature. It is a controlled bridge from a
 frontend-only prototype to a persistent workflow.
 
@@ -177,6 +187,12 @@ Minimal finding fields:
 | `location` | Human-readable model location |
 | `source_payload` | Structured provenance needed to reconstruct source context |
 
+`ReviewIssue` in the current frontend (`src/types.ts`) does not include a
+`confidence` field, so backend-returned confidence values have no display
+target yet. The `confidence` field in persisted `ai_findings` should be
+nullable and may remain unpopulated until a future spec adds explicit frontend
+support.
+
 Finding status should reflect user decision state:
 
 - `active`: no durable user decision yet
@@ -202,6 +218,10 @@ Minimal decision types:
 - `mark_follow_up`
 - `restore`
 - `remove_issue_link`
+
+`mark_follow_up` is a reserved decision type. The current frontend has no
+visible UI action for it, and this PR must not add one. This decision type is
+reserved for a future spec that explicitly introduces the frontend action.
 
 Minimal decision fields:
 
@@ -245,6 +265,12 @@ Minimal issue fields:
 
 The issue may snapshot selected finding fields for display stability, but it
 must keep `source_finding_id` and `source_scan_run_id`.
+
+The current frontend local state embeds the full
+`sourceIssue: ReviewIssue` object on `ModelReviewIssue`. Backend persistence
+must not store that embedded object. It should store only durable references
+such as `source_finding_id` and `source_scan_run_id`; future frontend
+integration should reconstruct the view model from backend records.
 
 Allowed first-slice issue statuses:
 
@@ -302,6 +328,11 @@ The first persistence slice should prioritize durable workflow-changing events:
 - issue creation
 - issue status or outcome changes
 - issue removal or restore actions
+
+The current frontend limits displayed review history to a small number of
+recent entries. Backend persistence must store the full append-only history
+without that display limit. Pagination or a "load more" affordance is a future
+frontend integration concern, not a backend persistence constraint.
 
 Transient UI actions such as hovering, opening panels, grouping findings,
 preview toggles, or selected tabs should remain frontend-only.

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react"
+import type { Session } from "@supabase/supabase-js"
 import { X } from "lucide-react"
 import { TopBar } from "@/components/layout/TopBar"
 import { DesignSystemPanel } from "@/components/workspace/DesignSystemPanel"
+import { LoginScreen } from "@/features/auth/LoginScreen"
 import { DrawingTriage } from "@/features/drawing-triage/DrawingTriage"
 import { ModelExplorer } from "@/features/model-explorer/ModelExplorer"
 import { ObjectInspector } from "@/features/object-inspector/ObjectInspector"
@@ -22,6 +24,7 @@ import type { InspectorTab } from "@/features/object-inspector/types"
 import type { ViewportTool } from "@/features/viewport/types"
 import { useAiReviewState } from "@/hooks/useAiReviewState"
 import { getFindingGroupKey } from "@/lib/findingUtils"
+import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import type {
   AiFindingGroupingMode,
@@ -51,7 +54,64 @@ const getSpatialFindingCounts = (findings: ReviewIssue[]) =>
     { duct: 0, door: 0, damper: 0 } satisfies Record<HighlightKind, number>,
   )
 
+function AppAuthLoading() {
+  return (
+    <main className="flex min-h-dvh w-full items-center justify-center bg-background px-4 text-foreground">
+      <div className="rounded-md border border-border bg-panel px-4 py-3 text-xs text-muted-foreground shadow-sm">
+        Checking demo session...
+      </div>
+    </main>
+  )
+}
+
 function App() {
+  const [session, setSession] = useState<Session | null>(null)
+  const [sessionLoading, setSessionLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!active) {
+          return
+        }
+
+        setSession(data.session)
+        setSessionLoading(false)
+      })
+      .catch(() => {
+        if (active) {
+          setSessionLoading(false)
+        }
+      })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession)
+      setSessionLoading(false)
+    })
+
+    return () => {
+      active = false
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  if (sessionLoading) {
+    return <AppAuthLoading />
+  }
+
+  if (!session) {
+    return <LoginScreen />
+  }
+
+  return <WorkspaceApp />
+}
+
+function WorkspaceApp() {
   const [view, setView] = useState<AppView>("workspace")
   const [workspaceMode, setWorkspaceMode] =
     useState<WorkspaceMode>("model-review")

@@ -11,6 +11,8 @@ as $$
   limit 1
 $$;
 
+revoke all on function public.app_current_demo_user_id() from public, anon;
+
 create or replace function public.app_is_project_member(project_id text)
 returns boolean
 language sql
@@ -26,6 +28,8 @@ as $$
   )
 $$;
 
+revoke all on function public.app_is_project_member(text) from public, anon;
+
 create or replace function public.app_project_issue_prefix(project_id text)
 returns text
 language sql
@@ -39,6 +43,8 @@ as $$
     else null
   end
 $$;
+
+revoke all on function public.app_project_issue_prefix(text) from public, anon;
 
 create or replace function public.app_next_issue_code(project_id text)
 returns text
@@ -71,3 +77,5 @@ begin
   return format('MRI-%s-%s', project_prefix, lpad(next_number::text, 4, '0'));
 end;
 $$;
+
+revoke all on function public.app_next_issue_code(text) from public, anon, authenticated;

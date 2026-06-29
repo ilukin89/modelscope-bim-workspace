@@ -36,11 +36,6 @@ grant usage, select, update on sequence public.model_review_issue_residential_to
 grant usage, select, update on sequence public.model_review_issue_civic_center_east_seq to service_role;
 grant usage, select, update on sequence public.model_review_issue_transit_hub_02_seq to service_role;
 
-revoke all on function public.app_current_demo_user_id() from public, anon;
-revoke all on function public.app_is_project_member(text) from public, anon;
-revoke all on function public.app_project_issue_prefix(text) from public, anon;
-revoke all on function public.app_next_issue_code(text) from public, anon, authenticated;
-
 grant execute on function public.app_current_demo_user_id() to authenticated, service_role;
 grant execute on function public.app_is_project_member(text) to authenticated, service_role;
 grant execute on function public.app_project_issue_prefix(text) to authenticated, service_role;

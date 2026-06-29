@@ -36,7 +36,9 @@ begin
     where d.idempotency_key = $2;
 
     if found then
-      if decision_row.decision_type <> 'create_issue' or decision_row.created_issue_id is null then
+      if decision_row.finding_id <> $1
+        or decision_row.decision_type <> 'create_issue'
+        or decision_row.created_issue_id is null then
         raise exception 'Idempotency key was already used for another finding decision' using errcode = '23505';
       end if;
 
@@ -281,7 +283,8 @@ begin
     where d.idempotency_key = $3;
 
     if found then
-      if decision_row.decision_type <> $2 then
+      if decision_row.finding_id <> $1
+        or decision_row.decision_type <> $2 then
         raise exception 'Idempotency key was already used for another finding decision' using errcode = '23505';
       end if;
 
@@ -431,7 +434,8 @@ begin
     where sh.idempotency_key = $3;
 
     if found then
-      if status_history_row.to_status <> $2 then
+      if status_history_row.issue_id <> $1
+        or status_history_row.to_status <> $2 then
         raise exception 'Idempotency key was already used for another status transition' using errcode = '23505';
       end if;
 

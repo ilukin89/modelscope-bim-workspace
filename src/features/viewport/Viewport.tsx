@@ -308,7 +308,7 @@ export function Viewport({
           />
         </div>
 
-        {showAiReviewAction && (
+        {showAiReviewAction && aiReviewEntryState !== "not_scanned" && (
           <div className="hidden min-[901px]:max-[1160px]:flex min-[901px]:max-[1160px]:shrink-0">
             <ViewportAiReviewAction
               aiReviewEntryState={aiReviewEntryState}

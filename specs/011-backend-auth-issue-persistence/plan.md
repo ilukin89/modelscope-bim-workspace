@@ -1,0 +1,485 @@
+# Plan: Backend Auth and Issue Persistence
+
+## Purpose
+
+This plan defines documentation-only backend, auth, and persistence boundaries
+for making the existing Model Review AI finding to issue workflow durable in a
+future backend phase.
+
+No runtime behavior is implemented in this phase.
+
+## Documents and Source Reviewed
+
+- `README.md`
+- `AGENTS.md`
+- `.specify/memory/constitution.md`
+- `docs/08-ai-drawing-triage-workflow.md`
+- `docs/09-workspace-mode-navigation.md`
+- `specs/009-ai-drawing-triage-workflow-strategy/spec.md`
+- `specs/010-workspace-mode-navigation-strategy/plan.md`
+- `src/types.ts`
+- `src/features/object-inspector/components/ModelReviewAiReviewPanel.tsx`
+- `src/features/viewport/components/ViewportSidePanelControls.tsx`
+
+## Summary
+
+Persist only the records needed to complete the current Model Review issue UX:
+
+```text
+demo user + membership
+  -> project
+  -> ai_scan_run
+  -> ai_finding
+  -> ai_finding_decision
+  -> model_review_issue
+  -> issue_status_history
+  -> review_history_event
+```
+
+The central product rule is unchanged: an AI finding is not an issue. The issue
+record exists only after the user chooses `Create issue`. The created issue
+must keep source lineage back to the AI finding and scan run.
+
+This phase documents the future backend slice before any Supabase work. It does
+not install packages, add a Supabase client, add environment variables, add
+auth UI, change runtime app behavior, change React components, change renderer
+logic, change AI Review logic, change Drawing Triage logic, or add real backend
+code.
+
+## Current Product Context
+
+The current frontend stores Model Review workflow state locally:
+
+| Current concept | Current role |
+| --- | --- |
+| `ReviewIssue` | AI finding / provisional review input |
+| `ModelReviewIssue` | User-created issue |
+| `sourceFindingId` | Local source finding lineage |
+| `findingStatuses` | Local finding state by finding ID |
+| `modelReviewIssues` | Local created issue list |
+| `reviewHistory` | Local audit-like history entries |
+| `nextIssueSequence` | Browser-local issue ID sequence |
+| `scanStatus` | Local AI scan state |
+
+The future backend should preserve these product meanings while moving durable
+identity, decisions, issue creation, and history out of browser-only state.
+
+## Planning Decisions
+
+### 1. Use Seeded Demo Access First
+
+Use a seeded demo user and seeded project membership records. This gives
+created issues and decisions an actor without adding public signup, forgot
+password, team invites, profile settings, or auth UI.
+
+The demo access model should be enough to answer:
+
+- who is acting?
+- which projects can they access?
+- which project owns this scan, finding, issue, or event?
+
+### 2. Keep Project Membership Minimal
+
+Project membership is an access boundary, not an enterprise permission system.
+
+Recommended first roles:
+
+- `owner`
+- `member`
+
+Both roles may be allowed to use the current demo workflow in the first slice.
+More granular permissions are out of scope.
+
+### 3. Persist Scan Runs Before Findings
+
+Each AI scan result should belong to an `ai_scan_runs` record, even when the
+run is seeded or mock-generated. This prevents findings from floating without
+provenance and gives review history a durable parent event.
+
+Allowed first statuses:
+
+- `queued`
+- `running`
+- `completed`
+- `failed`
+- `cancelled`
+
+The frontend scan animation can remain local. Backend run status is for durable
+review state, not for adding real async processing in this phase.
+
+### 4. Store Findings as Review Inputs
+
+AI findings must not share the issue table. Findings are provisional and remain
+available for review after dismissal or issue creation.
+
+Finding status can be shown as:
+
+- `active`
+- `issue-created`
+- `dismissed`
+- `follow-up`
+
+The authoritative source should be decisions and linked issues. A denormalized
+current status may exist for query simplicity, but it must not erase decision
+history.
+
+### 5. Store User Decisions
+
+User decisions are the audit boundary between AI output and product records.
+
+Every state-changing action on a finding should append a decision record:
+
+- create issue
+- dismiss
+- mark follow-up
+- restore finding
+- remove issue link or remove from tracker
+
+The first UI does not need to collect rationale text. The backend shape can
+allow a nullable note for a future confirmation screen.
+
+### 6. Create Issues Atomically From Findings
+
+When the user chooses `Create issue`, the backend should atomically persist:
+
+1. the created `model_review_issues` record
+2. the `ai_finding_decisions` record
+3. the initial `issue_status_history` record
+4. the `review_history_events` record
+5. the current finding status or equivalent derived state
+
+If any part fails, the UI must not show a created issue or mark the finding as
+`issue-created`.
+
+### 7. Replace Browser-Owned Permanent IDs
+
+The browser can keep temporary optimistic IDs during a request, but permanent
+issue IDs must be generated by the backend once persistence exists.
+
+The backend issue ID and the source finding ID are both needed:
+
+```text
+model_review_issue.id           # durable issue identity
+model_review_issue.source_id    # lineage to finding and scan
+```
+
+The UI can still display a human-readable code if the product wants one, but
+that code should not be the only durable identifier.
+
+### 8. Keep Review History Focused
+
+Persist durable workflow events, not every UI gesture.
+
+Persist:
+
+- scan completed
+- finding dismissed
+- finding restored
+- finding marked follow-up
+- issue created
+- issue status changed
+- issue removed from tracker
+
+Keep frontend-only:
+
+- selected finding
+- selected tab
+- grouping mode
+- panel state
+- hover state
+- preview toggle
+- scan animation timing
+
+## Future Data Concept Plan
+
+| Concept | Responsibility | Key relationship |
+| --- | --- | --- |
+| `demo_users` | Seeded actor identity | has many memberships |
+| `projects` | Durable demo project records | has many memberships, scan runs, findings, issues |
+| `project_memberships` | Minimal access boundary | connects users to projects |
+| `ai_scan_runs` | One Model Review scan attempt | belongs to project and actor |
+| `ai_findings` | Provisional AI review inputs | belongs to scan run and project |
+| `ai_finding_decisions` | Human decision on a finding | belongs to finding, project, and actor |
+| `model_review_issues` | Created issue after explicit action | belongs to project and source finding |
+| `issue_status_history` | Append-only status changes | belongs to issue and actor |
+| `review_history_events` | User-facing workflow audit trail | belongs to project and optionally issue/finding |
+
+## Entity Notes
+
+### `demo_users`
+
+Minimal fields:
+
+- `id`
+- `display_name`
+- `email`, if useful for demo attribution
+- `created_at`
+
+No public signup, password reset, profile management, or organization settings
+are included.
+
+### `projects`
+
+Minimal fields:
+
+- `id`
+- `name`
+- `model_label`
+- `owner_user_id` or demo owner reference
+- `created_at`
+- `updated_at`
+
+The first backend slice does not add model upload, file storage, BIM parsing,
+or model version management.
+
+### `project_memberships`
+
+Minimal fields:
+
+- `id`
+- `project_id`
+- `user_id`
+- `role`: `owner` or `member`
+- `created_at`
+
+Membership gates project review state reads and writes.
+
+### `ai_scan_runs`
+
+Minimal fields:
+
+- `id`
+- `project_id`
+- `created_by_user_id`
+- `status`
+- `source`: `demo` or `mock`
+- `started_at`
+- `completed_at`
+- `finding_count`
+- `created_at`
+
+The first backend phase may seed completed runs. It does not require real AI or
+queue infrastructure.
+
+### `ai_findings`
+
+Minimal fields:
+
+- `id`
+- `project_id`
+- `scan_run_id`
+- `code`
+- `title`
+- `finding_type`
+- `suggested_priority`
+- `confidence`
+- `object_id`
+- `object_context`
+- `level`
+- `location`
+- `source_payload`
+- `current_status`
+- `created_at`
+
+`current_status` is optional as a stored optimization. Decisions and linked
+issues remain the audit source.
+
+### `ai_finding_decisions`
+
+Minimal fields:
+
+- `id`
+- `project_id`
+- `finding_id`
+- `scan_run_id`
+- `user_id`
+- `decision_type`
+- `created_issue_id`
+- `decision_note`
+- `created_at`
+
+Allowed first decision types:
+
+- `create_issue`
+- `dismiss`
+- `mark_follow_up`
+- `restore`
+- `remove_issue_link`
+
+### `model_review_issues`
+
+Minimal fields:
+
+- `id`
+- `project_id`
+- `created_by_user_id`
+- `source_finding_id`
+- `source_scan_run_id`
+- `source_finding_code`
+- `title`
+- `related_object`
+- `related_level`
+- `priority`
+- `status`
+- `created_at`
+- `updated_at`
+
+The issue may snapshot source finding display fields, but it must keep durable
+source lineage.
+
+### `issue_status_history`
+
+Minimal fields:
+
+- `id`
+- `project_id`
+- `issue_id`
+- `from_status`
+- `to_status`
+- `changed_by_user_id`
+- `changed_at`
+
+The first row may use a null `from_status` and `Open` as `to_status`.
+
+### `review_history_events`
+
+Minimal fields:
+
+- `id`
+- `project_id`
+- `event_type`
+- `actor_user_id`
+- `finding_id`
+- `issue_id`
+- `scan_run_id`
+- `label`
+- `detail`
+- `created_at`
+
+This table supports the existing review history UI without forcing every event
+to be an issue status change.
+
+## Future API Boundary
+
+The future backend API can be designed around the existing UX:
+
+| Operation | Expected behavior |
+| --- | --- |
+| Resolve demo session | Returns current demo user identity |
+| List projects | Returns projects where user has membership |
+| Read project review state | Returns latest scan run, findings, decisions, created issues, and history |
+| Start or seed scan run | Creates or returns a scan run for the mock AI Review entry |
+| List findings | Returns findings for the selected project and scan run |
+| Record finding decision | Persists dismiss, follow-up, restore, or remove-link decisions |
+| Create issue from finding | Atomically creates issue, decision, initial status history, and review history |
+| Update issue status | Updates issue current status and appends status/history events |
+| Read source lineage | Returns source finding, scan run, decision, and issue chain |
+
+This boundary does not choose REST, GraphQL, Supabase tables, RPC functions, RLS
+policies, migrations, auth provider setup, or client library code. Those are
+future implementation details.
+
+## Frontend-Only Boundary
+
+The following remain frontend-only for this slice:
+
+- viewport preview change state
+- active selected finding or selected issue focus
+- queue grouping mode
+- AI Review panel layout
+- panel open, closed, and responsive state
+- theme state
+- prototype `Workspace / Design` switch state
+- scan animation timing
+- local optimistic state before backend confirmation
+- Drawing Triage session and UI state
+- renderer-specific visualization state
+
+## Constitution Check
+
+- **Spec-driven development**: Pass. Product goal, data boundaries, auth
+  assumptions, out-of-scope items, and acceptance criteria are documented before
+  implementation.
+- **Viewport as source of truth**: Pass. Source lineage keeps issue and finding
+  records connected to model context so future UI actions can return to visible
+  evidence.
+- **Prototype honesty**: Pass. No backend, Supabase, auth UI, storage, upload,
+  parsing, or real AI is implemented in this phase.
+- **Separation of concerns**: Pass. Frontend state, backend persistence, auth,
+  issue lifecycle, and renderer responsibilities are separated.
+- **Controlled AI assistance**: Pass. AI findings remain provisional and user
+  decisions are required before issue creation.
+
+No constitution exception is required.
+
+## Future Implementation Phases
+
+### Phase 0: Documentation and Specification
+
+- Create this planning document.
+- Create the product overview in `docs/10-backend-auth-issue-persistence.md`.
+- Create `spec.md` and `tasks.md` for this persistence slice.
+- Do not change runtime files.
+
+### Phase 1: Backend Design, Still No Runtime Integration
+
+- Choose backend platform and auth/session model.
+- Define schema or migration plan.
+- Define access rules for demo user/project membership.
+- Define API contracts for project review state and issue creation.
+- Define rollback and transaction behavior for issue creation.
+
+### Phase 2: Seeded Backend Persistence
+
+- Seed demo user, projects, memberships, scan runs, and findings.
+- Persist decisions, created issues, issue status history, and review history.
+- Replace browser-owned permanent issue IDs with backend IDs.
+
+### Phase 3: Frontend Integration
+
+- Add a client integration behind a separate implementation spec.
+- Keep the current Model Review UX surface.
+- Handle optimistic UI and failure recovery.
+- Preserve source lineage and viewport consequences.
+
+## Explicitly Out Of Scope
+
+- public signup
+- forgot password
+- team invites
+- comments
+- assignees
+- notifications
+- file upload
+- storage
+- real AI
+- OCR
+- BIM parsing
+- realtime collaboration
+- enterprise permissions
+- full issue management system
+- Supabase client setup
+- environment variables
+- package installation
+- runtime app changes
+- React component changes
+- renderer logic changes
+- AI Review logic changes
+- Drawing Triage logic changes
+
+## Validation
+
+This documentation phase is complete when:
+
+- `docs/10-backend-auth-issue-persistence.md` exists
+- `specs/011-backend-auth-issue-persistence/spec.md` exists
+- `specs/011-backend-auth-issue-persistence/plan.md` exists
+- `specs/011-backend-auth-issue-persistence/tasks.md` exists
+- AI findings and created issues are clearly separate
+- user decision persistence is required
+- issue source lineage is required
+- browser-local permanent issue IDs are rejected for future backend use
+- frontend-only state is explicitly separated from persisted state
+- out-of-scope items are explicit
+- no runtime files are changed
+- `npm run build` passes if run

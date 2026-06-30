@@ -84,7 +84,10 @@ export function LoginScreen() {
         </Button>
 
         {errorMessage && (
-          <p className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs leading-5 text-destructive dark:text-destructive-foreground">
+          <p
+            role="alert"
+            className="mt-3 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs leading-5 text-destructive dark:text-destructive-foreground"
+          >
             {errorMessage}
           </p>
         )}

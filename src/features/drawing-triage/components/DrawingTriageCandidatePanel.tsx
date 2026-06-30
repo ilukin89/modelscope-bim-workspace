@@ -132,13 +132,12 @@ export function DrawingTriageCandidatePanel({
           </p>
           <div
             className="mt-3 grid grid-cols-2 rounded-md border border-border bg-panel-subtle/55 p-0.5"
-            role="tablist"
+            role="group"
             aria-label="Drawing triage right panel view"
           >
             <button
               type="button"
-              role="tab"
-              aria-selected={activeRightPanelView === "review_candidates"}
+              aria-pressed={activeRightPanelView === "review_candidates"}
               className={cn(
                 "min-h-8 rounded-[5px] px-2 py-1 text-[10px] font-semibold text-muted-foreground outline-none ring-ring transition-colors focus-visible:ring-2",
                 activeRightPanelView === "review_candidates" &&
@@ -150,8 +149,7 @@ export function DrawingTriageCandidatePanel({
             </button>
             <button
               type="button"
-              role="tab"
-              aria-selected={activeRightPanelView === "created_issues"}
+              aria-pressed={activeRightPanelView === "created_issues"}
               className={cn(
                 "flex min-h-8 items-center justify-center gap-1.5 rounded-[5px] px-2 py-1 text-[10px] font-semibold text-muted-foreground outline-none ring-ring transition-colors focus-visible:ring-2",
                 activeRightPanelView === "created_issues" &&

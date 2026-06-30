@@ -15,10 +15,7 @@ import {
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
-type AiReviewEntryState =
-  | "not_scanned"
-  | "scanning"
-  | "scanned_with_findings"
+type AiReviewEntryState = "not_scanned" | "scanning" | "scanned_with_findings"
 
 type AssistantPosition = {
   bottom: number
@@ -80,13 +77,9 @@ const getAssistantHomePosition = (
   boundsRect: DOMRect,
 ): AssistantPosition => {
   const safeInsets = getAssistantSafeInsets()
-  const maxBottom =
-    boundsRect.height - widgetRect.height - safeInsets.top
+  const maxBottom = boundsRect.height - widgetRect.height - safeInsets.top
   const midLowBottom = Math.round(
-    Math.max(
-      safeInsets.bottom,
-      boundsRect.height * assistantHomeBottomRatio,
-    ),
+    Math.max(safeInsets.bottom, boundsRect.height * assistantHomeBottomRatio),
   )
 
   return {
@@ -108,8 +101,7 @@ const getClampedAssistantPosition = (
   boundsRect: DOMRect,
 ): AssistantPosition => {
   const safeInsets = getAssistantSafeInsets()
-  const maxBottom =
-    boundsRect.height - widgetRect.height - safeInsets.top
+  const maxBottom = boundsRect.height - widgetRect.height - safeInsets.top
   const homePosition = getAssistantHomePosition(widgetRect, boundsRect)
   const bottom =
     position.bottom > maxBottom || position.bottom < safeInsets.bottom
@@ -117,11 +109,7 @@ const getClampedAssistantPosition = (
       : position.bottom
 
   return {
-    bottom: clampAssistantAxisPosition(
-      bottom,
-      safeInsets.bottom,
-      maxBottom,
-    ),
+    bottom: clampAssistantAxisPosition(bottom, safeInsets.bottom, maxBottom),
     right: clampAssistantAxisPosition(
       position.right,
       safeInsets.right,
@@ -150,18 +138,14 @@ const getAssistantPopoverPlacement = (
   popoverHeight: number,
 ): AssistantPopoverPlacement => {
   const availableAbove =
-    widgetRect.top -
-    boundsRect.top -
-    assistantMargin -
-    assistantPopoverOffset
+    widgetRect.top - boundsRect.top - assistantMargin - assistantPopoverOffset
   const availableBelow =
     boundsRect.bottom -
     widgetRect.bottom -
     assistantMargin -
     assistantPopoverOffset
   const centerY = widgetRect.top + widgetRect.height / 2 - boundsRect.top
-  const preferredPlacement =
-    centerY < boundsRect.height / 2 ? "down" : "up"
+  const preferredPlacement = centerY < boundsRect.height / 2 ? "down" : "up"
   const preferredSpace =
     preferredPlacement === "down" ? availableBelow : availableAbove
   const alternateSpace =
@@ -235,9 +219,7 @@ export function ViewportSidePanelControls({
                 <SidePanelGlyph direction="expand" side="left" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="right">
-              Expand Model Explorer
-            </TooltipContent>
+            <TooltipContent side="right">Expand Model Explorer</TooltipContent>
           </Tooltip>
         </div>
       )}
@@ -256,9 +238,7 @@ export function ViewportSidePanelControls({
               <SidePanelGlyph direction="expand" side="left" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="right">
-            Open Model Explorer
-          </TooltipContent>
+          <TooltipContent side="right">Open Model Explorer</TooltipContent>
         </Tooltip>
       </div>
 
@@ -414,9 +394,7 @@ export function ViewportAiReviewAction({
     setLabelTailVisible(false)
     onScanWithAi()
   }
-  const startAssistantDrag = (
-    event: ReactPointerEvent<HTMLButtonElement>,
-  ) => {
+  const startAssistantDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (event.button !== 0) return
 
     const widget = assistantWidgetRef.current
@@ -514,12 +492,7 @@ export function ViewportAiReviewAction({
       resizeObserver.disconnect()
       window.removeEventListener("resize", keepAssistantInSafeArea)
     }
-  }, [
-    assistantDragging,
-    introExpanded,
-    labelTailVisible,
-    showIntroCard,
-  ])
+  }, [assistantDragging, introExpanded, labelTailVisible, showIntroCard])
 
   useEffect(() => {
     if (!introExpanded) return undefined
@@ -554,8 +527,7 @@ export function ViewportAiReviewAction({
       }
 
       let nextBottom = boundsRect.bottom - widgetRect.bottom
-      const overflowTop =
-        boundsRect.top + assistantMargin - popoverRect.top
+      const overflowTop = boundsRect.top + assistantMargin - popoverRect.top
       const overflowBottom =
         popoverRect.bottom - (boundsRect.bottom - assistantMargin)
 

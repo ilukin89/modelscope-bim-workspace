@@ -1,10 +1,6 @@
 import { DrawingTriageMarker } from "./DrawingTriageMarker"
 import { getTypeAccent } from "../data/drawingTriageData"
-import type {
-  Candidate,
-  CandidateId,
-  CandidateReviewState,
-} from "../types"
+import type { Candidate, CandidateId, CandidateReviewState } from "../types"
 
 const candidateMarkerPositions: Record<
   CandidateId,
@@ -87,7 +83,13 @@ export function DrawingTriageSamplePlan({
           A mock office floor plan with nine numbered candidate observation
           markers. The selected marker matches the selected review card.
         </desc>
-        <rect x="0" y="0" width="900" height="620" fill="oklch(0.965 0.012 90)" />
+        <rect
+          x="0"
+          y="0"
+          width="900"
+          height="620"
+          fill="oklch(0.965 0.012 90)"
+        />
 
         <g stroke="oklch(0.72 0.018 220)" strokeDasharray="6 6" strokeWidth="1">
           <line x1="110" y1="54" x2="110" y2="540" />
@@ -106,13 +108,27 @@ export function DrawingTriageSamplePlan({
           fontWeight="600"
           textAnchor="middle"
         >
-          <text x="110" y="42">A</text>
-          <text x="300" y="42">B</text>
-          <text x="490" y="42">C</text>
-          <text x="680" y="42">D</text>
-          <text x="38" y="114">1</text>
-          <text x="38" y="294">2</text>
-          <text x="38" y="484">3</text>
+          <text x="110" y="42">
+            A
+          </text>
+          <text x="300" y="42">
+            B
+          </text>
+          <text x="490" y="42">
+            C
+          </text>
+          <text x="680" y="42">
+            D
+          </text>
+          <text x="38" y="114">
+            1
+          </text>
+          <text x="38" y="294">
+            2
+          </text>
+          <text x="38" y="484">
+            3
+          </text>
         </g>
 
         <g fill="none" stroke="oklch(0.28 0.015 220)" strokeLinecap="square">
@@ -179,17 +195,39 @@ export function DrawingTriageSamplePlan({
           fontSize="9"
           textAnchor="middle"
         >
-          <text x="245" y="230">OPEN OFFICE NORTH</text>
-          <text x="500" y="205">MEETING 02</text>
-          <text x="660" y="205">MEETING 03</text>
-          <text x="405" y="292">MAIN CORRIDOR</text>
-          <text x="215" y="488">OPEN OFFICE SOUTH</text>
-          <text x="395" y="472">FOCUS 01</text>
-          <text x="465" y="472">FOCUS 02</text>
-          <text x="543" y="448">STAIR 02</text>
-          <text x="617" y="412">LIFT</text>
-          <text x="617" y="498">RISER</text>
-          <text x="695" y="488">TEA POINT</text>
+          <text x="245" y="230">
+            OPEN OFFICE NORTH
+          </text>
+          <text x="500" y="205">
+            MEETING 02
+          </text>
+          <text x="660" y="205">
+            MEETING 03
+          </text>
+          <text x="405" y="292">
+            MAIN CORRIDOR
+          </text>
+          <text x="215" y="488">
+            OPEN OFFICE SOUTH
+          </text>
+          <text x="395" y="472">
+            FOCUS 01
+          </text>
+          <text x="465" y="472">
+            FOCUS 02
+          </text>
+          <text x="543" y="448">
+            STAIR 02
+          </text>
+          <text x="617" y="412">
+            LIFT
+          </text>
+          <text x="617" y="498">
+            RISER
+          </text>
+          <text x="695" y="488">
+            TEA POINT
+          </text>
         </g>
 
         {candidates.map((candidate) => {
@@ -245,7 +283,10 @@ export function DrawingTriageSamplePlan({
             stroke="oklch(0.28 0.015 220)"
             strokeWidth="1"
           />
-          <g fill="oklch(0.32 0.018 220)" fontFamily="ui-sans-serif, system-ui, sans-serif">
+          <g
+            fill="oklch(0.32 0.018 220)"
+            fontFamily="ui-sans-serif, system-ui, sans-serif"
+          >
             <text x="10" y="20" fontSize="10" fontWeight="700">
               MODELSCOPE
             </text>
@@ -294,8 +335,7 @@ export function DrawingTriageSamplePlan({
           fontSize="8"
           textAnchor="middle"
         >
-          0
-          <tspan dx="74">5 m</tspan>
+          0<tspan dx="74">5 m</tspan>
         </text>
       </svg>
     </div>

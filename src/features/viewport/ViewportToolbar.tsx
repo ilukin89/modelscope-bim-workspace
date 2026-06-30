@@ -66,9 +66,7 @@ export function ViewportToolbar({
       const availableWidth = boundary.getBoundingClientRect().width
       const fullToolbarWidth = measuredToolbar.scrollWidth
 
-      setCompact(
-        availableWidth > 0 && fullToolbarWidth + 8 > availableWidth,
-      )
+      setCompact(availableWidth > 0 && fullToolbarWidth + 8 > availableWidth)
     }
 
     updateCompactState()
@@ -153,9 +151,7 @@ export function ViewportToolbar({
                   >
                     <Icon className="size-3.5" strokeWidth={1.8} />
                     {tool.label}
-                    <DropdownMenuShortcut>
-                      {tool.shortcut}
-                    </DropdownMenuShortcut>
+                    <DropdownMenuShortcut>{tool.shortcut}</DropdownMenuShortcut>
                   </DropdownMenuItem>
                 )
               })}

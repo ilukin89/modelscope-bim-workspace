@@ -32,10 +32,7 @@ export interface ViewerAdapter {
   setLayerVisibility(layerId: ViewerLayerId, visible: boolean): void
   showFloor(floorId: ViewerFloorId): void
   selectObject(objectId: ViewerObjectId): void
-  highlightObject(
-    objectId: ViewerObjectId,
-    kind: ViewerHighlightKind,
-  ): void
+  highlightObject(objectId: ViewerObjectId, kind: ViewerHighlightKind): void
   clearSelection(): void
 
   setActiveTool(tool: ViewerActiveTool): void

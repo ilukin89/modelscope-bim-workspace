@@ -22,33 +22,16 @@ export interface ViewerCameraView {
 }
 
 export type ViewerActiveTool =
-  | "select"
-  | "orbit"
-  | "pan"
-  | "section"
-  | "measure"
-  | "comment"
+  "select" | "orbit" | "pan" | "section" | "measure" | "comment"
 
 export type ViewerHighlightKind =
-  | "selection"
-  | "issue"
-  | "ai-finding"
-  | "preview"
+  "selection" | "issue" | "ai-finding" | "preview"
 
 export type ViewerLifecycleState =
-  | "uninitialized"
-  | "initializing"
-  | "loading"
-  | "ready"
-  | "error"
-  | "disposed"
+  "uninitialized" | "initializing" | "loading" | "ready" | "error" | "disposed"
 
 export type ViewerMeasurementUnit =
-  | "millimeter"
-  | "centimeter"
-  | "meter"
-  | "inch"
-  | "foot"
+  "millimeter" | "centimeter" | "meter" | "inch" | "foot"
 
 export interface ViewerMeasurementResult {
   start: ViewerPoint3D

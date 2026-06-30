@@ -1,9 +1,5 @@
 import { useState } from "react"
-import {
-  ChevronDown,
-  ChevronRight,
-  Clock3,
-} from "lucide-react"
+import { ChevronDown, ChevronRight, Clock3 } from "lucide-react"
 import { SidePanelGlyph } from "@/components/layout/SidePanelGlyph"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -254,10 +250,7 @@ export function ObjectInspector({
           />
         </TabsContent>
 
-        <TabsContent
-          value="ai"
-          className="min-h-0 overflow-hidden p-0"
-        >
+        <TabsContent value="ai" className="min-h-0 overflow-hidden p-0">
           <ModelReviewAiReviewPanel
             aiFindingStatuses={aiFindingStatuses}
             aiFindings={aiFindings}
@@ -289,19 +282,19 @@ export function ObjectInspector({
             <div className="space-y-4">
               {reviewHistory.map((event) => (
                 <div key={event.id} className="flex gap-2.5">
-                <div className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                  <Clock3 className="size-3" />
+                  <div className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                    <Clock3 className="size-3" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-medium">{event.label}</p>
+                    <p className="mt-0.5 text-[9px] text-muted-foreground">
+                      {event.detail}
+                    </p>
+                    <p className="mt-0.5 font-mono text-[9px] text-muted-foreground">
+                      {event.time}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] font-medium">{event.label}</p>
-                  <p className="mt-0.5 text-[9px] text-muted-foreground">
-                    {event.detail}
-                  </p>
-                  <p className="mt-0.5 font-mono text-[9px] text-muted-foreground">
-                    {event.time}
-                  </p>
-                </div>
-              </div>
               ))}
             </div>
           ) : (

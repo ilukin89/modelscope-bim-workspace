@@ -116,10 +116,9 @@ export function useDrawingTriageWorkflow({
   const [activeSheetId, setActiveSheetId] = useState<DrawingSheetId>(
     initialSession?.activeSheetId ?? completedSampleSheetId,
   )
-  const [selectedCandidateId, setSelectedCandidateId] =
-    useState<CandidateId>(
-      initialSession?.selectedCandidateId ?? "door-clearance",
-    )
+  const [selectedCandidateId, setSelectedCandidateId] = useState<CandidateId>(
+    initialSession?.selectedCandidateId ?? "door-clearance",
+  )
   const [reviewStates, setReviewStates] = useState(
     initialSession?.reviewStates ?? cloneInitialReviewStates(),
   )
@@ -270,7 +269,9 @@ export function useDrawingTriageWorkflow({
         ...current[candidateId],
         decision,
         isFollowUp:
-          decision === "issue_created" ? false : current[candidateId].isFollowUp,
+          decision === "issue_created"
+            ? false
+            : current[candidateId].isFollowUp,
       },
     }))
   }
@@ -362,7 +363,9 @@ export function useDrawingTriageWorkflow({
   }
 
   function showCreatedIssues() {
-    const selectedIssueCandidateId = candidateHasCreatedIssue(selectedCandidateId)
+    const selectedIssueCandidateId = candidateHasCreatedIssue(
+      selectedCandidateId,
+    )
       ? selectedCandidateId
       : createdIssueSummaries[0]?.issue.candidateId
 

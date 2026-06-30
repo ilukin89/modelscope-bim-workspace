@@ -44,23 +44,22 @@ const modelReviewIssueStatuses = [
 ] as const satisfies readonly ModelReviewIssueStatus[]
 
 type ModelReviewIssueFilter = "All" | ModelReviewIssueStatus
-type ModelReviewIssueSort =
-  | "status-priority"
-  | "newest-first"
-  | "source-id"
+type ModelReviewIssueSort = "status-priority" | "newest-first" | "source-id"
 
-const modelReviewIssueStatusPriority: Record<ModelReviewIssueStatus, number> =
-  {
-    Open: 0,
-    "In Review": 1,
-    Blocked: 2,
-    Resolved: 3,
-    "Closed as not actionable": 4,
-  }
+const modelReviewIssueStatusPriority: Record<ModelReviewIssueStatus, number> = {
+  Open: 0,
+  "In Review": 1,
+  Blocked: 2,
+  Resolved: 3,
+  "Closed as not actionable": 4,
+}
 
 const issueFilterOptions = [
   { value: "All", label: "All" },
-  ...modelReviewIssueStatuses.map((status) => ({ value: status, label: status })),
+  ...modelReviewIssueStatuses.map((status) => ({
+    value: status,
+    label: status,
+  })),
 ] satisfies { value: ModelReviewIssueFilter; label: string }[]
 
 export function ModelReviewIssuesPanel({
@@ -97,7 +96,8 @@ export function ModelReviewIssuesPanel({
   )
   const filteredModelReviewIssues = useMemo(() => {
     const filteredIssues = issues.filter(
-      (issue) => issueStatusFilter === "All" || issue.status === issueStatusFilter,
+      (issue) =>
+        issueStatusFilter === "All" || issue.status === issueStatusFilter,
     )
 
     return [...filteredIssues].sort((firstIssue, secondIssue) => {
@@ -112,7 +112,10 @@ export function ModelReviewIssuesPanel({
         const firstIssueNumber = Number(firstIssue.id.match(/\d+$/)?.[0])
         const secondIssueNumber = Number(secondIssue.id.match(/\d+$/)?.[0])
 
-        if (Number.isFinite(firstIssueNumber) && Number.isFinite(secondIssueNumber)) {
+        if (
+          Number.isFinite(firstIssueNumber) &&
+          Number.isFinite(secondIssueNumber)
+        ) {
           return secondIssueNumber - firstIssueNumber
         }
 
@@ -150,7 +153,10 @@ export function ModelReviewIssuesPanel({
   return issues.length > 0 ? (
     <>
       <div className="mb-2 space-y-1.5 px-0.5">
-        <div className="flex flex-wrap gap-1" aria-label="Filter issues by status">
+        <div
+          className="flex flex-wrap gap-1"
+          aria-label="Filter issues by status"
+        >
           {issueFilterOptions.map((filter) => {
             const active = issueStatusFilter === filter.value
 
@@ -253,8 +259,7 @@ function ModelReviewIssueCard({
         : issue.status === "Blocked"
           ? { label: "Return to review", nextStatus: "In Review" as const }
           : { label: "Reopen issue", nextStatus: "Open" as const }
-  const canMarkOutcome =
-    issue.status === "Open" || issue.status === "In Review"
+  const canMarkOutcome = issue.status === "Open" || issue.status === "In Review"
 
   useEffect(() => {
     if (!focusedForDetails) {
@@ -274,10 +279,10 @@ function ModelReviewIssueCard({
         focusedForDetails
           ? "border-primary/45 bg-primary/10 ring-2 ring-primary/24 hover:border-primary/55 hover:bg-primary/14 dark:border-primary/55 dark:bg-primary/16 dark:ring-primary/30 dark:hover:bg-primary/20"
           : focusedInModel
-          ? "border-primary/34 bg-primary/12 hover:border-primary/50 hover:bg-primary/16 dark:border-primary/50 dark:bg-primary/16 dark:hover:border-primary/60 dark:hover:bg-primary/22"
-          : selected
-            ? "border-primary/28 bg-accent/52 hover:border-primary/36 hover:bg-primary/8 dark:border-primary/45 dark:bg-accent dark:hover:border-primary/55 dark:hover:bg-primary/12"
-            : "border-border/22 bg-panel/95 hover:border-primary/32 hover:bg-primary/[0.035] dark:border-border dark:bg-panel dark:hover:border-primary/45 dark:hover:bg-primary/8",
+            ? "border-primary/34 bg-primary/12 hover:border-primary/50 hover:bg-primary/16 dark:border-primary/50 dark:bg-primary/16 dark:hover:border-primary/60 dark:hover:bg-primary/22"
+            : selected
+              ? "border-primary/28 bg-accent/52 hover:border-primary/36 hover:bg-primary/8 dark:border-primary/45 dark:bg-accent dark:hover:border-primary/55 dark:hover:bg-primary/12"
+              : "border-border/22 bg-panel/95 hover:border-primary/32 hover:bg-primary/[0.035] dark:border-border dark:bg-panel dark:hover:border-primary/45 dark:hover:bg-primary/8",
       )}
     >
       <div className="flex items-center gap-2">

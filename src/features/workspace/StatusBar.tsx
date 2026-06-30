@@ -19,11 +19,7 @@ export function StatusBar({
   return (
     <footer className="flex h-6 w-full min-w-0 shrink-0 items-center gap-4 overflow-hidden border-t border-border bg-panel px-2.5 font-mono text-[9px] text-muted-foreground max-[900px]:hidden max-[520px]:gap-2">
       <StatusItem icon={MousePointer2} label={activeTool} />
-      <StatusItem
-        icon={Layers3}
-        label={selectedFloor}
-        testId="status-floor"
-      />
+      <StatusItem icon={Layers3} label={selectedFloor} testId="status-floor" />
       <StatusItem
         icon={Eye}
         label={`${visibleObjects.toLocaleString()} visible`}

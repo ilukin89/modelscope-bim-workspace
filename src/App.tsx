@@ -238,10 +238,7 @@ function WorkspaceApp() {
     [layers],
   )
   const visibleLayerIds = useMemo(
-    () =>
-      layers
-        .filter((layer) => layer.visible)
-        .map((layer) => layer.id),
+    () => layers.filter((layer) => layer.visible).map((layer) => layer.id),
     [layers],
   )
   const selectedObjectVisible = visibleLayerIds.includes(
@@ -251,9 +248,7 @@ function WorkspaceApp() {
   const toggleLayer = (layerId: LayerId) => {
     setLayers((current) =>
       current.map((layer) =>
-        layer.id === layerId
-          ? { ...layer, visible: !layer.visible }
-          : layer,
+        layer.id === layerId ? { ...layer, visible: !layer.visible } : layer,
       ),
     )
   }

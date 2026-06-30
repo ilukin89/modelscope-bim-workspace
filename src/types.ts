@@ -2,15 +2,12 @@ export type AppView = "workspace" | "design-system"
 
 export type WorkspaceMode = "model-review" | "drawing-triage"
 
-export type ProjectId = "residential-tower-a" | "civic-center-east" | "transit-hub-02"
+export type ProjectId =
+  "residential-tower-a" | "civic-center-east" | "transit-hub-02"
 
 export type FloorName = string
 
-export type LayerId =
-  | "architecture"
-  | "structure"
-  | "mechanical"
-  | "electrical"
+export type LayerId = "architecture" | "structure" | "mechanical" | "electrical"
 
 export interface LayerState {
   id: LayerId
@@ -30,10 +27,7 @@ export type IssueSeverity = "critical" | "warning" | "info"
 export type HighlightKind = "duct" | "door" | "damper"
 
 export type AiFindingType =
-  | "coordination"
-  | "clearance"
-  | "fire-safety"
-  | "annotation"
+  "coordination" | "clearance" | "fire-safety" | "annotation"
 
 export type AiFindingGroupingMode = "severity" | "type" | "status"
 
@@ -74,22 +68,12 @@ export interface ReviewIssue {
 }
 
 export type AiFindingWorkflowStatus =
-  | "active"
-  | "issue-created"
-  | "dismissed"
-  | "follow-up"
+  "active" | "issue-created" | "dismissed" | "follow-up"
 
-export type AiScanStatus =
-  | "not_scanned"
-  | "scanning"
-  | "scanned_with_findings"
+export type AiScanStatus = "not_scanned" | "scanning" | "scanned_with_findings"
 
 export type ModelReviewIssueStatus =
-  | "Open"
-  | "In Review"
-  | "Resolved"
-  | "Blocked"
-  | "Closed as not actionable"
+  "Open" | "In Review" | "Resolved" | "Blocked" | "Closed as not actionable"
 
 export interface ModelReviewIssue {
   id: string

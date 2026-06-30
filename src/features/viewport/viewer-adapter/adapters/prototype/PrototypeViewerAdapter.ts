@@ -72,18 +72,14 @@ export class PrototypeViewerAdapter implements ViewerAdapter {
   }
 
   showFloor(floorId: ViewerFloorId): void
-  showFloor(): void {
-  }
+  showFloor(): void {}
 
   selectObject(objectId: ViewerObjectId): void {
     this.selectedObjectId = objectId
     this.emit(this.objectSelectedCallbacks, { objectId })
   }
 
-  highlightObject(
-    objectId: ViewerObjectId,
-    kind: ViewerHighlightKind,
-  ): void {
+  highlightObject(objectId: ViewerObjectId, kind: ViewerHighlightKind): void {
     this.highlightedObjects.set(objectId, kind)
   }
 
@@ -94,8 +90,7 @@ export class PrototypeViewerAdapter implements ViewerAdapter {
   }
 
   setActiveTool(tool: ViewerActiveTool): void
-  setActiveTool(): void {
-  }
+  setActiveTool(): void {}
 
   setCameraView(view: ViewerCameraView): void {
     this.emit(this.cameraChangedCallbacks, this.cloneCameraView(view))
@@ -161,7 +156,10 @@ export class PrototypeViewerAdapter implements ViewerAdapter {
     return this.subscribe(this.layerVisibilityChangedCallbacks, callback)
   }
 
-  private subscribe<T>(callbacks: Set<T>, callback: T): ViewerAdapterUnsubscribe {
+  private subscribe<T>(
+    callbacks: Set<T>,
+    callback: T,
+  ): ViewerAdapterUnsubscribe {
     callbacks.add(callback)
 
     return () => {

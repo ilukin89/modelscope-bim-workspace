@@ -14,12 +14,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import type {
-  FloorState,
-  FloorName,
-  LayerId,
-  LayerState,
-} from "@/types"
+import type { FloorState, FloorName, LayerId, LayerState } from "@/types"
 import { cn } from "@/lib/utils"
 
 interface ModelExplorerProps {
@@ -186,23 +181,21 @@ export function ModelExplorer({
         title="Saved Views"
         count={String(savedViews.length + 1)}
       >
-        {[currentViewLabel, ...savedViews].map(
-          (view, index) => (
-            <div
-              key={view}
-              data-saved-view={index === 0 ? "current" : undefined}
-              className="flex h-7 w-full items-center gap-2 px-2 text-left text-[11px] text-muted-foreground"
-            >
-              <CircleDot className="size-3" />
-              <span className="truncate">{view}</span>
-              {index === 0 && (
-                <span className="ml-auto text-[9px] uppercase tracking-wide text-primary">
-                  Current
-                </span>
-              )}
-            </div>
-          ),
-        )}
+        {[currentViewLabel, ...savedViews].map((view, index) => (
+          <div
+            key={view}
+            data-saved-view={index === 0 ? "current" : undefined}
+            className="flex h-7 w-full items-center gap-2 px-2 text-left text-[11px] text-muted-foreground"
+          >
+            <CircleDot className="size-3" />
+            <span className="truncate">{view}</span>
+            {index === 0 && (
+              <span className="ml-auto text-[9px] uppercase tracking-wide text-primary">
+                Current
+              </span>
+            )}
+          </div>
+        ))}
       </ExplorerSection>
     </aside>
   )

@@ -68,8 +68,14 @@ interface ModelReviewAiReviewPanelProps {
 }
 
 const findingSeverityMeta = {
-  critical: { icon: CircleAlert, className: "text-destructive bg-destructive/12" },
-  warning: { icon: TriangleAlert, className: "text-warning-foreground bg-warning/12" },
+  critical: {
+    icon: CircleAlert,
+    className: "text-destructive bg-destructive/12",
+  },
+  warning: {
+    icon: TriangleAlert,
+    className: "text-warning-foreground bg-warning/12",
+  },
   info: { icon: ShieldAlert, className: "text-primary bg-primary/12" },
 } satisfies Record<
   ReviewIssue["severity"],
@@ -107,8 +113,18 @@ const defaultOpenFindingGroups: Record<
   Record<string, boolean>
 > = {
   severity: { critical: true, warning: true, info: false },
-  type: { coordination: true, clearance: true, "fire-safety": true, annotation: false },
-  status: { active: true, "issue-created": true, dismissed: false, "follow-up": true },
+  type: {
+    coordination: true,
+    clearance: true,
+    "fire-safety": true,
+    annotation: false,
+  },
+  status: {
+    active: true,
+    "issue-created": true,
+    dismissed: false,
+    "follow-up": true,
+  },
 }
 
 const statusLabel: Record<AiFindingWorkflowStatus, string> = {
@@ -265,24 +281,40 @@ export function ModelReviewAiReviewPanel({
   onViewFindingInModel,
 }: ModelReviewAiReviewPanelProps) {
   const [compactDetailOpen, setCompactDetailOpen] = useState(false)
-  const [openFindingGroups, setOpenFindingGroups] = useState(defaultOpenFindingGroups)
-  const [clearAiFindingsDialogOpen, setClearAiFindingsDialogOpen] = useState(false)
+  const [openFindingGroups, setOpenFindingGroups] = useState(
+    defaultOpenFindingGroups,
+  )
+  const [clearAiFindingsDialogOpen, setClearAiFindingsDialogOpen] =
+    useState(false)
   const [removeIssueDialogOpen, setRemoveIssueDialogOpen] = useState(false)
-  const selectedFinding = aiFindings.find((finding) => finding.id === selectedFindingId) ?? null
-  const activeReview = selectedFinding ? getAiReviewContent(selectedFinding) : null
+  const selectedFinding =
+    aiFindings.find((finding) => finding.id === selectedFindingId) ?? null
+  const activeReview = selectedFinding
+    ? getAiReviewContent(selectedFinding)
+    : null
   const activeConfidence = activeReview
     ? getConfidenceMeta(activeReview.confidence)
     : null
-  const existingIssue = modelReviewIssues.find((issue) => issue.sourceFindingId === selectedFinding?.id)
+  const existingIssue = modelReviewIssues.find(
+    (issue) => issue.sourceFindingId === selectedFinding?.id,
+  )
   const hasAiFindings = aiFindings.length > 0
   const aiScanning = aiScanStatus === "scanning"
   const findingDismissed = aiFindingStatus === "dismissed"
   const issueCreated = aiFindingStatus === "issue-created"
   const findingNeedsReview = !findingDismissed && !issueCreated
-  const findingGroups = useMemo(() => getGroupingConfig(aiGroupingMode).map((group) => ({
-    ...group,
-    findings: aiFindings.filter((finding) => getFindingGroupKey(finding, aiGroupingMode, aiFindingStatuses) === group.id),
-  })), [aiFindingStatuses, aiFindings, aiGroupingMode])
+  const findingGroups = useMemo(
+    () =>
+      getGroupingConfig(aiGroupingMode).map((group) => ({
+        ...group,
+        findings: aiFindings.filter(
+          (finding) =>
+            getFindingGroupKey(finding, aiGroupingMode, aiFindingStatuses) ===
+            group.id,
+        ),
+      })),
+    [aiFindingStatuses, aiFindings, aiGroupingMode],
+  )
   const selectedGroupKey = selectedFinding
     ? getFindingGroupKey(selectedFinding, aiGroupingMode, aiFindingStatuses)
     : null
@@ -291,7 +323,10 @@ export function ModelReviewAiReviewPanel({
     if (!selectedGroupKey) return
     setOpenFindingGroups((current) => ({
       ...current,
-      [aiGroupingMode]: { ...current[aiGroupingMode], [selectedGroupKey]: true },
+      [aiGroupingMode]: {
+        ...current[aiGroupingMode],
+        [selectedGroupKey]: true,
+      },
     }))
   }, [aiGroupingMode, selectedGroupKey])
 
@@ -315,40 +350,409 @@ export function ModelReviewAiReviewPanel({
         <>
           <div className="shrink-0 border-b border-border/25 p-2.5 dark:border-border">
             <div className="flex items-start gap-2">
-              <div className="min-w-0 flex-1"><p className="text-[11px] font-semibold">AI Review Queue</p><p className="mt-0.5 text-[9px] text-muted-foreground">{aiFindings.length} findings</p></div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-semibold">AI Review Queue</p>
+                <p className="mt-0.5 text-[9px] text-muted-foreground">
+                  {aiFindings.length} findings
+                </p>
+              </div>
               <div className="flex shrink-0 gap-1">
-                <Button type="button" variant="ghost" size="compact" className="h-6 px-1.5 text-[9px] text-muted-foreground hover:bg-muted/25 hover:text-foreground dark:hover:bg-muted/50" onClick={() => setClearAiFindingsDialogOpen(true)} disabled={aiScanning}>Clear AI findings</Button>
-                <Button type="button" variant="outline" size="compact" className="h-6 border-ai/35 bg-ai/10 px-1.5 text-[9px] text-ai-foreground hover:border-ai/45 hover:bg-ai/16 hover:text-ai-foreground" onClick={onRescanAi} disabled={aiScanning}>{aiScanning ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}Rescan</Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="compact"
+                  className="h-6 px-1.5 text-[9px] text-muted-foreground hover:bg-muted/25 hover:text-foreground dark:hover:bg-muted/50"
+                  onClick={() => setClearAiFindingsDialogOpen(true)}
+                  disabled={aiScanning}
+                >
+                  Clear AI findings
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="compact"
+                  className="h-6 border-ai/35 bg-ai/10 px-1.5 text-[9px] text-ai-foreground hover:border-ai/45 hover:bg-ai/16 hover:text-ai-foreground"
+                  onClick={onRescanAi}
+                  disabled={aiScanning}
+                >
+                  {aiScanning ? (
+                    <Loader2 className="size-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="size-3" />
+                  )}
+                  Rescan
+                </Button>
               </div>
             </div>
           </div>
 
           <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden min-[1421px]:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
-            <section className={cn("min-h-0 flex-col overflow-hidden border-border/25 dark:border-border min-[1421px]:flex min-[1421px]:border-r", selectedFinding && compactDetailOpen ? "hidden" : "flex")} aria-label="AI Review Queue">
-              <div className="shrink-0 border-b border-border/20 px-2 dark:border-border"><div className="grid h-8 grid-cols-3 text-muted-foreground" role="group" aria-label="Group AI findings">{groupingModes.map((mode) => <button key={mode.id} type="button" className={cn("relative h-full px-1 text-[9px] font-medium outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring", aiGroupingMode === mode.id ? "text-foreground after:absolute after:inset-x-2 after:bottom-0 after:h-px after:bg-primary" : "text-muted-foreground")} aria-pressed={aiGroupingMode === mode.id} onClick={() => onGroupingModeChange(mode.id)}>{mode.label}</button>)}</div></div>
-              <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-2"><div className="space-y-1.5">{findingGroups.map((group) => {
-                const open = openFindingGroups[aiGroupingMode][group.id] ?? false
-                const selectedInGroup = selectedGroupKey === group.id
-                const Icon = open ? ChevronDown : ChevronRight
-                return <section key={group.id} className="bg-transparent"><button type="button" className="flex min-h-8 w-full items-center gap-2 border-b border-border/20 px-2 text-left outline-none hover:bg-muted/20 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring dark:border-border dark:hover:bg-muted/50" aria-expanded={open} onClick={() => toggleFindingGroup(group.id)}><Icon className="size-3 text-muted-foreground" /><span className="min-w-0 flex-1 truncate text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{group.label}</span><span className="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-[8px] text-muted-foreground">{group.findings.length}</span></button>{open && <div className="divide-y divide-border/18 px-1.5 py-1 dark:divide-border">{group.findings.length > 0 ? group.findings.map((finding) => <InspectorAiFindingButton key={finding.id} finding={finding} issueId={modelReviewIssues.find((issue) => issue.sourceFindingId === finding.id)?.id} selected={finding.id === selectedFindingId} status={aiFindingStatuses[finding.id] ?? "active"} onSelect={() => onFindingSelect(finding)} />) : <p className="px-2 py-1 text-[9px] text-muted-foreground">No findings in this group.</p>}</div>}{!open && selectedInGroup && <p className="sr-only">Selected finding is in this group.</p>}</section>
-              })}</div></div>
+            <section
+              className={cn(
+                "min-h-0 flex-col overflow-hidden border-border/25 dark:border-border min-[1421px]:flex min-[1421px]:border-r",
+                selectedFinding && compactDetailOpen ? "hidden" : "flex",
+              )}
+              aria-label="AI Review Queue"
+            >
+              <div className="shrink-0 border-b border-border/20 px-2 dark:border-border">
+                <div
+                  className="grid h-8 grid-cols-3 text-muted-foreground"
+                  role="group"
+                  aria-label="Group AI findings"
+                >
+                  {groupingModes.map((mode) => (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      className={cn(
+                        "relative h-full px-1 text-[9px] font-medium outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+                        aiGroupingMode === mode.id
+                          ? "text-foreground after:absolute after:inset-x-2 after:bottom-0 after:h-px after:bg-primary"
+                          : "text-muted-foreground",
+                      )}
+                      aria-pressed={aiGroupingMode === mode.id}
+                      onClick={() => onGroupingModeChange(mode.id)}
+                    >
+                      {mode.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-2">
+                <div className="space-y-1.5">
+                  {findingGroups.map((group) => {
+                    const open =
+                      openFindingGroups[aiGroupingMode][group.id] ?? false
+                    const selectedInGroup = selectedGroupKey === group.id
+                    const Icon = open ? ChevronDown : ChevronRight
+                    return (
+                      <section key={group.id} className="bg-transparent">
+                        <button
+                          type="button"
+                          className="flex min-h-8 w-full items-center gap-2 border-b border-border/20 px-2 text-left outline-none hover:bg-muted/20 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring dark:border-border dark:hover:bg-muted/50"
+                          aria-expanded={open}
+                          onClick={() => toggleFindingGroup(group.id)}
+                        >
+                          <Icon className="size-3 text-muted-foreground" />
+                          <span className="min-w-0 flex-1 truncate text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                            {group.label}
+                          </span>
+                          <span className="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-[8px] text-muted-foreground">
+                            {group.findings.length}
+                          </span>
+                        </button>
+                        {open && (
+                          <div className="divide-y divide-border/18 px-1.5 py-1 dark:divide-border">
+                            {group.findings.length > 0 ? (
+                              group.findings.map((finding) => (
+                                <InspectorAiFindingButton
+                                  key={finding.id}
+                                  finding={finding}
+                                  issueId={
+                                    modelReviewIssues.find(
+                                      (issue) =>
+                                        issue.sourceFindingId === finding.id,
+                                    )?.id
+                                  }
+                                  selected={finding.id === selectedFindingId}
+                                  status={
+                                    aiFindingStatuses[finding.id] ?? "active"
+                                  }
+                                  onSelect={() => onFindingSelect(finding)}
+                                />
+                              ))
+                            ) : (
+                              <p className="px-2 py-1 text-[9px] text-muted-foreground">
+                                No findings in this group.
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        {!open && selectedInGroup && (
+                          <p className="sr-only">
+                            Selected finding is in this group.
+                          </p>
+                        )}
+                      </section>
+                    )
+                  })}
+                </div>
+              </div>
             </section>
 
-            <section className={cn("min-h-0 flex-col overflow-hidden min-[1421px]:flex", selectedFinding && compactDetailOpen ? "flex" : "hidden")} aria-label="Finding Detail Panel">
-              {selectedFinding && activeReview ? <>
-                <div className="flex shrink-0 items-center gap-2 border-b border-border/25 p-2.5 dark:border-border min-[1421px]:hidden"><Button type="button" variant="ghost" size="compact" className="h-7 px-1.5" onClick={() => setCompactDetailOpen(false)}><ArrowLeft className="size-3" />Back to queue</Button></div>
-                <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-3"><Card className={cn("rounded-md border-0 bg-panel-subtle shadow-none dark:bg-panel/45", findingDismissed && "bg-muted/16 opacity-80 dark:bg-muted/45")}><CardContent className="p-3">
-                  <div className="flex items-start gap-2"><div className="min-w-0 flex-1"><p className="mt-1 text-[10px] font-semibold leading-snug">{selectedFinding.title}</p><p className="mt-1 truncate font-mono text-[9px] text-muted-foreground">{selectedFinding.code} · {selectedFinding.details.objectId} · {selectedFinding.location}</p></div><Badge variant={findingDismissed ? "outline" : issueCreated ? "success" : aiFindingStatus === "follow-up" ? "warning" : "ai"} className={cn("shrink-0 px-1.5 py-0 text-[8px] uppercase", !findingDismissed && !issueCreated && aiFindingStatus !== "follow-up" && "bg-ai/8")}>{statusLabel[aiFindingStatus]}</Badge></div>
-                  {existingIssue && <p className="mt-2 font-mono text-[9px] text-muted-foreground">Linked issue {existingIssue.id} · source {selectedFinding.code}</p>}
-                  {existingIssue && issueCreated && <div className="mt-3 rounded-md border border-success/30 bg-success/8 px-2.5 py-2 text-success-foreground ring-1 ring-success/10 dark:border-success/40 dark:bg-success/10"><div className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 size-3 shrink-0 text-success" /><div className="min-w-0"><p className="text-[10px] leading-snug">{selectedFinding.title} ({selectedFinding.code}) has been added to the issues list.</p></div></div></div>}
-                  <div className="mt-3 flex items-center gap-2 text-ai-foreground"><span className="text-[10px] font-semibold">AI suggestion</span>{!findingDismissed && <Sparkles className="size-3" />}</div><p className="mt-2 text-[10px] leading-relaxed text-foreground/85">{activeReview.suggestion}</p>{activeConfidence && <div className={cn("mt-3 rounded-md border px-2.5 py-2", activeConfidence.className)}><div className="flex items-center gap-2"><div className="flex min-w-0 flex-1 items-center gap-1.5"><span className="text-[9px] font-semibold">Suggestion confidence</span><ConfidenceScalePopover /></div><Badge variant={activeConfidence.variant} className="shrink-0 px-1.5 py-0 text-[8px]"><span>{activeConfidence.label}</span><span className="font-mono">{activeReview.confidence}%</span></Badge></div><Progress value={activeReview.confidence} aria-label={`${activeConfidence.label} suggestion confidence`} className={cn("mt-2 h-1.5", activeConfidence.progressClassName)} /><p className="mt-1.5 text-[9px] font-medium leading-relaxed">{activeConfidence.guidance}</p></div>}
-                  <div className="mt-3 grid grid-cols-2 gap-2">{findingNeedsReview && <><Button size="compact" variant={previewActive ? "secondary" : "default"} className="col-span-2 w-full" onClick={onPreviewChange}>{previewActive ? "Exit preview" : "Preview change"}</Button><Button variant="outline" size="compact" className="col-span-2 w-full justify-center border-ai/30 bg-card px-2 text-[10px] text-ai-foreground shadow-none hover:border-ai/40 hover:bg-ai/5 hover:text-ai-foreground dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted dark:hover:text-foreground" onClick={onCreateIssue}>Create issue</Button><Button variant="ghost" size="compact" className="col-span-2 mx-auto h-auto w-auto px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted/45 hover:text-foreground" onClick={onDismissFinding}>Dismiss</Button></>}{issueCreated && <><Button size="compact" className="col-span-2 w-full" onClick={onViewCreatedIssueDetails}>View issue details</Button><Button type="button" variant="outline" size="compact" className="col-span-2 w-full justify-center border-primary/35 bg-background px-2 text-[10px] text-primary shadow-none ring-1 ring-primary/8 hover:border-primary/45 hover:bg-primary/8 hover:text-primary hover:ring-primary/14 dark:border-primary/45 dark:ring-primary/10" onClick={onViewFindingInModel}>View in model</Button><Button variant="ghost" size="compact" className="col-span-2 w-full text-destructive hover:bg-destructive/8 hover:text-destructive dark:hover:bg-destructive/10" onClick={() => setRemoveIssueDialogOpen(true)}>Remove issue</Button></>}{findingDismissed && <><Button size="compact" className="col-span-2 w-full" onClick={onRestoreFinding}>Restore finding</Button><Button type="button" variant="outline" size="compact" className="col-span-2 w-full justify-center border-primary/35 bg-background px-2 text-[10px] text-primary shadow-none ring-1 ring-primary/8 hover:border-primary/45 hover:bg-primary/8 hover:text-primary hover:ring-primary/14 dark:border-primary/45 dark:ring-primary/10" onClick={onViewFindingInModel}>View in model</Button></>}</div>
-                </CardContent></Card><div className="mt-3 space-y-2">{activeReview.checks.map(([label, detail, warning]) => <ReviewCheck key={label} label={label} detail={detail} warning={warning} />)}</div></div>
-              </> : <div className="hidden h-full min-h-0 items-center justify-center p-3 min-[1421px]:flex"><div className="rounded-md border border-dashed border-border/22 bg-muted/8 p-3 text-[10px] text-muted-foreground dark:border-border dark:bg-transparent">Select a finding from the AI Review Queue to review evidence, preview a change, create an issue, or dismiss the suggestion.</div></div>}
+            <section
+              className={cn(
+                "min-h-0 flex-col overflow-hidden min-[1421px]:flex",
+                selectedFinding && compactDetailOpen ? "flex" : "hidden",
+              )}
+              aria-label="Finding Detail Panel"
+            >
+              {selectedFinding && activeReview ? (
+                <>
+                  <div className="flex shrink-0 items-center gap-2 border-b border-border/25 p-2.5 dark:border-border min-[1421px]:hidden">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="compact"
+                      className="h-7 px-1.5"
+                      onClick={() => setCompactDetailOpen(false)}
+                    >
+                      <ArrowLeft className="size-3" />
+                      Back to queue
+                    </Button>
+                  </div>
+                  <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-3">
+                    <Card
+                      className={cn(
+                        "rounded-md border-0 bg-panel-subtle shadow-none dark:bg-panel/45",
+                        findingDismissed &&
+                          "bg-muted/16 opacity-80 dark:bg-muted/45",
+                      )}
+                    >
+                      <CardContent className="p-3">
+                        <div className="flex items-start gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="mt-1 text-[10px] font-semibold leading-snug">
+                              {selectedFinding.title}
+                            </p>
+                            <p className="mt-1 truncate font-mono text-[9px] text-muted-foreground">
+                              {selectedFinding.code} ·{" "}
+                              {selectedFinding.details.objectId} ·{" "}
+                              {selectedFinding.location}
+                            </p>
+                          </div>
+                          <Badge
+                            variant={
+                              findingDismissed
+                                ? "outline"
+                                : issueCreated
+                                  ? "success"
+                                  : aiFindingStatus === "follow-up"
+                                    ? "warning"
+                                    : "ai"
+                            }
+                            className={cn(
+                              "shrink-0 px-1.5 py-0 text-[8px] uppercase",
+                              !findingDismissed &&
+                                !issueCreated &&
+                                aiFindingStatus !== "follow-up" &&
+                                "bg-ai/8",
+                            )}
+                          >
+                            {statusLabel[aiFindingStatus]}
+                          </Badge>
+                        </div>
+                        {existingIssue && (
+                          <p className="mt-2 font-mono text-[9px] text-muted-foreground">
+                            Linked issue {existingIssue.id} · source{" "}
+                            {selectedFinding.code}
+                          </p>
+                        )}
+                        {existingIssue && issueCreated && (
+                          <div className="mt-3 rounded-md border border-success/30 bg-success/8 px-2.5 py-2 text-success-foreground ring-1 ring-success/10 dark:border-success/40 dark:bg-success/10">
+                            <div className="flex items-start gap-2">
+                              <CheckCircle2 className="mt-0.5 size-3 shrink-0 text-success" />
+                              <div className="min-w-0">
+                                <p className="text-[10px] leading-snug">
+                                  {selectedFinding.title} (
+                                  {selectedFinding.code}) has been added to the
+                                  issues list.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        <div className="mt-3 flex items-center gap-2 text-ai-foreground">
+                          <span className="text-[10px] font-semibold">
+                            AI suggestion
+                          </span>
+                          {!findingDismissed && <Sparkles className="size-3" />}
+                        </div>
+                        <p className="mt-2 text-[10px] leading-relaxed text-foreground/85">
+                          {activeReview.suggestion}
+                        </p>
+                        {activeConfidence && (
+                          <div
+                            className={cn(
+                              "mt-3 rounded-md border px-2.5 py-2",
+                              activeConfidence.className,
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                                <span className="text-[9px] font-semibold">
+                                  Suggestion confidence
+                                </span>
+                                <ConfidenceScalePopover />
+                              </div>
+                              <Badge
+                                variant={activeConfidence.variant}
+                                className="shrink-0 px-1.5 py-0 text-[8px]"
+                              >
+                                <span>{activeConfidence.label}</span>
+                                <span className="font-mono">
+                                  {activeReview.confidence}%
+                                </span>
+                              </Badge>
+                            </div>
+                            <Progress
+                              value={activeReview.confidence}
+                              aria-label={`${activeConfidence.label} suggestion confidence`}
+                              className={cn(
+                                "mt-2 h-1.5",
+                                activeConfidence.progressClassName,
+                              )}
+                            />
+                            <p className="mt-1.5 text-[9px] font-medium leading-relaxed">
+                              {activeConfidence.guidance}
+                            </p>
+                          </div>
+                        )}
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          {findingNeedsReview && (
+                            <>
+                              <Button
+                                size="compact"
+                                variant={
+                                  previewActive ? "secondary" : "default"
+                                }
+                                className="col-span-2 w-full"
+                                onClick={onPreviewChange}
+                              >
+                                {previewActive
+                                  ? "Exit preview"
+                                  : "Preview change"}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="compact"
+                                className="col-span-2 w-full justify-center border-ai/30 bg-card px-2 text-[10px] text-ai-foreground shadow-none hover:border-ai/40 hover:bg-ai/5 hover:text-ai-foreground dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted dark:hover:text-foreground"
+                                onClick={onCreateIssue}
+                              >
+                                Create issue
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="compact"
+                                className="col-span-2 mx-auto h-auto w-auto px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted/45 hover:text-foreground"
+                                onClick={onDismissFinding}
+                              >
+                                Dismiss
+                              </Button>
+                            </>
+                          )}
+                          {issueCreated && (
+                            <>
+                              <Button
+                                size="compact"
+                                className="col-span-2 w-full"
+                                onClick={onViewCreatedIssueDetails}
+                              >
+                                View issue details
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="compact"
+                                className="col-span-2 w-full justify-center border-primary/35 bg-background px-2 text-[10px] text-primary shadow-none ring-1 ring-primary/8 hover:border-primary/45 hover:bg-primary/8 hover:text-primary hover:ring-primary/14 dark:border-primary/45 dark:ring-primary/10"
+                                onClick={onViewFindingInModel}
+                              >
+                                View in model
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="compact"
+                                className="col-span-2 w-full text-destructive hover:bg-destructive/8 hover:text-destructive dark:hover:bg-destructive/10"
+                                onClick={() => setRemoveIssueDialogOpen(true)}
+                              >
+                                Remove issue
+                              </Button>
+                            </>
+                          )}
+                          {findingDismissed && (
+                            <>
+                              <Button
+                                size="compact"
+                                className="col-span-2 w-full"
+                                onClick={onRestoreFinding}
+                              >
+                                Restore finding
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="compact"
+                                className="col-span-2 w-full justify-center border-primary/35 bg-background px-2 text-[10px] text-primary shadow-none ring-1 ring-primary/8 hover:border-primary/45 hover:bg-primary/8 hover:text-primary hover:ring-primary/14 dark:border-primary/45 dark:ring-primary/10"
+                                onClick={onViewFindingInModel}
+                              >
+                                View in model
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <div className="mt-3 space-y-2">
+                      {activeReview.checks.map(([label, detail, warning]) => (
+                        <ReviewCheck
+                          key={label}
+                          label={label}
+                          detail={detail}
+                          warning={warning}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="hidden h-full min-h-0 items-center justify-center p-3 min-[1421px]:flex">
+                  <div className="rounded-md border border-dashed border-border/22 bg-muted/8 p-3 text-[10px] text-muted-foreground dark:border-border dark:bg-transparent">
+                    Select a finding from the AI Review Queue to review
+                    evidence, preview a change, create an issue, or dismiss the
+                    suggestion.
+                  </div>
+                </div>
+              )}
             </section>
           </div>
         </>
-      ) : <div className="p-3"><div className="rounded-md border border-dashed border-border/18 bg-muted/8 p-3 dark:border-border dark:bg-transparent"><div className="flex items-start" aria-live={aiScanning ? "polite" : undefined}><div className="min-w-0 flex-1"><p className="text-[10px] font-medium">{aiScanning ? "Scanning model..." : "No AI scan has been run for this project yet."}</p><p className="mt-1 text-[9px] leading-relaxed text-muted-foreground">AI findings, issue actions, and review history appear after the mock scan completes.</p><Button type="button" variant="outline" size="compact" className="mt-2 w-full justify-center border-ai/35 bg-ai/10 text-ai-foreground hover:border-ai/45 hover:bg-ai/16 hover:text-ai-foreground" onClick={onRescanAi} disabled={aiScanning}>{aiScanning ? <Loader2 className="size-3 animate-spin" /> : <ScanSearch className="size-3" />}{aiScanning ? "Scanning..." : "Scan with AI"}</Button></div></div></div></div>}
+      ) : (
+        <div className="p-3">
+          <div className="rounded-md border border-dashed border-border/18 bg-muted/8 p-3 dark:border-border dark:bg-transparent">
+            <div
+              className="flex items-start"
+              aria-live={aiScanning ? "polite" : undefined}
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-medium">
+                  {aiScanning
+                    ? "Scanning model..."
+                    : "No AI scan has been run for this project yet."}
+                </p>
+                <p className="mt-1 text-[9px] leading-relaxed text-muted-foreground">
+                  AI findings, issue actions, and review history appear after
+                  the mock scan completes.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="compact"
+                  className="mt-2 w-full justify-center border-ai/35 bg-ai/10 text-ai-foreground hover:border-ai/45 hover:bg-ai/16 hover:text-ai-foreground"
+                  onClick={onRescanAi}
+                  disabled={aiScanning}
+                >
+                  {aiScanning ? (
+                    <Loader2 className="size-3 animate-spin" />
+                  ) : (
+                    <ScanSearch className="size-3" />
+                  )}
+                  {aiScanning ? "Scanning..." : "Scan with AI"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <AlertDialog
         open={clearAiFindingsDialogOpen}
         onOpenChange={setClearAiFindingsDialogOpen}
@@ -357,7 +761,9 @@ export function ModelReviewAiReviewPanel({
           <AlertDialogHeader>
             <AlertDialogTitle>Clear AI findings?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will reset the current AI Review findings, created issues and review history for this project. This cannot be undone in this prototype.
+              This will reset the current AI Review findings, created issues and
+              review history for this project. This cannot be undone in this
+              prototype.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -379,7 +785,8 @@ export function ModelReviewAiReviewPanel({
           <AlertDialogHeader>
             <AlertDialogTitle>Remove issue?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the created issue from the Model Review issue list. The original AI finding will remain available in AI Review.
+              This will remove the created issue from the Model Review issue
+              list. The original AI finding will remain available in AI Review.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

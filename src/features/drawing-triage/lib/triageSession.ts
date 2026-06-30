@@ -1,7 +1,4 @@
-import {
-  candidates,
-  cloneInitialReviewStates,
-} from "../data/drawingTriageData"
+import { candidates, cloneInitialReviewStates } from "../data/drawingTriageData"
 import type {
   CandidateId,
   CreatedIssueSummary,
@@ -91,7 +88,8 @@ export function readTriageSessionSnapshot(): TriageSessionSnapshot | null {
     const createdIssues = Array.isArray(parsed.createdIssues)
       ? parsed.createdIssues.filter(
           (issue): issue is CreatedIssueSummary =>
-            typeof issue.issueId === "string" && isCandidateId(issue.candidateId),
+            typeof issue.issueId === "string" &&
+            isCandidateId(issue.candidateId),
         )
       : []
     const nextIssueSequence =

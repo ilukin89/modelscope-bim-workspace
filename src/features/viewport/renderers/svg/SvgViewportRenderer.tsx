@@ -521,13 +521,15 @@ export function SvgViewportRenderer({
         {selectedObjectVisible &&
           aiReviewVisualsActive &&
           selectedAiFindingActive && (
-          <SelectedObjectHighlight kind={selectedIssueHighlight} />
-        )}
+            <SelectedObjectHighlight kind={selectedIssueHighlight} />
+          )}
 
         {selectedObjectVisible &&
           aiReviewVisualsActive &&
           selectedAiFindingActive &&
-          previewActive && <PreviewChangeOverlay kind={selectedIssueHighlight} />}
+          previewActive && (
+            <PreviewChangeOverlay kind={selectedIssueHighlight} />
+          )}
 
         {selectedObjectVisible && modelFocusActive && (
           <ModelFocusOverlay
@@ -734,21 +736,9 @@ function AiFindingClusterMarkers({
               {count}
             </text>
             {!selectedKind && (
-              <ClusterLabel
-                count={count}
-                selected={false}
-                x={16}
-                y={-12}
-              />
+              <ClusterLabel count={count} selected={false} x={16} y={-12} />
             )}
-            {selected && (
-              <ClusterLabel
-                count={count}
-                selected
-                x={18}
-                y={-13}
-              />
-            )}
+            {selected && <ClusterLabel count={count} selected x={18} y={-13} />}
           </g>
         )
       })}

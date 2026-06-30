@@ -177,7 +177,9 @@ export const candidates: Candidate[] = [
   },
 ]
 
-export const candidateTypeCounts = candidates.reduce<Record<CandidateType, number>>(
+export const candidateTypeCounts = candidates.reduce<
+  Record<CandidateType, number>
+>(
   (counts, candidate) => ({
     ...counts,
     [candidate.type]: counts[candidate.type] + 1,

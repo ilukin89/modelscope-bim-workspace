@@ -1,12 +1,5 @@
-import {
-  getTypeAccent,
-  typeVisuals,
-} from "../data/drawingTriageData"
-import type {
-  Candidate,
-  CandidateId,
-  CandidateReviewState,
-} from "../types"
+import { getTypeAccent, typeVisuals } from "../data/drawingTriageData"
+import type { Candidate, CandidateId, CandidateReviewState } from "../types"
 
 type DrawingTriageMarkerProps = {
   candidate: Candidate
@@ -92,11 +85,7 @@ export function DrawingTriageMarker({
             stroke={stroke}
             strokeWidth="1.5"
           />
-          <path
-            d="M4.5 3.5h6v8l-3-2.1-3 2.1z"
-            fill={stroke}
-            stroke="none"
-          />
+          <path d="M4.5 3.5h6v8l-3-2.1-3 2.1z" fill={stroke} stroke="none" />
         </g>
       )}
       {isIssueCreated && (

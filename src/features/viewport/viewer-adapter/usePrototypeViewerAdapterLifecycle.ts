@@ -45,12 +45,8 @@ const synchronizeCommands = (
 export function usePrototypeViewerAdapterLifecycle(
   commandState: PrototypeViewerAdapterCommandState,
 ) {
-  const {
-    activeTool,
-    selectedFloor,
-    selectedObjectId,
-    visibleLayerIds,
-  } = commandState
+  const { activeTool, selectedFloor, selectedObjectId, visibleLayerIds } =
+    commandState
   const hostRef = useRef<HTMLDivElement>(null)
   const latestCommandStateRef = useRef(commandState)
   const readyAdapterRef = useRef<PrototypeViewerAdapter | null>(null)

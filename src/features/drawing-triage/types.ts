@@ -39,11 +39,7 @@ export type CreatedIssueSummary = {
 export type RightPanelView = "review_candidates" | "created_issues"
 
 export type ReviewCandidateFilter =
-  | "all"
-  | "clearance"
-  | "annotation"
-  | "coordination"
-  | "follow_up"
+  "all" | "clearance" | "annotation" | "coordination" | "follow_up"
 
 export type TriageStage = "empty" | "selected" | "scanning" | "review"
 

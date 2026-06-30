@@ -591,7 +591,9 @@ function FloorStack({
                   active ? tokens.floor.activeEmissive : tokens.floor.emissive
                 }
                 emissiveIntensity={active ? 0.35 : 0.06}
-                opacity={active ? tokens.floor.activeOpacity : tokens.floor.opacity}
+                opacity={
+                  active ? tokens.floor.activeOpacity : tokens.floor.opacity
+                }
                 roughness={0.72}
                 transparent
               />
@@ -645,7 +647,10 @@ function ArchitectureLayer({
 
   return (
     <group>
-      <mesh position={[0, buildingHeight / 2 - 0.08, 0]} scale={[5.18, buildingHeight, 3.12]}>
+      <mesh
+        position={[0, buildingHeight / 2 - 0.08, 0]}
+        scale={[5.18, buildingHeight, 3.12]}
+      >
         <boxGeometry />
         <meshStandardMaterial
           color={config.color}
@@ -656,7 +661,13 @@ function ArchitectureLayer({
           roughness={0.36}
           transparent
         />
-        <Edges color={visibleLayerIds.includes("architecture") ? config.edge : tokens.floor.edge} />
+        <Edges
+          color={
+            visibleLayerIds.includes("architecture")
+              ? config.edge
+              : tokens.floor.edge
+          }
+        />
       </mesh>
 
       {Array.from({ length: floorCount }).map((_, floorIndex) => {
@@ -677,7 +688,13 @@ function ArchitectureLayer({
               roughness={0.42}
               transparent
             />
-            <Edges color={visibleLayerIds.includes("architecture") ? config.edge : tokens.floor.edge} />
+            <Edges
+              color={
+                visibleLayerIds.includes("architecture")
+                  ? config.edge
+                  : tokens.floor.edge
+              }
+            />
           </mesh>
         ))
       })}
@@ -733,7 +750,10 @@ function StructureLayer({
         </mesh>
       ))}
 
-      <mesh position={[0, buildingHeight / 2 - 0.02, 0]} scale={[0.78, buildingHeight, 0.72]}>
+      <mesh
+        position={[0, buildingHeight / 2 - 0.02, 0]}
+        scale={[0.78, buildingHeight, 0.72]}
+      >
         <boxGeometry />
         <meshStandardMaterial
           color={tokens.structure.core}
@@ -743,7 +763,13 @@ function StructureLayer({
           roughness={0.62}
           transparent
         />
-        <Edges color={visibleLayerIds.includes("structure") ? config.edge : tokens.structure.hiddenEdge} />
+        <Edges
+          color={
+            visibleLayerIds.includes("structure")
+              ? config.edge
+              : tokens.structure.hiddenEdge
+          }
+        />
       </mesh>
 
       {Array.from({ length: floorCount }).map((_, index) => (
@@ -778,41 +804,74 @@ function MechanicalLayer({
 
   return (
     <group>
-      <mesh position={[0.28, selectedFloorY + 0.74, 0.72]} scale={[3.18, 0.13, 0.18]}>
+      <mesh
+        position={[0.28, selectedFloorY + 0.74, 0.72]}
+        scale={[3.18, 0.13, 0.18]}
+      >
         <boxGeometry />
         <meshStandardMaterial
           color={config.color}
           emissive={config.emissive}
-          emissiveIntensity={visibleLayerIds.includes("mechanical") ? 0.34 : 0.08}
+          emissiveIntensity={
+            visibleLayerIds.includes("mechanical") ? 0.34 : 0.08
+          }
           opacity={opacity}
           roughness={0.38}
           transparent
         />
-        <Edges color={visibleLayerIds.includes("mechanical") ? config.edge : tokens.floor.edge} />
+        <Edges
+          color={
+            visibleLayerIds.includes("mechanical")
+              ? config.edge
+              : tokens.floor.edge
+          }
+        />
       </mesh>
-      <mesh position={[1.44, selectedFloorY + 0.74, -0.38]} scale={[0.18, 0.13, 1.98]}>
+      <mesh
+        position={[1.44, selectedFloorY + 0.74, -0.38]}
+        scale={[0.18, 0.13, 1.98]}
+      >
         <boxGeometry />
         <meshStandardMaterial
           color={config.color}
           emissive={config.emissive}
-          emissiveIntensity={visibleLayerIds.includes("mechanical") ? 0.28 : 0.08}
+          emissiveIntensity={
+            visibleLayerIds.includes("mechanical") ? 0.28 : 0.08
+          }
           opacity={opacity * 0.9}
           roughness={0.42}
           transparent
         />
-        <Edges color={visibleLayerIds.includes("mechanical") ? config.edge : tokens.floor.edge} />
+        <Edges
+          color={
+            visibleLayerIds.includes("mechanical")
+              ? config.edge
+              : tokens.floor.edge
+          }
+        />
       </mesh>
-      <mesh position={[0.9, selectedFloorY + 0.9, -0.72]} scale={[0.48, 0.34, 0.2]}>
+      <mesh
+        position={[0.9, selectedFloorY + 0.9, -0.72]}
+        scale={[0.48, 0.34, 0.2]}
+      >
         <boxGeometry />
         <meshStandardMaterial
           color={config.color}
           emissive={config.emissive}
-          emissiveIntensity={visibleLayerIds.includes("mechanical") ? 0.36 : 0.08}
+          emissiveIntensity={
+            visibleLayerIds.includes("mechanical") ? 0.36 : 0.08
+          }
           opacity={opacity}
           roughness={0.4}
           transparent
         />
-        <Edges color={visibleLayerIds.includes("mechanical") ? config.edge : tokens.floor.edge} />
+        <Edges
+          color={
+            visibleLayerIds.includes("mechanical")
+              ? config.edge
+              : tokens.floor.edge
+          }
+        />
       </mesh>
     </group>
   )
@@ -835,36 +894,63 @@ function ElectricalLayer({
 
   return (
     <group>
-      <mesh position={[-1.36, buildingHeight / 2, -0.88]} scale={[0.12, buildingHeight, 0.12]}>
+      <mesh
+        position={[-1.36, buildingHeight / 2, -0.88]}
+        scale={[0.12, buildingHeight, 0.12]}
+      >
         <boxGeometry />
         <meshStandardMaterial
           color={config.color}
           emissive={config.emissive}
-          emissiveIntensity={visibleLayerIds.includes("electrical") ? 0.34 : 0.08}
+          emissiveIntensity={
+            visibleLayerIds.includes("electrical") ? 0.34 : 0.08
+          }
           opacity={opacity}
           roughness={0.48}
           transparent
         />
-        <Edges color={visibleLayerIds.includes("electrical") ? config.edge : tokens.floor.edge} />
+        <Edges
+          color={
+            visibleLayerIds.includes("electrical")
+              ? config.edge
+              : tokens.floor.edge
+          }
+        />
       </mesh>
-      <mesh position={[-0.24, selectedFloorY + 0.58, -0.9]} scale={[2.18, 0.07, 0.12]}>
+      <mesh
+        position={[-0.24, selectedFloorY + 0.58, -0.9]}
+        scale={[2.18, 0.07, 0.12]}
+      >
         <boxGeometry />
         <meshStandardMaterial
           color={config.color}
           emissive={config.emissive}
-          emissiveIntensity={visibleLayerIds.includes("electrical") ? 0.28 : 0.08}
+          emissiveIntensity={
+            visibleLayerIds.includes("electrical") ? 0.28 : 0.08
+          }
           opacity={opacity}
           roughness={0.5}
           transparent
         />
-        <Edges color={visibleLayerIds.includes("electrical") ? config.edge : tokens.floor.edge} />
+        <Edges
+          color={
+            visibleLayerIds.includes("electrical")
+              ? config.edge
+              : tokens.floor.edge
+          }
+        />
       </mesh>
-      <mesh position={[1.88, selectedFloorY + 0.45, 0.96]} scale={[0.1, 0.1, 0.92]}>
+      <mesh
+        position={[1.88, selectedFloorY + 0.45, 0.96]}
+        scale={[0.1, 0.1, 0.92]}
+      >
         <boxGeometry />
         <meshStandardMaterial
           color={config.color}
           emissive={config.emissive}
-          emissiveIntensity={visibleLayerIds.includes("electrical") ? 0.2 : 0.06}
+          emissiveIntensity={
+            visibleLayerIds.includes("electrical") ? 0.2 : 0.06
+          }
           opacity={opacity * 0.82}
           transparent
         />
@@ -921,7 +1007,10 @@ function ToolCue({
 }) {
   if (activeTool === "Section") {
     return (
-      <mesh position={[0.42, selectedFloorY + 0.74, 0]} rotation={[0, 0, -0.22]}>
+      <mesh
+        position={[0.42, selectedFloorY + 0.74, 0]}
+        rotation={[0, 0, -0.22]}
+      >
         <boxGeometry args={[0.035, 2.35, 3.88]} />
         <meshStandardMaterial
           color={SELECTED_FLOOR_GLOW}
@@ -1054,10 +1143,7 @@ function AiFindingMarkers({
                 color={selected ? tokens.marker.selectedEdge : markerColor}
               />
             </mesh>
-            <mesh
-              rotation={[Math.PI / 2, 0, 0]}
-              scale={selected ? 1.18 : 0.9}
-            >
+            <mesh rotation={[Math.PI / 2, 0, 0]} scale={selected ? 1.18 : 0.9}>
               <torusGeometry args={[0.18, 0.01, 8, 48]} />
               <meshStandardMaterial
                 color={markerColor}
@@ -1124,7 +1210,10 @@ function FocusRings({
   }
 
   return (
-    <group position={[0, selectedFloorY + 0.09, 0]} rotation={[Math.PI / 2, 0, 0]}>
+    <group
+      position={[0, selectedFloorY + 0.09, 0]}
+      rotation={[Math.PI / 2, 0, 0]}
+    >
       <mesh>
         <torusGeometry args={[2.92, 0.018, 10, 112]} />
         <meshStandardMaterial

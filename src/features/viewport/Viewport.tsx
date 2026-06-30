@@ -39,19 +39,16 @@ import type {
 import { cn } from "@/lib/utils"
 
 const ThreeViewportRenderer = lazy(() =>
-  import(
-    "@/features/viewport/renderers/three/ThreeViewportRenderer"
-  ).then((module) => ({
-    default: module.ThreeViewportRenderer,
-  })),
+  import("@/features/viewport/renderers/three/ThreeViewportRenderer").then(
+    (module) => ({
+      default: module.ThreeViewportRenderer,
+    }),
+  ),
 )
 
 interface ViewportProps {
   activeTool: ViewportTool
-  aiReviewEntryState:
-    | "not_scanned"
-    | "scanning"
-    | "scanned_with_findings"
+  aiReviewEntryState: "not_scanned" | "scanning" | "scanned_with_findings"
   aiReviewFindingCount: number
   aiReviewFindingSpatialCounts: Record<HighlightKind, number>
   aiReviewVisualsActive: boolean
@@ -204,10 +201,7 @@ export function Viewport({
     }
   }, [])
 
-  const showViewportFeedback = (
-    message: string,
-    type: "frame" | "ai",
-  ) => {
+  const showViewportFeedback = (message: string, type: "frame" | "ai") => {
     setViewportFeedback({ message, type })
     if (viewportFeedbackTimeout.current) {
       clearTimeout(viewportFeedbackTimeout.current)
@@ -232,8 +226,7 @@ export function Viewport({
       aiReviewVisualsActive,
       floors,
       modelFocusActive:
-        modelFocusActive &&
-        modelFocusRequestIssueId === selectedIssue.id,
+        modelFocusActive && modelFocusRequestIssueId === selectedIssue.id,
       modelFocusRequest,
       previewActive: previewActive && selectedAiFindingActive,
       selectedAiFindingActive,
@@ -241,9 +234,7 @@ export function Viewport({
       selectedIssue,
       visibleLayerIds,
     }
-    const svgRenderer = (
-      <SvgViewportRenderer {...rendererProps} />
-    )
+    const svgRenderer = <SvgViewportRenderer {...rendererProps} />
 
     if (rendererMode === "three") {
       return (
@@ -359,16 +350,12 @@ export function Viewport({
         className="absolute inset-0 z-[1] flex items-center justify-center p-10 max-[680px]:p-4"
       >
         {showViewerUnavailableBanner && Boolean(viewerInitializationError) && (
-          <ViewerInitializationErrorBanner
-            onRetry={handleViewerRetry}
-          />
+          <ViewerInitializationErrorBanner onRetry={handleViewerRetry} />
         )}
         {showViewerUnavailableBanner &&
           Boolean(rendererInitializationError) &&
           !viewerInitializationError && (
-            <ViewerInitializationErrorBanner
-              onRetry={handleViewerRetry}
-            />
+            <ViewerInitializationErrorBanner onRetry={handleViewerRetry} />
           )}
         {renderViewportRenderer(viewportRendererMode)}
       </div>

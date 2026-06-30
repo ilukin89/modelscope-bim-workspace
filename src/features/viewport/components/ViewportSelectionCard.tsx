@@ -88,10 +88,10 @@ export function ViewportSelectionCard({
               : aiReviewVisualsActive && !selectedAiFindingActive
                 ? `AI review overview · ${aiReviewFindingCount} findings clustered`
                 : aiReviewVisualsActive
-                ? `${previewActive ? "Preview" : selectedIssue.code} · ${
-                    selectedIssue.location
-                  }`
-                : `${selectedIssue.details.category} · ${selectedIssue.details.level}`}
+                  ? `${previewActive ? "Preview" : selectedIssue.code} · ${
+                      selectedIssue.location
+                    }`
+                  : `${selectedIssue.details.category} · ${selectedIssue.details.level}`}
           </p>
         </div>
       </CardContent>

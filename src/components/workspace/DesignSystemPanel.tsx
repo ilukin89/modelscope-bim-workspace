@@ -208,13 +208,17 @@ export function DesignSystemPanel() {
                 </Button>
                 <Button
                   variant="secondary"
-                  onClick={() => showActionFeedback("Issue created in prototype")}
+                  onClick={() =>
+                    showActionFeedback("Issue created in prototype")
+                  }
                 >
                   Create issue
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => showActionFeedback("Prototype action cancelled")}
+                  onClick={() =>
+                    showActionFeedback("Prototype action cancelled")
+                  }
                 >
                   Cancel
                 </Button>
@@ -231,7 +235,11 @@ export function DesignSystemPanel() {
                 >
                   Unavailable
                 </Button>
-                <Button variant="outline" disabled className="disabled:opacity-60">
+                <Button
+                  variant="outline"
+                  disabled
+                  className="disabled:opacity-60"
+                >
                   <LoaderCircle className="animate-spin" />
                   Syncing
                 </Button>
@@ -331,7 +339,10 @@ export function DesignSystemPanel() {
               description="One row vocabulary is shared across model trees, search results, and selection sets."
             >
               <div className="divide-y divide-foreground/15 overflow-hidden border border-foreground/20 bg-card shadow-sm dark:divide-foreground/20 dark:border-foreground/25">
-                <ObjectState label="Default object" detail="Wall · Basic 200 mm" />
+                <ObjectState
+                  label="Default object"
+                  detail="Wall · Basic 200 mm"
+                />
                 <ObjectState
                   label="Selected object"
                   detail="Supply Duct · 400 × 250"
@@ -446,7 +457,11 @@ export function DesignSystemPanel() {
             >
               <div className="grid gap-2">
                 {(
-                  ["Clearance", "Annotation", "Alignment"] as DrawingTriageType[]
+                  [
+                    "Clearance",
+                    "Annotation",
+                    "Alignment",
+                  ] as DrawingTriageType[]
                 ).map((type) => (
                   <DrawingTriageTypeSpecimen key={type} type={type} />
                 ))}
@@ -461,7 +476,10 @@ export function DesignSystemPanel() {
             >
               <div className="flex flex-wrap gap-2 border-y border-foreground/20 bg-card px-3 py-4 shadow-sm dark:border-foreground/25">
                 <Badge>Selected</Badge>
-                <Badge variant="secondary" className="border border-foreground/10">
+                <Badge
+                  variant="secondary"
+                  className="border border-foreground/10"
+                >
                   In review
                 </Badge>
                 <Badge variant="success" className="border-success/45">
@@ -495,7 +513,9 @@ export function DesignSystemPanel() {
                     MEP
                   </div>
                   <div className="ml-2">
-                    <p className="text-[11px] font-semibold">Supply Duct 400 × 250</p>
+                    <p className="text-[11px] font-semibold">
+                      Supply Duct 400 × 250
+                    </p>
                     <p className="font-mono text-[10px] text-foreground/65">
                       8D4F-21A7
                     </p>
@@ -512,14 +532,18 @@ export function DesignSystemPanel() {
                 <CardFooter className="gap-2 border-t border-foreground/20 p-3 dark:border-foreground/25">
                   <Button
                     size="compact"
-                    onClick={() => showActionFeedback("Object inspected in prototype")}
+                    onClick={() =>
+                      showActionFeedback("Object inspected in prototype")
+                    }
                   >
                     Inspect
                   </Button>
                   <Button
                     size="compact"
                     variant="outline"
-                    onClick={() => showActionFeedback("Object isolated in prototype")}
+                    onClick={() =>
+                      showActionFeedback("Object isolated in prototype")
+                    }
                   >
                     Isolate
                   </Button>
@@ -704,7 +728,11 @@ function ModelExplorerLinkSpecimen() {
           </div>
         </div>
         <div>
-          <ExplorerSpecimenHeading icon={CircleDot} title="Open Issues" count="3" />
+          <ExplorerSpecimenHeading
+            icon={CircleDot}
+            title="Open Issues"
+            count="3"
+          />
           <div className="mt-2 space-y-1">
             <ModelExplorerIssueLink
               code="ISS-824"
@@ -905,7 +933,11 @@ function AiReviewSpecimen({
     <div className="bg-card p-3">
       <div className="mb-3 flex items-center justify-between">
         <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-foreground/65">
-          {state === "focus" ? "Hover / focus" : state === "active" ? "Opened" : "Default"}
+          {state === "focus"
+            ? "Hover / focus"
+            : state === "active"
+              ? "Opened"
+              : "Default"}
         </span>
         {state === "active" && (
           <span className="size-1.5 rounded-full bg-ai shadow-[0_0_0_3px_color-mix(in_oklab,var(--ai)_18%,transparent)]" />
@@ -997,7 +1029,12 @@ function DrawingTriageCardSpecimen({
             {marker}
           </span>
           <div className="min-w-0 flex-1">
-            <div className={cn("flex flex-wrap items-center gap-2", followUp && "pr-8")}>
+            <div
+              className={cn(
+                "flex flex-wrap items-center gap-2",
+                followUp && "pr-8",
+              )}
+            >
               <DrawingTriageTypeChip type={type} />
               <DrawingTriageDecisionChip type={type} decision={decision} />
             </div>
@@ -1057,9 +1094,7 @@ function DrawingTriageCardSpecimen({
             borderColor: issueCreated
               ? `color-mix(in oklab, ${accent} 22%, var(--border))`
               : accent,
-            background: issueCreated
-              ? "var(--card)"
-              : accent,
+            background: issueCreated ? "var(--card)" : accent,
             color: issueCreated
               ? `light-dark(var(--foreground), color-mix(in oklab, var(--foreground) 88%, ${accent}))`
               : visual.ink,

@@ -27,13 +27,8 @@ export class ViewportRendererFallbackBoundary extends Component<
     this.props.onError?.(error)
   }
 
-  componentDidUpdate(
-    previousProps: ViewportRendererFallbackBoundaryProps,
-  ) {
-    if (
-      previousProps.resetKey !== this.props.resetKey &&
-      this.state.hasError
-    ) {
+  componentDidUpdate(previousProps: ViewportRendererFallbackBoundaryProps) {
+    if (previousProps.resetKey !== this.props.resetKey && this.state.hasError) {
       this.setState({ hasError: false })
     }
   }

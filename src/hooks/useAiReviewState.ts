@@ -39,7 +39,10 @@ const getInitialFindingStatuses = (
   project: ProjectData,
 ): Record<ReviewIssue["id"], AiFindingWorkflowStatus> =>
   Object.fromEntries(
-    project.issues.map((issue) => [issue.id, issue.initialAiStatus ?? "active"]),
+    project.issues.map((issue) => [
+      issue.id,
+      issue.initialAiStatus ?? "active",
+    ]),
   )
 
 const getInitialProjectAiReviewState = (

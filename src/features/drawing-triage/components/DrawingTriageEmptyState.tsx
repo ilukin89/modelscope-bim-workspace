@@ -66,11 +66,7 @@ function DrawingTriageWorkflowNote({ heading }: { heading: string }) {
   )
 }
 
-function DrawingTriageInactiveCandidatePanel({
-  message,
-}: {
-  message: string
-}) {
+function DrawingTriageInactiveCandidatePanel({ message }: { message: string }) {
   return (
     <aside className="scrollbar-thin order-2 min-h-[180px] overflow-y-auto border-border bg-panel max-[900px]:border-t min-[901px]:order-3 min-[901px]:border-l">
       <div className="border-b border-border p-4">

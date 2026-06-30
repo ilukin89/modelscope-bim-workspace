@@ -3,11 +3,17 @@ import {
   createPersistedModelReviewIssue,
   fetchPersistedModelReviewState,
 } from "@/data/modelReviewPersistence"
-import { getProject, projects } from "@/data/projects"
+import { getProject } from "@/data/projects"
+import {
+  getInitialFindingStatuses,
+  getInitialProjectAiReviewState,
+  getInitialProjectAiReviewStates,
+  getNextIssueSequenceFromIssues,
+  mergeModelReviewIssues,
+  mergeReviewHistory,
+  modelReviewIssueStatusTransitionLabels,
+} from "@/hooks/useAiReviewStateUtils"
 import type {
-  AiFindingWorkflowStatus,
-  AiScanStatus,
-  ModelReviewHistoryEvent,
   ModelReviewIssue,
   ModelReviewIssueStatus,
   ProjectAiReviewState,
@@ -15,104 +21,6 @@ import type {
   ProjectId,
   ReviewIssue,
 } from "@/types"
-
-const initialAiScanStatus: AiScanStatus = "not_scanned"
-
-const modelReviewIssueStatusTransitionLabels: Partial<
-  Record<
-    ModelReviewIssueStatus,
-    Partial<Record<ModelReviewIssueStatus, string>>
-  >
-> = {
-  Open: {
-    "In Review": "Issue sent for review",
-    Blocked: "Issue blocked",
-    "Closed as not actionable": "Issue closed as not actionable",
-  },
-  "In Review": {
-    Open: "Issue returned",
-    Resolved: "Issue resolved",
-    Blocked: "Issue blocked",
-    "Closed as not actionable": "Issue closed as not actionable",
-  },
-  Resolved: { Open: "Issue reopened" },
-  Blocked: { Open: "Issue returned", "In Review": "Issue returned" },
-  "Closed as not actionable": { Open: "Issue reopened" },
-}
-
-const getInitialFindingStatuses = (
-  project: ProjectData,
-): Record<ReviewIssue["id"], AiFindingWorkflowStatus> =>
-  Object.fromEntries(
-    project.issues.map((issue) => [
-      issue.id,
-      issue.initialAiStatus ?? "active",
-    ]),
-  )
-
-const getInitialProjectAiReviewState = (
-  project: ProjectData,
-): ProjectAiReviewState => ({
-  findingStatuses: getInitialFindingStatuses(project),
-  modelReviewIssues: [],
-  nextIssueSequence: 1,
-  previewIssueId: null,
-  reviewHistory: [],
-  scanStatus: initialAiScanStatus,
-  selectedFindingId: null,
-})
-
-const getInitialProjectAiReviewStates = (): Record<
-  ProjectId,
-  ProjectAiReviewState
-> =>
-  Object.fromEntries(
-    projects.map((project) => [
-      project.id,
-      getInitialProjectAiReviewState(project),
-    ]),
-  ) as Record<ProjectId, ProjectAiReviewState>
-
-const mergeModelReviewIssues = (
-  existingIssues: ModelReviewIssue[],
-  incomingIssues: ModelReviewIssue[],
-) => {
-  const issuesBySourceFinding = new Map(
-    incomingIssues.map((issue) => [issue.sourceFindingId, issue]),
-  )
-
-  existingIssues.forEach((issue) => {
-    if (!issuesBySourceFinding.has(issue.sourceFindingId)) {
-      issuesBySourceFinding.set(issue.sourceFindingId, issue)
-    }
-  })
-
-  return Array.from(issuesBySourceFinding.values())
-}
-
-const mergeReviewHistory = (
-  existingEvents: ModelReviewHistoryEvent[],
-  incomingEvents: ModelReviewHistoryEvent[],
-) => {
-  const eventsById = new Map(incomingEvents.map((event) => [event.id, event]))
-
-  existingEvents.forEach((event) => {
-    if (!eventsById.has(event.id)) {
-      eventsById.set(event.id, event)
-    }
-  })
-
-  return Array.from(eventsById.values()).slice(0, 8)
-}
-
-const getNextIssueSequenceFromIssues = (issues: ModelReviewIssue[]) =>
-  issues.reduce((nextSequence, issue) => {
-    const issueNumber = Number(issue.id.match(/^MR-(\d{3})$/)?.[1])
-
-    return Number.isFinite(issueNumber)
-      ? Math.max(nextSequence, issueNumber + 1)
-      : nextSequence
-  }, 1)
 
 interface UseAiReviewStateOptions {
   selectedProject: ProjectData

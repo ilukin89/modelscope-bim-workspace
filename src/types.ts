@@ -76,6 +76,7 @@ export type ModelReviewIssueStatus =
   "Open" | "In Review" | "Resolved" | "Blocked" | "Closed as not actionable"
 
 export interface ModelReviewIssue {
+  backendIssueId?: string
   id: string
   title: string
   relatedObject: string

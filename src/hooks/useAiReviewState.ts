@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from "react"
+import {
+  createPersistedModelReviewIssue,
+  fetchPersistedModelReviewState,
+} from "@/data/modelReviewPersistence"
 import { getProject, projects } from "@/data/projects"
 import type {
   AiFindingWorkflowStatus,
   AiScanStatus,
+  ModelReviewHistoryEvent,
   ModelReviewIssue,
   ModelReviewIssueStatus,
   ProjectAiReviewState,
@@ -67,6 +72,47 @@ const getInitialProjectAiReviewStates = (): Record<
       getInitialProjectAiReviewState(project),
     ]),
   ) as Record<ProjectId, ProjectAiReviewState>
+
+const mergeModelReviewIssues = (
+  existingIssues: ModelReviewIssue[],
+  incomingIssues: ModelReviewIssue[],
+) => {
+  const issuesBySourceFinding = new Map(
+    incomingIssues.map((issue) => [issue.sourceFindingId, issue]),
+  )
+
+  existingIssues.forEach((issue) => {
+    if (!issuesBySourceFinding.has(issue.sourceFindingId)) {
+      issuesBySourceFinding.set(issue.sourceFindingId, issue)
+    }
+  })
+
+  return Array.from(issuesBySourceFinding.values())
+}
+
+const mergeReviewHistory = (
+  existingEvents: ModelReviewHistoryEvent[],
+  incomingEvents: ModelReviewHistoryEvent[],
+) => {
+  const eventsById = new Map(incomingEvents.map((event) => [event.id, event]))
+
+  existingEvents.forEach((event) => {
+    if (!eventsById.has(event.id)) {
+      eventsById.set(event.id, event)
+    }
+  })
+
+  return Array.from(eventsById.values()).slice(0, 8)
+}
+
+const getNextIssueSequenceFromIssues = (issues: ModelReviewIssue[]) =>
+  issues.reduce((nextSequence, issue) => {
+    const issueNumber = Number(issue.id.match(/^MR-(\d{3})$/)?.[1])
+
+    return Number.isFinite(issueNumber)
+      ? Math.max(nextSequence, issueNumber + 1)
+      : nextSequence
+  }, 1)
 
 interface UseAiReviewStateOptions {
   selectedProject: ProjectData
@@ -165,16 +211,69 @@ export function useAiReviewState({
     updater: (state: ProjectAiReviewState) => ProjectAiReviewState,
   ) => updateProjectAiReviewState(selectedProjectId, updater)
 
-  const recordHistory = (label: string, detail: string) => {
+  useEffect(() => {
+    let active = true
+
+    fetchPersistedModelReviewState(selectedProjectId, selectedProject.issues)
+      .then((persistedState) => {
+        if (!active) {
+          return
+        }
+
+        setProjectAiReviewStates((current) => {
+          const previous =
+            current[selectedProjectId] ??
+            getInitialProjectAiReviewState(selectedProject)
+          const modelReviewIssues = mergeModelReviewIssues(
+            previous.modelReviewIssues,
+            persistedState.modelReviewIssues,
+          )
+
+          return {
+            ...current,
+            [selectedProjectId]: {
+              ...previous,
+              findingStatuses: {
+                ...previous.findingStatuses,
+                ...persistedState.findingStatuses,
+              },
+              modelReviewIssues,
+              nextIssueSequence: Math.max(
+                previous.nextIssueSequence,
+                getNextIssueSequenceFromIssues(modelReviewIssues),
+              ),
+              reviewHistory: mergeReviewHistory(
+                previous.reviewHistory,
+                persistedState.reviewHistory,
+              ),
+            },
+          }
+        })
+      })
+      .catch(() => {
+        // Local demo state remains available when Supabase persistence is absent.
+      })
+
+    return () => {
+      active = false
+    }
+  }, [selectedProject, selectedProjectId])
+
+  const recordProjectHistory = (
+    projectId: ProjectId,
+    label: string,
+    detail: string,
+    eventId = `${Date.now()}-${label}`,
+  ) => {
     const time = new Date().toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
     })
-    updateSelectedProjectAiReviewState((state) => ({
+    updateProjectAiReviewState(projectId, (state) => ({
       ...state,
       reviewHistory: [
         {
-          id: `${Date.now()}-${state.reviewHistory.length}`,
+          id: eventId,
           label,
           detail,
           time,
@@ -182,6 +281,11 @@ export function useAiReviewState({
         ...state.reviewHistory,
       ].slice(0, 8),
     }))
+    return eventId
+  }
+
+  const recordHistory = (label: string, detail: string) => {
+    recordProjectHistory(selectedProjectId, label, detail)
   }
 
   const selectAiFinding = (issue: ReviewIssue) => {
@@ -226,33 +330,64 @@ export function useAiReviewState({
       return
     }
 
+    const projectId = selectedProjectId
+    const sourceIssue = selectedIssue
     const issueNumber = selectedAiReviewState.nextIssueSequence
     const issueId = `MR-${String(issueNumber).padStart(3, "0")}`
     const nextIssue: ModelReviewIssue = {
       id: issueId,
-      title: selectedIssue.title,
-      relatedObject: selectedIssue.object,
-      relatedLevel: selectedIssue.details.level,
-      priority: selectedIssue.severity,
+      title: sourceIssue.title,
+      relatedObject: sourceIssue.object,
+      relatedLevel: sourceIssue.details.level,
+      priority: sourceIssue.severity,
       status: "Open",
-      sourceFindingId: selectedIssue.id,
-      sourceFindingCode: selectedIssue.code,
-      sourceIssue: selectedIssue,
+      sourceFindingId: sourceIssue.id,
+      sourceFindingCode: sourceIssue.code,
+      sourceIssue,
     }
 
     updateSelectedProjectAiReviewState((state) => ({
       ...state,
       findingStatuses: {
         ...state.findingStatuses,
-        [selectedIssue.id]: "issue-created",
+        [sourceIssue.id]: "issue-created",
       },
       modelReviewIssues: [...state.modelReviewIssues, nextIssue],
       nextIssueSequence: state.nextIssueSequence + 1,
     }))
-    recordHistory(
+    const localHistoryId = recordProjectHistory(
+      projectId,
       "Issue created",
-      `${issueId} from ${selectedIssue.code} · ${selectedIssue.details.objectId}`,
+      `${issueId} from ${sourceIssue.code} · ${sourceIssue.details.objectId}`,
     )
+
+    createPersistedModelReviewIssue(projectId, sourceIssue)
+      .then((persistedIssue) => {
+        updateProjectAiReviewState(projectId, (state) => ({
+          ...state,
+          findingStatuses: {
+            ...state.findingStatuses,
+            [sourceIssue.id]: persistedIssue.findingStatus,
+          },
+          modelReviewIssues: [
+            ...state.modelReviewIssues.filter(
+              (issue) =>
+                issue.id !== nextIssue.id &&
+                issue.sourceFindingId !== persistedIssue.issue.sourceFindingId,
+            ),
+            persistedIssue.issue,
+          ],
+          reviewHistory: mergeReviewHistory(
+            state.reviewHistory.filter((event) => event.id !== localHistoryId),
+            persistedIssue.reviewHistoryEvent
+              ? [persistedIssue.reviewHistoryEvent]
+              : [],
+          ),
+        }))
+      })
+      .catch(() => {
+        // Keep the local issue path working when Supabase persistence is absent.
+      })
   }
 
   const updateModelReviewIssueStatus = (

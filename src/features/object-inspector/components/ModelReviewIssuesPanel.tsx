@@ -139,17 +139,6 @@ export function ModelReviewIssuesPanel({
       ? "No issues."
       : `No ${issueStatusFilter.toLowerCase()} issues.`
 
-  useEffect(() => {
-    if (!focusedIssueCardId || issueStatusFilter === "All") {
-      return
-    }
-
-    const focusedIssue = issues.find((issue) => issue.id === focusedIssueCardId)
-    if (focusedIssue && focusedIssue.status !== issueStatusFilter) {
-      setIssueStatusFilter("All")
-    }
-  }, [focusedIssueCardId, issueStatusFilter, issues])
-
   return issues.length > 0 ? (
     <>
       <div className="mb-2 space-y-1.5 px-0.5">
@@ -159,6 +148,10 @@ export function ModelReviewIssuesPanel({
         >
           {issueFilterOptions.map((filter) => {
             const active = issueStatusFilter === filter.value
+            const count = issueCounts[filter.value]
+            const empty = count === 0
+            const startsNewFilterRow =
+              filter.value === "Closed as not actionable"
 
             return (
               <Button
@@ -167,18 +160,20 @@ export function ModelReviewIssuesPanel({
                 size="compact"
                 variant={active ? "outline" : "ghost"}
                 aria-pressed={active}
+                aria-label={`${filter.label} issues, ${count}`}
                 className={cn(
                   "h-6 rounded-sm px-1.5 text-[9px]",
+                  startsNewFilterRow && "basis-full max-w-fit",
                   active
                     ? "border-primary/35 bg-primary/8 text-primary shadow-none hover:border-primary/45 hover:bg-primary/12 hover:text-primary dark:border-primary/45 dark:bg-primary/14"
-                    : "text-muted-foreground hover:bg-muted/45 hover:text-foreground",
+                    : empty
+                      ? "text-muted-foreground/60 hover:bg-muted/45 hover:text-foreground"
+                      : "text-muted-foreground hover:bg-muted/45 hover:text-foreground",
                 )}
                 onClick={() => setIssueStatusFilter(filter.value)}
               >
                 <span>{filter.label}</span>
-                <span className="font-mono text-[8px] opacity-80">
-                  {issueCounts[filter.value]}
-                </span>
+                <span className="font-mono text-[8px] opacity-80">{count}</span>
               </Button>
             )
           })}

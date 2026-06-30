@@ -380,7 +380,7 @@ export function ModelReviewAiReviewPanel({
                   onClick={() => setClearAiFindingsDialogOpen(true)}
                   disabled={aiScanning}
                 >
-                  Clear AI findings
+                  Clear AI candidates
                 </Button>
                 <Button
                   type="button"
@@ -766,11 +766,10 @@ export function ModelReviewAiReviewPanel({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Clear AI findings?</AlertDialogTitle>
+            <AlertDialogTitle>Clear AI candidates?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will reset the current AI Review findings, created issues and
-              review history for this project. This cannot be undone in this
-              prototype.
+              This will reset the current AI Review candidate queue. Created
+              issues and review history will stay available.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -779,7 +778,7 @@ export function ModelReviewAiReviewPanel({
               className="bg-[var(--destructive-action)] text-[var(--destructive-action-foreground)] hover:bg-[var(--destructive-action-hover)]"
               onClick={onClearScanResults}
             >
-              Clear findings
+              Clear candidates
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

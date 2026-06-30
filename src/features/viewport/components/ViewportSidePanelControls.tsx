@@ -345,6 +345,7 @@ export function ViewportAiReviewAction({
   const [assistantPosition, setAssistantPosition] =
     useState<AssistantPosition | null>(null)
   const [assistantDragging, setAssistantDragging] = useState(false)
+  const [assistantMoved, setAssistantMoved] = useState(false)
   const [popoverAlignment, setPopoverAlignment] =
     useState<AssistantPopoverAlignment>("right")
   const [popoverPlacement, setPopoverPlacement] =
@@ -402,6 +403,12 @@ export function ViewportAiReviewAction({
     setIntroExpanded(true)
   }
   const closeAssistant = () => setIntroExpanded(false)
+  const resetAssistantPosition = () => {
+    setAssistantPosition(null)
+    setAssistantMoved(false)
+    setPopoverAlignment("right")
+    setPopoverPlacement("up")
+  }
   const startScan = () => {
     setIntroExpanded(false)
     setLabelTailVisible(false)
@@ -617,6 +624,7 @@ export function ViewportAiReviewAction({
       const deltaY = event.clientY - drag.startY
       if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) {
         suppressAssistantClick.current = true
+        setAssistantMoved(true)
       }
 
       setAssistantPosition({
@@ -705,13 +713,24 @@ export function ViewportAiReviewAction({
       <Button
         type="button"
         variant="outline"
-        className="mt-2.5 h-7 w-full justify-center gap-2 border-primary/35 bg-background px-2 text-[10px] font-semibold text-primary shadow-sm ring-1 ring-primary/10 transition-colors hover:border-primary/50 hover:bg-primary/10 hover:text-primary"
+        className="mt-2.5 h-7 w-full justify-center gap-2 border-primary/35 bg-background px-2 text-[10px] font-semibold text-foreground shadow-sm ring-1 ring-primary/10 transition-colors hover:border-primary/50 hover:bg-primary/10 hover:text-foreground"
         aria-label="Scan model"
         onClick={startScan}
       >
-        <ScanSearch className="size-3.5" />
+        <ScanSearch className="size-3.5 text-primary" />
         <span className="min-w-0 truncate">Scan model</span>
       </Button>
+      {assistantMoved && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="compact"
+          className="mt-1.5 h-6 w-full justify-center text-[10px] text-muted-foreground hover:bg-muted/35 hover:text-foreground"
+          onClick={resetAssistantPosition}
+        >
+          Reset position
+        </Button>
+      )}
     </section>
   ) : null
 

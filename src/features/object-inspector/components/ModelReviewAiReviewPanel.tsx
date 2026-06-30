@@ -325,7 +325,7 @@ export function ModelReviewAiReviewPanel({
 
           <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden min-[1421px]:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
             <section className={cn("min-h-0 flex-col overflow-hidden border-border/25 dark:border-border min-[1421px]:flex min-[1421px]:border-r", selectedFinding && compactDetailOpen ? "hidden" : "flex")} aria-label="AI Review Queue">
-              <div className="shrink-0 border-b border-border/20 px-2 dark:border-border"><div className="grid h-8 grid-cols-3 text-muted-foreground" role="tablist" aria-label="Group AI findings">{groupingModes.map((mode) => <button key={mode.id} type="button" className={cn("relative h-full px-1 text-[9px] font-medium outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring", aiGroupingMode === mode.id ? "text-foreground after:absolute after:inset-x-2 after:bottom-0 after:h-px after:bg-primary" : "text-muted-foreground")} role="tab" aria-selected={aiGroupingMode === mode.id} onClick={() => onGroupingModeChange(mode.id)}>{mode.label}</button>)}</div></div>
+              <div className="shrink-0 border-b border-border/20 px-2 dark:border-border"><div className="grid h-8 grid-cols-3 text-muted-foreground" role="group" aria-label="Group AI findings">{groupingModes.map((mode) => <button key={mode.id} type="button" className={cn("relative h-full px-1 text-[9px] font-medium outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring", aiGroupingMode === mode.id ? "text-foreground after:absolute after:inset-x-2 after:bottom-0 after:h-px after:bg-primary" : "text-muted-foreground")} aria-pressed={aiGroupingMode === mode.id} onClick={() => onGroupingModeChange(mode.id)}>{mode.label}</button>)}</div></div>
               <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto p-2"><div className="space-y-1.5">{findingGroups.map((group) => {
                 const open = openFindingGroups[aiGroupingMode][group.id] ?? false
                 const selectedInGroup = selectedGroupKey === group.id
@@ -363,7 +363,7 @@ export function ModelReviewAiReviewPanel({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-[var(--destructive-action)] text-[var(--destructive-action-foreground)] hover:bg-[var(--destructive-action-hover)]"
               onClick={onClearScanResults}
             >
               Clear findings
@@ -385,7 +385,7 @@ export function ModelReviewAiReviewPanel({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-[var(--destructive-action)] text-[var(--destructive-action-foreground)] hover:bg-[var(--destructive-action-hover)]"
               onClick={onDropIssue}
             >
               Remove issue

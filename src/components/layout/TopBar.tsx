@@ -142,7 +142,6 @@ export function TopBar({
           <nav
             className="hidden h-full items-center min-[901px]:flex"
             aria-label="Workspace mode"
-            role="tablist"
           >
             {workspaceModes.map((mode) => {
               const active = mode.id === workspaceMode
@@ -151,8 +150,7 @@ export function TopBar({
                 <button
                   key={mode.id}
                   type="button"
-                  role="tab"
-                  aria-selected={active}
+                  aria-pressed={active}
                   aria-controls="workspace-content"
                   onClick={() => onWorkspaceModeChange(mode.id)}
                   className={cn(

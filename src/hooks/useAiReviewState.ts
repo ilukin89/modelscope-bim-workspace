@@ -8,10 +8,9 @@ import {
   getInitialFindingStatuses,
   getInitialProjectAiReviewState,
   getInitialProjectAiReviewStates,
-  getNextIssueSequenceFromIssues,
-  hasPersistedModelReviewActivity,
-  mergeModelReviewIssues,
   mergeReviewHistory,
+  resetAiCandidateState,
+  restorePersistedModelReviewState,
   modelReviewIssueStatusTransitionLabels,
 } from "@/hooks/useAiReviewStateUtils"
 import type {
@@ -76,13 +75,9 @@ export function useAiReviewState({
     aiReviewVisualsActive && selectedAiFindingId
       ? (aiFindingStatuses[selectedAiFindingId] ?? "active")
       : "active"
-  const modelReviewIssues = aiReviewVisualsActive
-    ? selectedAiReviewState.modelReviewIssues
-    : []
+  const modelReviewIssues = selectedAiReviewState.modelReviewIssues
   const focusedModelIssueId = modelFocusRequest?.modelReviewIssueId ?? null
-  const reviewHistory = aiReviewVisualsActive
-    ? selectedAiReviewState.reviewHistory
-    : []
+  const reviewHistory = selectedAiReviewState.reviewHistory
   const previewIssueId = aiReviewVisualsActive
     ? selectedAiReviewState.previewIssueId
     : null
@@ -129,43 +124,18 @@ export function useAiReviewState({
           return
         }
 
-        const persistedModelReviewActivity = hasPersistedModelReviewActivity(
-          persistedState,
-          selectedProject,
-        )
-
         setProjectAiReviewStates((current) => {
           const previous =
             current[selectedProjectId] ??
             getInitialProjectAiReviewState(selectedProject)
-          const modelReviewIssues = mergeModelReviewIssues(
-            previous.modelReviewIssues,
-            persistedState.modelReviewIssues,
-          )
 
           return {
             ...current,
-            [selectedProjectId]: {
-              ...previous,
-              findingStatuses: {
-                ...previous.findingStatuses,
-                ...persistedState.findingStatuses,
-              },
-              modelReviewIssues,
-              nextIssueSequence: Math.max(
-                previous.nextIssueSequence,
-                getNextIssueSequenceFromIssues(modelReviewIssues),
-              ),
-              reviewHistory: mergeReviewHistory(
-                previous.reviewHistory,
-                persistedState.reviewHistory,
-              ),
-              scanStatus:
-                persistedModelReviewActivity &&
-                previous.scanStatus === "not_scanned"
-                  ? "scanned_with_findings"
-                  : previous.scanStatus,
-            },
+            [selectedProjectId]: restorePersistedModelReviewState(
+              previous,
+              persistedState,
+              selectedProject,
+            ),
           }
         })
       })
@@ -471,8 +441,8 @@ export function useAiReviewState({
       aiScanTimeout.current = null
     }
 
-    updateSelectedProjectAiReviewState(() =>
-      getInitialProjectAiReviewState(selectedProject),
+    updateSelectedProjectAiReviewState((state) =>
+      resetAiCandidateState(state, selectedProject),
     )
     setFocusedIssueCardId(null)
     setModelFocusRequest(null)

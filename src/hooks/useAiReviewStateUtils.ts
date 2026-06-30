@@ -57,6 +57,17 @@ export const getInitialProjectAiReviewState = (
   selectedFindingId: null,
 })
 
+export const resetAiCandidateState = (
+  state: ProjectAiReviewState,
+  project: ProjectData,
+): ProjectAiReviewState => ({
+  ...state,
+  findingStatuses: getInitialFindingStatuses(project),
+  previewIssueId: null,
+  scanStatus: initialAiScanStatus,
+  selectedFindingId: null,
+})
+
 export const getInitialProjectAiReviewStates = (): Record<
   ProjectId,
   ProjectAiReviewState
@@ -109,24 +120,76 @@ export const getNextIssueSequenceFromIssues = (issues: ModelReviewIssue[]) =>
       : nextSequence
   }, 1)
 
-export const hasPersistedModelReviewActivity = (
+export const hasRestorableAiCandidateActivity = (
+  persistedState: {
+    findingStatuses: Partial<Record<ReviewIssue["id"], AiFindingWorkflowStatus>>
+    modelReviewIssues: ModelReviewIssue[]
+  },
+  project: ProjectData,
+) => {
+  const initialStatuses = getInitialFindingStatuses(project)
+  const sourceFindingIdsWithCreatedIssues = new Set(
+    persistedState.modelReviewIssues.map((issue) => issue.sourceFindingId),
+  )
+
+  return Object.entries(persistedState.findingStatuses).some(
+    ([findingId, status]) =>
+      status !== initialStatuses[findingId] &&
+      !(
+        status === "issue-created" &&
+        sourceFindingIdsWithCreatedIssues.has(findingId)
+      ),
+  )
+}
+
+export const restorePersistedModelReviewState = (
+  previous: ProjectAiReviewState,
   persistedState: {
     findingStatuses: Partial<Record<ReviewIssue["id"], AiFindingWorkflowStatus>>
     modelReviewIssues: ModelReviewIssue[]
     reviewHistory: ModelReviewHistoryEvent[]
   },
   project: ProjectData,
-) => {
-  if (
-    persistedState.modelReviewIssues.length > 0 ||
-    persistedState.reviewHistory.length > 0
-  ) {
-    return true
-  }
-
-  const initialStatuses = getInitialFindingStatuses(project)
-
-  return Object.entries(persistedState.findingStatuses).some(
-    ([findingId, status]) => status !== initialStatuses[findingId],
+): ProjectAiReviewState => {
+  const modelReviewIssues = mergeModelReviewIssues(
+    previous.modelReviewIssues,
+    persistedState.modelReviewIssues,
   )
+  const restorableAiCandidateActivity = hasRestorableAiCandidateActivity(
+    persistedState,
+    project,
+  )
+  const restoredScanStatus =
+    previous.scanStatus === "scanning"
+      ? initialAiScanStatus
+      : previous.scanStatus
+  const restoredFindingStatuses = { ...previous.findingStatuses }
+
+  Object.entries(persistedState.findingStatuses).forEach(
+    ([findingId, status]) => {
+      if (status) {
+        restoredFindingStatuses[findingId] = status
+      }
+    },
+  )
+
+  return {
+    ...previous,
+    findingStatuses: restorableAiCandidateActivity
+      ? restoredFindingStatuses
+      : previous.findingStatuses,
+    modelReviewIssues,
+    nextIssueSequence: Math.max(
+      previous.nextIssueSequence,
+      getNextIssueSequenceFromIssues(modelReviewIssues),
+    ),
+    reviewHistory: mergeReviewHistory(
+      previous.reviewHistory,
+      persistedState.reviewHistory,
+    ),
+    scanStatus:
+      restorableAiCandidateActivity && restoredScanStatus === "not_scanned"
+        ? "scanned_with_findings"
+        : restoredScanStatus,
+  }
 }

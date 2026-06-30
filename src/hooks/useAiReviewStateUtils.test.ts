@@ -2,20 +2,24 @@ import { describe, expect, it } from "vitest"
 import type {
   ModelReviewHistoryEvent,
   ModelReviewIssue,
+  ProjectAiReviewState,
   ProjectData,
   ReviewIssue,
 } from "@/types"
 import {
+  getInitialProjectAiReviewState,
   getNextIssueSequenceFromIssues,
-  hasPersistedModelReviewActivity,
+  hasRestorableAiCandidateActivity,
   mergeModelReviewIssues,
   mergeReviewHistory,
   modelReviewIssueStatusTransitionLabels,
+  resetAiCandidateState,
+  restorePersistedModelReviewState,
 } from "./useAiReviewStateUtils"
 
 type PersistedReviewState = Parameters<
-  typeof hasPersistedModelReviewActivity
->[0]
+  typeof restorePersistedModelReviewState
+>[1]
 
 const createReviewIssue = (
   id: string,
@@ -105,6 +109,14 @@ const createPersistedReviewState = (
   findingStatuses: {},
   modelReviewIssues: [],
   reviewHistory: [],
+  ...overrides,
+})
+
+const createProjectAiReviewState = (
+  project: ProjectData,
+  overrides: Partial<ProjectAiReviewState> = {},
+): ProjectAiReviewState => ({
+  ...getInitialProjectAiReviewState(project),
   ...overrides,
 })
 
@@ -276,14 +288,65 @@ describe("getNextIssueSequenceFromIssues", () => {
   })
 })
 
-describe("hasPersistedModelReviewActivity", () => {
+describe("resetAiCandidateState", () => {
+  it("resets only AI candidate state and preserves created issues, history, and sequence", () => {
+    const activeIssue = createReviewIssue(
+      "finding-active",
+      "FND-001",
+      "Active finding",
+    )
+    const dismissedIssue = {
+      ...createReviewIssue(
+        "finding-dismissed",
+        "FND-002",
+        "Dismissed fixture finding",
+      ),
+      initialAiStatus: "dismissed",
+    } satisfies ReviewIssue
+    const project = createProject([activeIssue, dismissedIssue])
+    const modelReviewIssue = createModelReviewIssue(
+      "MR-004",
+      activeIssue.id,
+      activeIssue.code,
+      "Created issue",
+    )
+    const historyEvent = createHistoryEvent("event-1", "Issue created")
+    const state = createProjectAiReviewState(project, {
+      findingStatuses: {
+        [activeIssue.id]: "issue-created",
+        [dismissedIssue.id]: "active",
+      },
+      modelReviewIssues: [modelReviewIssue],
+      nextIssueSequence: 5,
+      previewIssueId: activeIssue.id,
+      reviewHistory: [historyEvent],
+      scanStatus: "scanned_with_findings",
+      selectedFindingId: activeIssue.id,
+    })
+
+    const resetState = resetAiCandidateState(state, project)
+
+    expect(resetState.findingStatuses).toEqual({
+      [activeIssue.id]: "active",
+      [dismissedIssue.id]: "dismissed",
+    })
+    expect(resetState.modelReviewIssues).toEqual([modelReviewIssue])
+    expect(resetState.reviewHistory).toEqual([historyEvent])
+    expect(resetState.nextIssueSequence).toBe(5)
+    expect(resetState.previewIssueId).toBeNull()
+    expect(resetState.scanStatus).toBe("not_scanned")
+    expect(resetState.selectedFindingId).toBeNull()
+  })
+})
+
+describe("hasRestorableAiCandidateActivity", () => {
   it("returns false when the raw persisted state has no activity", () => {
     const project = createProject([
       createReviewIssue("finding-1", "FND-001", "Finding 1"),
     ])
 
     expect(
-      hasPersistedModelReviewActivity(createPersistedReviewState(), project),
+      hasRestorableAiCandidateActivity(createPersistedReviewState(), project),
     ).toBe(false)
   })
 
@@ -304,7 +367,7 @@ describe("hasPersistedModelReviewActivity", () => {
     const project = createProject([activeIssue, dismissedIssue])
 
     expect(
-      hasPersistedModelReviewActivity(
+      hasRestorableAiCandidateActivity(
         createPersistedReviewState({
           findingStatuses: {
             [activeIssue.id]: "active",
@@ -316,12 +379,12 @@ describe("hasPersistedModelReviewActivity", () => {
     ).toBe(false)
   })
 
-  it("treats persisted issues as activity", () => {
+  it("does not treat persisted created issues alone as restorable candidate activity", () => {
     const sourceIssue = createReviewIssue("finding-1", "FND-001", "Finding 1")
     const project = createProject([sourceIssue])
 
     expect(
-      hasPersistedModelReviewActivity(
+      hasRestorableAiCandidateActivity(
         createPersistedReviewState({
           modelReviewIssues: [
             createModelReviewIssue(
@@ -334,22 +397,46 @@ describe("hasPersistedModelReviewActivity", () => {
         }),
         project,
       ),
-    ).toBe(true)
+    ).toBe(false)
   })
 
-  it("treats persisted review history as activity", () => {
+  it("does not treat persisted review history alone as restorable candidate activity", () => {
     const project = createProject([
       createReviewIssue("finding-1", "FND-001", "Finding 1"),
     ])
 
     expect(
-      hasPersistedModelReviewActivity(
+      hasRestorableAiCandidateActivity(
         createPersistedReviewState({
           reviewHistory: [createHistoryEvent("event-1", "Issue created")],
         }),
         project,
       ),
-    ).toBe(true)
+    ).toBe(false)
+  })
+
+  it("does not let source finding references on created issues resurrect AI candidates", () => {
+    const sourceIssue = createReviewIssue("finding-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+
+    expect(
+      hasRestorableAiCandidateActivity(
+        createPersistedReviewState({
+          findingStatuses: {
+            [sourceIssue.id]: "issue-created",
+          },
+          modelReviewIssues: [
+            createModelReviewIssue(
+              "MR-001",
+              sourceIssue.id,
+              sourceIssue.code,
+              "Persisted issue",
+            ),
+          ],
+        }),
+        project,
+      ),
+    ).toBe(false)
   })
 
   it("treats persisted finding statuses that differ from defaults as activity", () => {
@@ -369,7 +456,7 @@ describe("hasPersistedModelReviewActivity", () => {
     const project = createProject([activeIssue, followUpIssue])
 
     expect(
-      hasPersistedModelReviewActivity(
+      hasRestorableAiCandidateActivity(
         createPersistedReviewState({
           findingStatuses: {
             [activeIssue.id]: "issue-created",
@@ -379,7 +466,7 @@ describe("hasPersistedModelReviewActivity", () => {
       ),
     ).toBe(true)
     expect(
-      hasPersistedModelReviewActivity(
+      hasRestorableAiCandidateActivity(
         createPersistedReviewState({
           findingStatuses: {
             [followUpIssue.id]: "active",
@@ -388,6 +475,89 @@ describe("hasPersistedModelReviewActivity", () => {
         project,
       ),
     ).toBe(true)
+  })
+})
+
+describe("restorePersistedModelReviewState", () => {
+  it("restores persisted candidate scan state when candidate statuses differ from fixture defaults", () => {
+    const activeIssue = createReviewIssue(
+      "finding-active",
+      "FND-001",
+      "Active finding",
+    )
+    const project = createProject([activeIssue])
+    const previous = createProjectAiReviewState(project)
+
+    const restoredState = restorePersistedModelReviewState(
+      previous,
+      {
+        findingStatuses: {
+          [activeIssue.id]: "dismissed",
+        },
+        modelReviewIssues: [],
+        reviewHistory: [],
+      },
+      project,
+    )
+
+    expect(restoredState.findingStatuses[activeIssue.id]).toBe("dismissed")
+    expect(restoredState.scanStatus).toBe("scanned_with_findings")
+  })
+
+  it("lets cleared AI candidate state win over persisted issues and history during restore", () => {
+    const sourceIssue = createReviewIssue("finding-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+    const previous = resetAiCandidateState(
+      createProjectAiReviewState(project, {
+        modelReviewIssues: [],
+        reviewHistory: [],
+        scanStatus: "scanned_with_findings",
+      }),
+      project,
+    )
+    const modelReviewIssue = createModelReviewIssue(
+      "MR-001",
+      sourceIssue.id,
+      sourceIssue.code,
+      "Persisted issue",
+    )
+    const historyEvent = createHistoryEvent("event-1", "Issue created")
+
+    const restoredState = restorePersistedModelReviewState(
+      previous,
+      {
+        findingStatuses: {
+          [sourceIssue.id]: "issue-created",
+        },
+        modelReviewIssues: [modelReviewIssue],
+        reviewHistory: [historyEvent],
+      },
+      project,
+    )
+
+    expect(restoredState.scanStatus).toBe("not_scanned")
+    expect(restoredState.findingStatuses[sourceIssue.id]).toBe("active")
+    expect(restoredState.modelReviewIssues).toEqual([modelReviewIssue])
+    expect(restoredState.reviewHistory).toEqual([historyEvent])
+  })
+
+  it("does not restore an in-progress scan across sessions", () => {
+    const sourceIssue = createReviewIssue("finding-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+
+    const restoredState = restorePersistedModelReviewState(
+      createProjectAiReviewState(project, {
+        scanStatus: "scanning",
+      }),
+      {
+        findingStatuses: {},
+        modelReviewIssues: [],
+        reviewHistory: [],
+      },
+      project,
+    )
+
+    expect(restoredState.scanStatus).toBe("not_scanned")
   })
 })
 

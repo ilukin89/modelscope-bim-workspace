@@ -1,56 +1,85 @@
 # ModelScope BIM Workspace
 
-ModelScope is a small code-first UI prototype for a professional BIM / 3D model review workspace. It is intentionally a product interface prototype, not a BIM renderer or model-processing engine.
+ModelScope is a viewport-first BIM review prototype for AI-assisted model and drawing coordination.
 
-[![Slika-zaslona-2026-06-26-u-20-57-07.png](https://i.postimg.cc/qvs0CjVk/Slika-zaslona-2026-06-26-u-20-57-07.png)](https://postimg.cc/K18C678V)
-[![Slika-zaslona-2026-06-26-u-14-38-41.png](https://i.postimg.cc/g08d0yF6/Slika-zaslona-2026-06-26-u-14-38-41.png)](https://postimg.cc/TydB7DPR)
-_Drawing Triage workspace with a sample 2D floor plan, candidate review markers, and human-in-the-loop AI observation cards._
+AI proposes findings. A reviewer decides what becomes a confirmed issue.
+
+It is a code-first product interface prototype built with React, TypeScript, Tailwind CSS, shadcn/ui, and Supabase-backed persistence for supported review data. It is not a production BIM renderer, IFC parser, or real AI detection engine.
+
+[![ModelScope Model Review screenshot](https://i.postimg.cc/qvs0CjVk/Slika-zaslona-2026-06-26-u-20-57-07.png)](https://postimg.cc/K18C678V)
+[![ModelScope Drawing Triage screenshot](https://i.postimg.cc/g08d0yF6/Slika-zaslona-2026-06-26-u-14-38-41.png)](https://postimg.cc/TydB7DPR)
+
+_Drawing Triage workspace with a sample 2D floor plan, candidate review markers, and reviewer-controlled AI observation cards._
+
 <br>
 
-**Live demo:** https://modelscope-bim-workspace.vercel.app/ <br><br>
+**Live demo:** https://modelscope-bim-workspace.vercel.app/  
 **Code:** https://github.com/ilukin89/modelscope-bim-workspace
-<br><br>
 
-# ModelScope BIM Workspace
+---
 
-ModelScope is a **viewport-first BIM review prototype** focused on **AI-assisted review workflows** for model and drawing coordination.
+## What is built vs mocked
 
-It explores two connected review modes:
+### Built and working
 
-- **Model Review** — reviewing AI findings in a model-oriented workspace
-- **Drawing Triage** — reviewing AI-generated observations on 2D drawing sheets
+- React / TypeScript frontend prototype
+- viewport-first BIM review workspace UI
+- Model Review workflow
+- Drawing Triage workflow
+- AI finding and candidate review flows
+- candidate-to-issue conversion
+- local issue lifecycle and outcome handling
+- Supabase-backed persistence layer for supported review data
+- project-scoped persisted review state, where implemented
+- persisted review decisions and created issues, where implemented
+- source traceability from issue back to AI finding or drawing candidate
+- viewport / inspector / review panel state synchronization
+- responsive workspace behavior
+- WCAG-oriented accessibility polish pass
+- spec-driven documentation workflow
+
+### Mocked intentionally
+
+- AI scan results
+- BIM model data
+- 2D drawing observations, unless replaced by persisted demo data in the current Supabase flow
+- simulated viewport rendering
+- demo access / portfolio gate behavior
+
+### Not implemented yet
+
+- real IFC upload
+- real BIM parsing
+- real geometry loading
+- real AI inference
+- real production file upload flow
+- full multi-user auth and permissions
+- team collaboration
+- production BIM viewer integration
+- production-grade issue management
+
+These limitations are intentional. ModelScope is designed as a credible product prototype, not as a fake full BIM platform.
 
 ---
 
 ## Current Status
 
-ModelScope is currently a **frontend-only product prototype** built with local state.
+ModelScope is currently a code-first product prototype with a React / TypeScript frontend and a Supabase-backed persistence layer for supported review data.
 
 It demonstrates:
 
 - AI-assisted review workflows
-- human-in-the-loop decision-making
-- issue creation from AI findings/candidates
+- reviewer-controlled decision-making
+- issue creation from AI findings and drawing candidates
 - issue traceability
 - lightweight issue outcome handling
+- persisted review state, where implemented
 - responsive BIM-style workspace UI
 - prototype honesty around mocked capabilities
 
-It does **not** currently include:
-
-- real IFC upload
-- real BIM parsing
-- real geometry loading
-- backend persistence
-- real user accounts or permissions
-- real AI detection
-- team collaboration
-- production-grade issue management
-
-These limitations are intentional. The project is designed as a credible product prototype, not as a fake full BIM platform.
+It does not claim to support real BIM processing, real AI detection, full production collaboration, or production-grade BIM viewer integration.
 
 ---
-
 
 ## Main Workflows
 
@@ -87,6 +116,7 @@ Implemented Model Review behaviors include:
 - `View in model`
 - `View issue details`
 - issue lifecycle and outcome handling
+- persisted review state, where supported by the current Supabase implementation
 
 ---
 
@@ -118,7 +148,6 @@ Implemented Drawing Triage behaviors include:
   - Clearance
   - Annotation
   - Coordination
-
 - candidate selection
 - region/source highlighting
 - convert to issue
@@ -126,107 +155,11 @@ Implemented Drawing Triage behaviors include:
 - follow-up flag
 - compact Created issues sub-view
 - `View on sheet` source traceability
+- persisted review data, where supported by the current Supabase implementation
 
 ---
 
-## UX Flow Map
-
-```mermaid
-flowchart TD
-
-  %% =========================
-  %% MODEL REVIEW
-  %% =========================
-  subgraph MR[Model Review]
-    MR1[Workspace entry<br/>Select project · workspaceMode = model-review]
-    MR2[Navigate model<br/>Floors · layers · explorer · viewport]
-    MR3[Inspect object<br/>Properties · Issues · AI Review · History]
-    MR4[AI scan<br/>scanning → scanned_with_findings]
-    MR5[Findings + markers<br/>AI findings list · viewport markers]
-    MR6[Select finding<br/>confidence · suggestion · source context]
-    MR7[Preview change<br/>visible proposed change in viewport]
-    MR1 --> MR2 --> MR3 --> MR4 --> MR5 --> MR6 --> MR7
-  end
-
-  %% =========================
-  %% DRAWING TRIAGE
-  %% =========================
-  subgraph DT[Drawing Triage]
-    DT1[Entry gate<br/>Mode switch · supported project guard]
-    DT2[Load drawing<br/>Sample drawing or mock file]
-    DT3[Select sheet<br/>Level 01 · Level 02 · Roof]
-    DT4[Run triage<br/>scanning → review]
-    DT5[Candidate queue<br/>Clearance · Annotation · Coordination]
-    DT6[Select candidate<br/>confidence · region · review priority]
-    DT7[Created issues sub-view<br/>Review candidates / Created issues]
-    DT1 --> DT2 --> DT3 --> DT4 --> DT5 --> DT6 --> DT7
-  end
-
-  %% =========================
-  %% USER DECISION 
-  %% =========================
-  GATE[User decision<br/>AI suggests → reviewer decides<br/>No silent promotion]
-
-  MR7 --> GATE
-  DT6 --> GATE
-
-  GATE --> ACT1[Create issue]
-  GATE --> ACT2[Follow-up]
-  GATE --> ACT3[Dismiss]
-
-  %% =========================
-  %% MODEL REVIEW ISSUE FLOW
-  %% =========================
-  subgraph MRO[Model Review issue flow]
-    MRO1[Issue created<br/>Appears in Issues tab]
-    MRO2[Traceability<br/>sourceFindingId preserved]
-    MRO3[Viewport actions<br/>View in model · Hide from model]
-    MRO4[Issue details focus<br/>View issue details]
-    MRO5[Lifecycle<br/>Open → In Review → Resolved]
-    MRO6[Additional outcomes<br/>Blocked · Closed as not actionable]
-    MRO7[Recovery actions<br/>Reopen · Return to review]
-    MRO8[Remove issue<br/>Local tracker cleanup]
-    MRO9[History events<br/>Key actions recorded]
-    MRO1 --> MRO2 --> MRO3 --> MRO4 --> MRO5
-    MRO5 --> MRO6
-    MRO6 --> MRO7
-    MRO7 --> MRO8
-    MRO8 --> MRO9
-  end
-
-  ACT1 --> MRO1
-
-  %% =========================
-  %% DRAWING TRIAGE ISSUE FLOW
-  %% =========================
-  subgraph DTO[Drawing Triage issue flow]
-    DTO1[Issue created<br/>Appears in Created issues sub-view]
-    DTO2[Source traceability<br/>Candidate remains linked]
-    DTO3[View on sheet<br/>Returns to source region]
-    DTO4[Follow-up flag<br/>Lightweight review marker]
-    DTO5[Local created issue tracker<br/>Compact cards]
-    DTO1 --> DTO2 --> DTO3 --> DTO4 --> DTO5
-  end
-
-  ACT1 --> DTO1
-  ACT2 --> DTO4
-  ACT3 --> DTO5
-
-  %% =========================
-  %% ARCHITECTURE / PRODUCT CONSTRAINTS
-  %% =========================
-  subgraph ENG[Architecture / Product constraints]
-    ENG1[ReviewIssue ≠ ModelReviewIssue<br/>Explicit promotion required]
-    ENG2[State scoped per project<br/>Record<ProjectId, ProjectAiReviewState>]
-    ENG3[Drawing Triage session persistence<br/>sessionStorage]
-    ENG4[Viewport consequence principle<br/>User actions should produce visible feedback]
-    ENG5[Prototype honesty<br/>No fake real BIM / IFC claims]
-  end
-```
-
----
-
-## user-in-the-Loop Review
+## AI Proposes, Reviewer Decides
 
 ModelScope separates AI output from confirmed issues.
 
@@ -242,14 +175,14 @@ They may include:
 - suggested action
 - review priority
 
-### User decision
+### Reviewer decision
 
 Only the reviewer can decide whether an AI output becomes an issue.
 
 The reviewer can:
 
 - create an issue
-- dismiss the finding/candidate
+- dismiss the finding or candidate
 - mark it for follow-up
 - preview the proposed change before acting
 
@@ -304,7 +237,7 @@ The flow is intentionally lighter than Model Review issue management.
 
 ```txt
 AI candidate
-→ user review
+→ reviewer decision
 → convert to issue / dismiss / follow-up
 → Created issues sub-view
 → View on sheet
@@ -340,11 +273,17 @@ ModelScope is not trying to recreate Jira, Revizto, or a full coordination platf
 
 The goal is to demonstrate a believable review workflow with the right level of complexity.
 
+### 6. Persistence follows the workflow
+
+Persistence is added where the review workflow needs it: project-scoped state, review decisions, created issues, and traceability.
+
+The backend should support the review model instead of turning the prototype into a premature enterprise system.
+
 ---
 
 ## Architecture Notes
 
-ModelScope uses frontend architecture boundaries to keep the prototype maintainable.
+ModelScope uses frontend and backend architecture boundaries to keep the prototype maintainable.
 
 ### Viewer boundary
 
@@ -392,11 +331,126 @@ This allows project-specific review work to remain isolated instead of collapsin
 
 ---
 
-### Drawing Triage session persistence
+### Supabase persistence boundary
 
-Drawing Triage uses session persistence to preserve review progress during a browser session.
+ModelScope uses Supabase-backed persistence for supported review data.
 
-This makes the prototype feel more credible without introducing backend complexity too early.
+The persistence layer is intended to support:
+
+- project-scoped review state
+- saved review decisions
+- created issues
+- issue lifecycle state
+- source traceability from confirmed issue back to AI finding or drawing candidate
+
+The backend boundary is deliberately narrower than a full BIM platform. It supports the portfolio prototype's review workflows without claiming production-grade BIM processing, real AI inference, or enterprise collaboration.
+
+---
+
+### Drawing Triage session and persistence boundary
+
+Drawing Triage started with session persistence to preserve review progress during a browser session.
+
+The current direction is to move supported review data into the Supabase-backed persistence layer while keeping AI observations, drawing content, and BIM processing clearly marked as mocked unless implemented.
+
+This makes the prototype feel credible without pretending that real drawing analysis or production upload processing already exists.
+
+---
+
+## UX Flow Map
+
+```mermaid
+flowchart TD
+
+  %% =========================
+  %% MODEL REVIEW
+  %% =========================
+  subgraph MR[Model Review]
+    MR1[Workspace entry<br/>Select project · workspaceMode = model-review]
+    MR2[Navigate model<br/>Floors · layers · explorer · viewport]
+    MR3[Inspect object<br/>Properties · Issues · AI Review · History]
+    MR4[AI scan<br/>scanning → scanned_with_findings]
+    MR5[Findings + markers<br/>AI findings list · viewport markers]
+    MR6[Select finding<br/>confidence · suggestion · source context]
+    MR7[Preview change<br/>visible proposed change in viewport]
+    MR1 --> MR2 --> MR3 --> MR4 --> MR5 --> MR6 --> MR7
+  end
+
+  %% =========================
+  %% DRAWING TRIAGE
+  %% =========================
+  subgraph DT[Drawing Triage]
+    DT1[Entry gate<br/>Mode switch · supported project guard]
+    DT2[Load drawing<br/>Sample drawing or mock file]
+    DT3[Select sheet<br/>Level 01 · Level 02 · Roof]
+    DT4[Run triage<br/>scanning → review]
+    DT5[Candidate queue<br/>Clearance · Annotation · Coordination]
+    DT6[Select candidate<br/>confidence · region · review priority]
+    DT7[Created issues sub-view<br/>Review candidates / Created issues]
+    DT1 --> DT2 --> DT3 --> DT4 --> DT5 --> DT6 --> DT7
+  end
+
+  %% =========================
+  %% REVIEWER DECISION
+  %% =========================
+  GATE[Reviewer decision<br/>AI suggests → reviewer decides<br/>No silent promotion]
+
+  MR7 --> GATE
+  DT6 --> GATE
+
+  GATE --> ACT1[Create issue]
+  GATE --> ACT2[Follow-up]
+  GATE --> ACT3[Dismiss]
+
+  %% =========================
+  %% MODEL REVIEW ISSUE FLOW
+  %% =========================
+  subgraph MRO[Model Review issue flow]
+    MRO1[Issue created<br/>Appears in Issues tab]
+    MRO2[Traceability<br/>sourceFindingId preserved]
+    MRO3[Viewport actions<br/>View in model · Hide from model]
+    MRO4[Issue details focus<br/>View issue details]
+    MRO5[Lifecycle<br/>Open → In Review → Resolved]
+    MRO6[Additional outcomes<br/>Blocked · Closed as not actionable]
+    MRO7[Recovery actions<br/>Reopen · Return to review]
+    MRO8[Remove issue<br/>Local tracker cleanup]
+    MRO9[History events<br/>Key actions recorded]
+    MRO1 --> MRO2 --> MRO3 --> MRO4 --> MRO5
+    MRO5 --> MRO6
+    MRO6 --> MRO7
+    MRO7 --> MRO8
+    MRO8 --> MRO9
+  end
+
+  ACT1 --> MRO1
+
+  %% =========================
+  %% DRAWING TRIAGE ISSUE FLOW
+  %% =========================
+  subgraph DTO[Drawing Triage issue flow]
+    DTO1[Issue created<br/>Appears in Created issues sub-view]
+    DTO2[Source traceability<br/>Candidate remains linked]
+    DTO3[View on sheet<br/>Returns to source region]
+    DTO4[Follow-up flag<br/>Lightweight review marker]
+    DTO5[Local created issue tracker<br/>Compact cards]
+    DTO1 --> DTO2 --> DTO3 --> DTO4 --> DTO5
+  end
+
+  ACT1 --> DTO1
+  ACT2 --> DTO4
+  ACT3 --> DTO5
+
+  %% =========================
+  %% ARCHITECTURE / PRODUCT CONSTRAINTS
+  %% =========================
+  subgraph ENG[Architecture / Product constraints]
+    ENG1[ReviewIssue ≠ ModelReviewIssue<br/>Explicit promotion required]
+    ENG2[State scoped per project<br/>Record<ProjectId, ProjectAiReviewState>]
+    ENG3[Supabase-backed persistence<br/>Supported review data]
+    ENG4[Viewport consequence principle<br/>User actions should produce visible feedback]
+    ENG5[Prototype honesty<br/>No fake real BIM / IFC / AI claims]
+  end
+```
 
 ---
 
@@ -409,6 +463,7 @@ This makes the prototype feel more credible without introducing backend complexi
 - shadcn/ui
 - Radix UI
 - Lucide icons
+- Supabase
 
 ---
 
@@ -453,15 +508,17 @@ The project is organized by product feature area instead of treating the app as 
 
 ---
 
-## Next Likely Directions
+## Next Milestone
 
-Possible next steps:
+The next milestone is to extend the implemented Supabase foundation toward the next real product boundary:
 
-- improve viewport visual fidelity
-- add a controlled Three.js mock viewer behind a renderer mode flag
-- preserve the SVG renderer as fallback
-- document Three.js renderer boundaries before adding dependencies
-- add lightweight backend persistence later
-- keep issue management focused and avoid unnecessary enterprise bloat
+- real drawing upload flow
+- stronger project/document persistence
+- persisted drawing review sessions, where not yet covered
+- clearer demo user / auth boundary
+- source traceability from confirmed issue back to finding or candidate
+- real AI integration only after the review workflow and persistence model stay stable
+
+Real AI integration should come after the review workflow, storage boundary, and review decision model are validated.
 
 ---

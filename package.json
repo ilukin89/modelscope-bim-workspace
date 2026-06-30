@@ -9,7 +9,8 @@
     "format": "prettier \"src/**/*.{ts,tsx,css}\" --write",
     "format:check": "prettier \"src/**/*.{ts,tsx,css}\" --check",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.17",
@@ -47,6 +48,7 @@
     "tailwindcss": "^4.1.0",
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.18.2",
-    "vite": "^6.0.5"
+    "vite": "^6.0.5",
+    "vitest": "^4.1.9"
   }
 }

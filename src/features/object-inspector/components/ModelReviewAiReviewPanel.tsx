@@ -15,6 +15,7 @@ import {
   TriangleAlert,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import type { BadgeProps } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
@@ -132,6 +133,20 @@ const statusLabel: Record<AiFindingWorkflowStatus, string> = {
   "issue-created": "Issue created",
   dismissed: "Dismissed",
   "follow-up": "Follow-up",
+}
+
+const AI_FINDING_BADGE_VARIANT_BY_STATUS: Partial<
+  Record<AiFindingWorkflowStatus, BadgeProps["variant"]>
+> = {
+  dismissed: "outline",
+  "issue-created": "success",
+  "follow-up": "warning",
+}
+
+function getAiFindingBadgeVariant(
+  aiFindingStatus: AiFindingWorkflowStatus,
+): BadgeProps["variant"] {
+  return AI_FINDING_BADGE_VARIANT_BY_STATUS[aiFindingStatus] ?? "ai"
 }
 
 function getConfidenceMeta(confidence: number) {
@@ -522,15 +537,7 @@ export function ModelReviewAiReviewPanel({
                             </p>
                           </div>
                           <Badge
-                            variant={
-                              findingDismissed
-                                ? "outline"
-                                : issueCreated
-                                  ? "success"
-                                  : aiFindingStatus === "follow-up"
-                                    ? "warning"
-                                    : "ai"
-                            }
+                            variant={getAiFindingBadgeVariant(aiFindingStatus)}
                             className={cn(
                               "shrink-0 px-1.5 py-0 text-[8px] uppercase",
                               !findingDismissed &&

@@ -11,6 +11,7 @@ import { StatusBar } from "@/features/workspace/StatusBar"
 import { Viewport } from "@/features/viewport/Viewport"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
+import { fetchDemoUserProfile } from "@/data/modelReviewPersistence"
 import {
   Sheet,
   SheetClose,
@@ -116,6 +117,9 @@ function WorkspaceApp() {
   const [workspaceMode, setWorkspaceMode] =
     useState<WorkspaceMode>("model-review")
   const [darkMode, setDarkMode] = useState(true)
+  const [demoUserDisplayName, setDemoUserDisplayName] = useState<string | null>(
+    null,
+  )
   const [selectedProjectId, setSelectedProjectId] = useState<ProjectId>(
     initialProject.id,
   )
@@ -139,6 +143,26 @@ function WorkspaceApp() {
   )
 
   const selectedProject = getProject(selectedProjectId)
+
+  useEffect(() => {
+    let active = true
+
+    fetchDemoUserProfile()
+      .then((profile) => {
+        if (active) {
+          setDemoUserDisplayName(profile?.displayName ?? null)
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setDemoUserDisplayName(null)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
 
   const selectIssue = (issue: ReviewIssue) => {
     setSelectedIssue(issue)
@@ -282,6 +306,7 @@ function WorkspaceApp() {
         <Sheet open={explorerOpen} onOpenChange={setExplorerOpen}>
           <TopBar
             darkMode={darkMode}
+            demoUserDisplayName={demoUserDisplayName}
             onDarkModeChange={setDarkMode}
             onProjectChange={selectProject}
             onViewChange={setView}

@@ -108,3 +108,25 @@ export const getNextIssueSequenceFromIssues = (issues: ModelReviewIssue[]) =>
       ? Math.max(nextSequence, issueNumber + 1)
       : nextSequence
   }, 1)
+
+export const hasPersistedModelReviewActivity = (
+  persistedState: {
+    findingStatuses: Partial<Record<ReviewIssue["id"], AiFindingWorkflowStatus>>
+    modelReviewIssues: ModelReviewIssue[]
+    reviewHistory: ModelReviewHistoryEvent[]
+  },
+  project: ProjectData,
+) => {
+  if (
+    persistedState.modelReviewIssues.length > 0 ||
+    persistedState.reviewHistory.length > 0
+  ) {
+    return true
+  }
+
+  const initialStatuses = getInitialFindingStatuses(project)
+
+  return Object.entries(persistedState.findingStatuses).some(
+    ([findingId, status]) => status !== initialStatuses[findingId],
+  )
+}

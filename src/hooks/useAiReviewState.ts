@@ -9,6 +9,7 @@ import {
   getInitialProjectAiReviewState,
   getInitialProjectAiReviewStates,
   getNextIssueSequenceFromIssues,
+  hasPersistedModelReviewActivity,
   mergeModelReviewIssues,
   mergeReviewHistory,
   modelReviewIssueStatusTransitionLabels,
@@ -128,6 +129,11 @@ export function useAiReviewState({
           return
         }
 
+        const persistedModelReviewActivity = hasPersistedModelReviewActivity(
+          persistedState,
+          selectedProject,
+        )
+
         setProjectAiReviewStates((current) => {
           const previous =
             current[selectedProjectId] ??
@@ -154,6 +160,11 @@ export function useAiReviewState({
                 previous.reviewHistory,
                 persistedState.reviewHistory,
               ),
+              scanStatus:
+                persistedModelReviewActivity &&
+                previous.scanStatus === "not_scanned"
+                  ? "scanned_with_findings"
+                  : previous.scanStatus,
             },
           }
         })

@@ -2,14 +2,20 @@ import { describe, expect, it } from "vitest"
 import type {
   ModelReviewHistoryEvent,
   ModelReviewIssue,
+  ProjectData,
   ReviewIssue,
 } from "@/types"
 import {
   getNextIssueSequenceFromIssues,
+  hasPersistedModelReviewActivity,
   mergeModelReviewIssues,
   mergeReviewHistory,
   modelReviewIssueStatusTransitionLabels,
 } from "./useAiReviewStateUtils"
+
+type PersistedReviewState = Parameters<
+  typeof hasPersistedModelReviewActivity
+>[0]
 
 const createReviewIssue = (
   id: string,
@@ -79,6 +85,27 @@ const createHistoryEvent = (
   label,
   detail: `${label} detail`,
   time: "09:30",
+})
+
+const createProject = (issues: ReviewIssue[]): ProjectData => ({
+  id: "residential-tower-a",
+  name: "Test project",
+  modelLabel: "Test model",
+  floors: [],
+  layers: [],
+  savedViews: [],
+  issues,
+  defaultFloor: "Level 02",
+  defaultIssueId: issues[0]?.id ?? "",
+})
+
+const createPersistedReviewState = (
+  overrides: Partial<PersistedReviewState> = {},
+): PersistedReviewState => ({
+  findingStatuses: {},
+  modelReviewIssues: [],
+  reviewHistory: [],
+  ...overrides,
 })
 
 describe("mergeModelReviewIssues", () => {
@@ -246,6 +273,121 @@ describe("getNextIssueSequenceFromIssues", () => {
     ]
 
     expect(getNextIssueSequenceFromIssues(issues)).toBe(11)
+  })
+})
+
+describe("hasPersistedModelReviewActivity", () => {
+  it("returns false when the raw persisted state has no activity", () => {
+    const project = createProject([
+      createReviewIssue("finding-1", "FND-001", "Finding 1"),
+    ])
+
+    expect(
+      hasPersistedModelReviewActivity(createPersistedReviewState(), project),
+    ).toBe(false)
+  })
+
+  it("does not treat persisted statuses matching fixture defaults as activity", () => {
+    const activeIssue = createReviewIssue(
+      "finding-active",
+      "FND-001",
+      "Active finding",
+    )
+    const dismissedIssue = {
+      ...createReviewIssue(
+        "finding-dismissed",
+        "FND-002",
+        "Dismissed fixture finding",
+      ),
+      initialAiStatus: "dismissed",
+    } satisfies ReviewIssue
+    const project = createProject([activeIssue, dismissedIssue])
+
+    expect(
+      hasPersistedModelReviewActivity(
+        createPersistedReviewState({
+          findingStatuses: {
+            [activeIssue.id]: "active",
+            [dismissedIssue.id]: "dismissed",
+          },
+        }),
+        project,
+      ),
+    ).toBe(false)
+  })
+
+  it("treats persisted issues as activity", () => {
+    const sourceIssue = createReviewIssue("finding-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+
+    expect(
+      hasPersistedModelReviewActivity(
+        createPersistedReviewState({
+          modelReviewIssues: [
+            createModelReviewIssue(
+              "MR-001",
+              sourceIssue.id,
+              sourceIssue.code,
+              "Persisted issue",
+            ),
+          ],
+        }),
+        project,
+      ),
+    ).toBe(true)
+  })
+
+  it("treats persisted review history as activity", () => {
+    const project = createProject([
+      createReviewIssue("finding-1", "FND-001", "Finding 1"),
+    ])
+
+    expect(
+      hasPersistedModelReviewActivity(
+        createPersistedReviewState({
+          reviewHistory: [createHistoryEvent("event-1", "Issue created")],
+        }),
+        project,
+      ),
+    ).toBe(true)
+  })
+
+  it("treats persisted finding statuses that differ from defaults as activity", () => {
+    const activeIssue = createReviewIssue(
+      "finding-active",
+      "FND-001",
+      "Active finding",
+    )
+    const followUpIssue = {
+      ...createReviewIssue(
+        "finding-follow-up",
+        "FND-002",
+        "Follow-up fixture finding",
+      ),
+      initialAiStatus: "follow-up",
+    } satisfies ReviewIssue
+    const project = createProject([activeIssue, followUpIssue])
+
+    expect(
+      hasPersistedModelReviewActivity(
+        createPersistedReviewState({
+          findingStatuses: {
+            [activeIssue.id]: "issue-created",
+          },
+        }),
+        project,
+      ),
+    ).toBe(true)
+    expect(
+      hasPersistedModelReviewActivity(
+        createPersistedReviewState({
+          findingStatuses: {
+            [followUpIssue.id]: "active",
+          },
+        }),
+        project,
+      ),
+    ).toBe(true)
   })
 })
 

@@ -120,6 +120,54 @@ export const getNextIssueSequenceFromIssues = (issues: ModelReviewIssue[]) =>
       : nextSequence
   }, 1)
 
+export interface ModelReviewIssueRemovalResult {
+  findingStatus: AiFindingWorkflowStatus
+  issueId: ModelReviewIssue["id"]
+  reviewHistoryEvent?: ModelReviewHistoryEvent | null
+  sourceFindingId: ReviewIssue["id"]
+}
+
+export interface ModelFocusRequestState {
+  issueId: ReviewIssue["id"]
+  label: string
+  modelReviewIssueId?: ModelReviewIssue["id"]
+  nonce: number
+}
+
+export const applyModelReviewIssueRemoval = (
+  state: ProjectAiReviewState,
+  removal: ModelReviewIssueRemovalResult,
+): ProjectAiReviewState => ({
+  ...state,
+  findingStatuses: {
+    ...state.findingStatuses,
+    [removal.sourceFindingId]: removal.findingStatus,
+  },
+  modelReviewIssues: state.modelReviewIssues.filter(
+    (issue) => issue.id !== removal.issueId,
+  ),
+  reviewHistory: removal.reviewHistoryEvent
+    ? mergeReviewHistory(state.reviewHistory, [removal.reviewHistoryEvent])
+    : state.reviewHistory,
+})
+
+export const getModelReviewIssueFocusAfterRemoval = ({
+  focusedIssueCardId,
+  modelFocusRequest,
+  removedIssueId,
+}: {
+  focusedIssueCardId: ModelReviewIssue["id"] | null
+  modelFocusRequest: ModelFocusRequestState | null
+  removedIssueId: ModelReviewIssue["id"]
+}) => ({
+  focusedIssueCardId:
+    focusedIssueCardId === removedIssueId ? null : focusedIssueCardId,
+  modelFocusRequest:
+    modelFocusRequest?.modelReviewIssueId === removedIssueId
+      ? null
+      : modelFocusRequest,
+})
+
 export const hasRestorableAiCandidateActivity = (
   persistedState: {
     findingStatuses: Partial<Record<ReviewIssue["id"], AiFindingWorkflowStatus>>

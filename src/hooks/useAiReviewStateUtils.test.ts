@@ -2,13 +2,16 @@ import { describe, expect, it } from "vitest"
 import type {
   ModelReviewHistoryEvent,
   ModelReviewIssue,
+  AiFindingWorkflowStatus,
   ProjectAiReviewState,
   ProjectData,
   ReviewIssue,
 } from "@/types"
 import {
+  applyModelReviewIssueRemoval,
   getInitialProjectAiReviewState,
   getNextIssueSequenceFromIssues,
+  getModelReviewIssueFocusAfterRemoval,
   hasRestorableAiCandidateActivity,
   mergeModelReviewIssues,
   mergeReviewHistory,
@@ -339,6 +342,139 @@ describe("resetAiCandidateState", () => {
   })
 })
 
+describe("applyModelReviewIssueRemoval", () => {
+  it("removes only the selected issue, restores only its source finding, and merges persisted history", () => {
+    const removedSourceIssue = createReviewIssue(
+      "finding-removed",
+      "FND-001",
+      "Removed finding",
+    )
+    const retainedSourceIssue = createReviewIssue(
+      "finding-retained",
+      "FND-002",
+      "Retained finding",
+    )
+    const dismissedSourceIssue = createReviewIssue(
+      "finding-dismissed",
+      "FND-003",
+      "Dismissed finding",
+    )
+    const project = createProject([
+      removedSourceIssue,
+      retainedSourceIssue,
+      dismissedSourceIssue,
+    ])
+    const removedIssue = createModelReviewIssue(
+      "MR-001",
+      removedSourceIssue.id,
+      removedSourceIssue.code,
+      removedSourceIssue.title,
+    )
+    const retainedIssue = createModelReviewIssue(
+      "MR-002",
+      retainedSourceIssue.id,
+      retainedSourceIssue.code,
+      retainedSourceIssue.title,
+    )
+    const existingHistoryEvent = createHistoryEvent(
+      "history-1",
+      "Issue created",
+    )
+    const removalHistoryEvent = createHistoryEvent("history-2", "Issue removed")
+    const state = createProjectAiReviewState(project, {
+      findingStatuses: {
+        [removedSourceIssue.id]: "issue-created",
+        [retainedSourceIssue.id]: "issue-created",
+        [dismissedSourceIssue.id]: "dismissed",
+      },
+      modelReviewIssues: [removedIssue, retainedIssue],
+      reviewHistory: [existingHistoryEvent],
+    })
+
+    const nextState = applyModelReviewIssueRemoval(state, {
+      findingStatus: "active",
+      issueId: removedIssue.id,
+      reviewHistoryEvent: removalHistoryEvent,
+      sourceFindingId: removedSourceIssue.id,
+    })
+
+    expect(nextState.modelReviewIssues).toEqual([retainedIssue])
+    expect(nextState.findingStatuses).toEqual({
+      [removedSourceIssue.id]: "active",
+      [retainedSourceIssue.id]: "issue-created",
+      [dismissedSourceIssue.id]: "dismissed",
+    } satisfies Record<ReviewIssue["id"], AiFindingWorkflowStatus>)
+    expect(nextState.reviewHistory).toEqual([
+      removalHistoryEvent,
+      existingHistoryEvent,
+    ])
+  })
+
+  it("does not duplicate a persisted removal history event", () => {
+    const sourceIssue = createReviewIssue("finding-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+    const issue = createModelReviewIssue(
+      "MR-001",
+      sourceIssue.id,
+      sourceIssue.code,
+      sourceIssue.title,
+    )
+    const removalHistoryEvent = createHistoryEvent("history-1", "Issue removed")
+    const state = createProjectAiReviewState(project, {
+      modelReviewIssues: [issue],
+      reviewHistory: [removalHistoryEvent],
+    })
+
+    const nextState = applyModelReviewIssueRemoval(state, {
+      findingStatus: "active",
+      issueId: issue.id,
+      reviewHistoryEvent: removalHistoryEvent,
+      sourceFindingId: sourceIssue.id,
+    })
+
+    expect(nextState.reviewHistory).toEqual([removalHistoryEvent])
+  })
+})
+
+describe("getModelReviewIssueFocusAfterRemoval", () => {
+  it("clears focus state that references the removed issue", () => {
+    const focusState = getModelReviewIssueFocusAfterRemoval({
+      focusedIssueCardId: "MR-001",
+      modelFocusRequest: {
+        issueId: "finding-1",
+        label: "MR-001",
+        modelReviewIssueId: "MR-001",
+        nonce: 1,
+      },
+      removedIssueId: "MR-001",
+    })
+
+    expect(focusState).toEqual({
+      focusedIssueCardId: null,
+      modelFocusRequest: null,
+    })
+  })
+
+  it("preserves unrelated focus state", () => {
+    const modelFocusRequest = {
+      issueId: "finding-2",
+      label: "MR-002",
+      modelReviewIssueId: "MR-002",
+      nonce: 1,
+    }
+    const focusState = getModelReviewIssueFocusAfterRemoval({
+      focusedIssueCardId: "MR-002",
+      modelFocusRequest,
+      removedIssueId: "MR-001",
+    })
+
+    expect(focusState).toEqual({
+      focusedIssueCardId: "MR-002",
+      modelFocusRequest,
+    })
+  })
+})
+
 describe("hasRestorableAiCandidateActivity", () => {
   it("returns false when the raw persisted state has no activity", () => {
     const project = createProject([
@@ -539,6 +675,34 @@ describe("restorePersistedModelReviewState", () => {
     expect(restoredState.findingStatuses[sourceIssue.id]).toBe("active")
     expect(restoredState.modelReviewIssues).toEqual([modelReviewIssue])
     expect(restoredState.reviewHistory).toEqual([historyEvent])
+  })
+
+  it("keeps removed issues excluded after a cleared candidate restore", () => {
+    const sourceIssue = createReviewIssue("finding-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+    const previous = resetAiCandidateState(
+      createProjectAiReviewState(project, {
+        modelReviewIssues: [],
+        scanStatus: "scanned_with_findings",
+      }),
+      project,
+    )
+
+    const restoredState = restorePersistedModelReviewState(
+      previous,
+      {
+        findingStatuses: {
+          [sourceIssue.id]: "active",
+        },
+        modelReviewIssues: [],
+        reviewHistory: [createHistoryEvent("event-1", "Issue removed")],
+      },
+      project,
+    )
+
+    expect(restoredState.scanStatus).toBe("not_scanned")
+    expect(restoredState.findingStatuses[sourceIssue.id]).toBe("active")
+    expect(restoredState.modelReviewIssues).toEqual([])
   })
 
   it("does not restore an in-progress scan across sessions", () => {

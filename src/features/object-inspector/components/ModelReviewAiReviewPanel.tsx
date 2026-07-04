@@ -34,6 +34,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { Progress } from "@/components/ui/progress"
+import { ModelReviewIssueRemovalDialog } from "@/features/object-inspector/components/ModelReviewIssueRemovalDialog"
 import { getAiReviewContent } from "@/features/object-inspector/data/aiReviewContent"
 import { getFindingGroupKey } from "@/lib/findingUtils"
 import { cn } from "@/lib/utils"
@@ -783,29 +784,11 @@ export function ModelReviewAiReviewPanel({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <AlertDialog
+      <ModelReviewIssueRemovalDialog
         open={removeIssueDialogOpen}
         onOpenChange={setRemoveIssueDialogOpen}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove issue?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will remove the created issue from the Model Review issue
-              list. The original AI finding will remain available in AI Review.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-[var(--destructive-action)] text-[var(--destructive-action-foreground)] hover:bg-[var(--destructive-action-hover)]"
-              onClick={onDropIssue}
-            >
-              Remove issue
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onConfirm={onDropIssue}
+      />
     </div>
   )
 }

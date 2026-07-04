@@ -127,6 +127,12 @@ export interface ModelReviewIssueRemovalResult {
   sourceFindingId: ReviewIssue["id"]
 }
 
+export interface ModelReviewIssueStatusUpdateResult {
+  issue: ModelReviewIssue
+  issueId: ModelReviewIssue["id"]
+  reviewHistoryEvent?: ModelReviewHistoryEvent | null
+}
+
 export interface ModelFocusRequestState {
   issueId: ReviewIssue["id"]
   label: string
@@ -148,6 +154,19 @@ export const applyModelReviewIssueRemoval = (
   ),
   reviewHistory: removal.reviewHistoryEvent
     ? mergeReviewHistory(state.reviewHistory, [removal.reviewHistoryEvent])
+    : state.reviewHistory,
+})
+
+export const applyModelReviewIssueStatusUpdate = (
+  state: ProjectAiReviewState,
+  statusUpdate: ModelReviewIssueStatusUpdateResult,
+): ProjectAiReviewState => ({
+  ...state,
+  modelReviewIssues: state.modelReviewIssues.map((issue) =>
+    issue.id === statusUpdate.issueId ? statusUpdate.issue : issue,
+  ),
+  reviewHistory: statusUpdate.reviewHistoryEvent
+    ? mergeReviewHistory(state.reviewHistory, [statusUpdate.reviewHistoryEvent])
     : state.reviewHistory,
 })
 

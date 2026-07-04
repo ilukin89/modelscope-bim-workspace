@@ -1,7 +1,12 @@
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import type { ModelReviewIssue, ProjectData, ReviewIssue } from "@/types"
+import type {
+  ModelReviewIssue,
+  ModelReviewIssueStatus,
+  ProjectData,
+  ReviewIssue,
+} from "@/types"
 
 const supabaseMock = vi.hoisted(() => ({
   from: vi.fn(),
@@ -15,6 +20,7 @@ vi.mock("@/lib/supabase", () => ({
 import {
   fetchPersistedModelReviewState,
   removePersistedModelReviewIssue,
+  updatePersistedModelReviewIssueStatus,
 } from "./modelReviewPersistence"
 
 const createReviewIssue = (
@@ -79,6 +85,23 @@ const createModelReviewIssue = (
   sourceFindingCode: issue.code,
   sourceIssue: issue,
   ...overrides,
+})
+
+const createBackendIssueRow = (
+  issue: ModelReviewIssue,
+  status: ModelReviewIssueStatus,
+) => ({
+  id: issue.backendIssueId,
+  issue_code: issue.id,
+  source_finding_id: "backend-finding-1",
+  source_finding_code: issue.sourceFindingCode,
+  title: issue.title,
+  related_object: issue.relatedObject,
+  related_level: issue.relatedLevel,
+  priority: issue.priority,
+  status,
+  removed_from_tracker_at: null,
+  removed_from_tracker_by_user_id: null,
 })
 
 function createTableBuilder(rows: Array<Record<string, unknown>>) {
@@ -193,6 +216,185 @@ describe("fetchPersistedModelReviewState", () => {
       id: "MRI-RES-0001",
       sourceFindingId: sourceIssue.id,
     })
+  })
+
+  it("hydrates issues with the persisted backend status", async () => {
+    const sourceIssue = createReviewIssue("fixture-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+
+    supabaseMock.from.mockImplementation((table: string) =>
+      createTableBuilder(
+        table === "ai_findings"
+          ? [
+              {
+                id: "backend-finding-1",
+                project_id: project.id,
+                fixture_finding_id: sourceIssue.id,
+                current_status: "issue-created",
+              },
+            ]
+          : table === "model_review_issues"
+            ? [
+                {
+                  id: "backend-issue-1",
+                  issue_code: "MRI-RES-0001",
+                  project_id: project.id,
+                  source_finding_id: "backend-finding-1",
+                  source_finding_code: sourceIssue.code,
+                  title: sourceIssue.title,
+                  related_object: sourceIssue.object,
+                  related_level: sourceIssue.details.level,
+                  priority: sourceIssue.severity,
+                  status: "Blocked",
+                  created_at: "2026-07-04T10:00:00.000Z",
+                  removed_from_tracker_at: null,
+                  removed_from_tracker_by_user_id: null,
+                },
+              ]
+            : [],
+      ),
+    )
+
+    const persistedState = await fetchPersistedModelReviewState(
+      project.id,
+      project.issues,
+    )
+
+    expect(persistedState.modelReviewIssues[0]).toMatchObject({
+      backendIssueId: "backend-issue-1",
+      id: "MRI-RES-0001",
+      status: "Blocked",
+    })
+  })
+})
+
+describe("updatePersistedModelReviewIssueStatus", () => {
+  beforeEach(() => {
+    supabaseMock.from.mockReset()
+    supabaseMock.rpc.mockReset()
+    vi.stubGlobal("crypto", {
+      randomUUID: () => "00000000-0000-4000-8000-000000000009",
+    })
+  })
+
+  it.each([
+    ["Open", "In Review"],
+    ["In Review", "Blocked"],
+    ["Blocked", "Resolved"],
+    ["Open", "Closed as not actionable"],
+  ] satisfies Array<[ModelReviewIssueStatus, ModelReviewIssueStatus]>)(
+    "persists %s to %s through the status RPC",
+    async (fromStatus, toStatus) => {
+      const sourceIssue = createReviewIssue("fixture-1", "FND-001", "Finding 1")
+      const issue = createModelReviewIssue(sourceIssue, {
+        status: fromStatus,
+      })
+
+      supabaseMock.rpc.mockResolvedValue({
+        data: {
+          issue: createBackendIssueRow(issue, toStatus),
+          review_history_event: {
+            id: "history-1",
+            label: "Issue status changed",
+            detail: `${issue.id} moved from ${fromStatus} to ${toStatus}`,
+            created_at: "2026-07-04T10:10:00.000Z",
+          },
+          status_history: {
+            id: "status-history-1",
+            issue_id: issue.backendIssueId,
+            from_status: fromStatus,
+            to_status: toStatus,
+          },
+        },
+        error: null,
+      })
+
+      const result = await updatePersistedModelReviewIssueStatus(
+        issue,
+        toStatus,
+        "Issue status changed",
+      )
+
+      expect(supabaseMock.rpc).toHaveBeenCalledWith("update_issue_status", {
+        idempotency_key: "00000000-0000-4000-8000-000000000009",
+        issue_id: issue.backendIssueId,
+        reason: "Issue status changed",
+        to_status: toStatus,
+      })
+      expect(result.statusChanged).toBe(true)
+      expect(result.issue).toMatchObject({
+        backendIssueId: issue.backendIssueId,
+        id: issue.id,
+        sourceFindingId: sourceIssue.id,
+        status: toStatus,
+      })
+      expect(result.statusHistory).toMatchObject({
+        fromStatus,
+        issueId: issue.backendIssueId,
+        toStatus,
+      })
+      expect(result.reviewHistoryEvent).toMatchObject({
+        id: "history-1",
+        label: "Issue status changed",
+      })
+    },
+  )
+
+  it("does not call the RPC or append history when selecting the current status", async () => {
+    const sourceIssue = createReviewIssue("fixture-1", "FND-001", "Finding 1")
+    const issue = createModelReviewIssue(sourceIssue, {
+      status: "Blocked",
+    })
+
+    const result = await updatePersistedModelReviewIssueStatus(issue, "Blocked")
+
+    expect(supabaseMock.rpc).not.toHaveBeenCalled()
+    expect(result).toEqual({
+      issue,
+      reviewHistoryEvent: null,
+      statusChanged: false,
+      statusHistory: null,
+    })
+  })
+
+  it("propagates RPC errors without returning a local status update", async () => {
+    const sourceIssue = createReviewIssue("fixture-1", "FND-001", "Finding 1")
+    const issue = createModelReviewIssue(sourceIssue, {
+      status: "In Review",
+    })
+
+    supabaseMock.rpc.mockResolvedValue({
+      data: null,
+      error: { message: "Project membership required" },
+    })
+
+    await expect(
+      updatePersistedModelReviewIssueStatus(issue, "Blocked"),
+    ).rejects.toThrow("Project membership required")
+    expect(issue.status).toBe("In Review")
+  })
+
+  it("rejects a response without status history", async () => {
+    const sourceIssue = createReviewIssue("fixture-1", "FND-001", "Finding 1")
+    const issue = createModelReviewIssue(sourceIssue)
+
+    supabaseMock.rpc.mockResolvedValue({
+      data: {
+        issue: createBackendIssueRow(issue, "In Review"),
+        review_history_event: {
+          id: "history-1",
+          label: "Issue status changed",
+          detail: "MRI-RES-0001 moved from Open to In Review",
+          created_at: "2026-07-04T10:10:00.000Z",
+        },
+        status_history: null,
+      },
+      error: null,
+    })
+
+    await expect(
+      updatePersistedModelReviewIssueStatus(issue, "In Review"),
+    ).rejects.toThrow("update_issue_status did not return status history.")
   })
 })
 
@@ -472,6 +674,44 @@ describe("remove_issue_from_tracker migration", () => {
     )
     expect(removeIssueMigration).toContain(
       "raise exception 'Removed issue is missing its removal history event",
+    )
+  })
+})
+
+describe("update_issue_status migration", () => {
+  const rlsPoliciesMigration = readFileSync(
+    resolve("supabase/migrations/20260629000003_rls_policies.sql"),
+    "utf8",
+  )
+  const rpcFunctionsMigration = readFileSync(
+    resolve("supabase/migrations/20260629000004_rpc_functions.sql"),
+    "utf8",
+  )
+
+  it("uses a SECURITY DEFINER RPC for the atomic issue status and history update", () => {
+    expect(rpcFunctionsMigration).toContain(
+      "create or replace function public.update_issue_status",
+    )
+    expect(rpcFunctionsMigration).toMatch(
+      /create or replace function public\.update_issue_status[\s\S]*security definer/i,
+    )
+    expect(rpcFunctionsMigration).toMatch(
+      /update public\.model_review_issues[\s\S]*insert into public\.issue_status_history[\s\S]*insert into public\.review_history_events/i,
+    )
+  })
+
+  it("checks project membership and keeps direct authenticated writes disabled", () => {
+    expect(rpcFunctionsMigration).toContain(
+      "if not public.app_is_project_member(issue_row.project_id) then",
+    )
+    expect(rpcFunctionsMigration).toContain(
+      "grant execute on function public.update_issue_status(uuid, text, uuid, text) to authenticated, service_role;",
+    )
+    expect(rlsPoliciesMigration).toContain(
+      "grant select on table public.model_review_issues to authenticated;",
+    )
+    expect(rlsPoliciesMigration).not.toContain(
+      "grant select, insert, update on table public.model_review_issues to authenticated;",
     )
   })
 })

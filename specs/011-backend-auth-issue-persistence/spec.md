@@ -86,9 +86,8 @@ record is created by scan completion alone.
 2. **Given** a finding is dismissed, **When** the decision is persisted, **Then**
    the finding status changes through a stored user decision rather than by
    deleting the finding.
-3. **Given** a finding is marked for follow-up or restored, **When** the action
-   is persisted, **Then** a new decision record preserves the actor, action,
-   and time.
+3. **Given** a finding is restored, **When** the action is persisted, **Then** a
+   new decision record preserves the actor, action, and time.
 4. **Given** a finding is still active, **When** project review state is loaded,
    **Then** the finding appears in the AI Review Queue without appearing in the
    Issues tab.
@@ -186,11 +185,9 @@ Drawing Triage logic changes, or real backend code.
 - **FR-005**: The backend MUST persist AI findings as provisional review inputs
   and MUST NOT treat scan findings as issues.
 - **FR-006**: The backend MUST persist user decisions on findings, including at
-  minimum create issue, dismiss, follow-up, restore, and issue-removal outcomes.
-  The `mark_follow_up` decision type is reserved; the current frontend has no
-  visible UI action for it, and this documentation-only phase MUST NOT add one.
-  A future spec must explicitly introduce the frontend action before users can
-  produce this decision type.
+  minimum create issue, dismiss, restore, and issue-removal outcomes. A future
+  spec must explicitly introduce any additional frontend action before users can
+  produce additional decision types.
 - **FR-007**: The current finding status MUST be derivable from durable decision
   and issue records, even if a denormalized status is also stored.
 - **FR-008**: An issue MUST exist only after explicit user action.

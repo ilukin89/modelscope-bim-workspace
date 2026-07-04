@@ -39,6 +39,12 @@ interface BackendIssueRecord {
   title: string
 }
 
+interface BackendFindingDecisionRecord {
+  decisionType: "dismiss" | "restore"
+  findingId: string
+  id: string
+}
+
 export interface BackendStatusHistoryRecord {
   fromStatus: ModelReviewIssueStatus | null
   id: string
@@ -52,6 +58,15 @@ export interface PersistedModelReviewIssueStatusUpdate {
   statusChanged: boolean
   statusHistory: BackendStatusHistoryRecord | null
 }
+
+export interface PersistedAiFindingDecisionUpdate {
+  decisionChanged: boolean
+  findingStatus: AiFindingWorkflowStatus
+  reviewHistoryEvent: ModelReviewHistoryEvent | null
+}
+
+type PersistedAiFindingDecisionType =
+  BackendFindingDecisionRecord["decisionType"]
 
 const modelReviewIssueStatuses = [
   "Open",
@@ -71,7 +86,6 @@ const aiFindingWorkflowStatuses = [
   "active",
   "issue-created",
   "dismissed",
-  "follow-up",
 ] satisfies readonly AiFindingWorkflowStatus[]
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -185,6 +199,28 @@ function parseBackendIssue(value: unknown): BackendIssueRecord | null {
     status,
     title,
   }
+}
+
+function parseBackendFindingDecision(
+  value: unknown,
+): BackendFindingDecisionRecord | null {
+  if (!isRecord(value)) {
+    return null
+  }
+
+  const id = readString(value, "id")
+  const findingId = readString(value, "finding_id")
+  const decisionType = readString(value, "decision_type")
+
+  if (
+    !id ||
+    !findingId ||
+    (decisionType !== "dismiss" && decisionType !== "restore")
+  ) {
+    return null
+  }
+
+  return { decisionType, findingId, id }
 }
 
 function parseReviewHistoryEvent(
@@ -357,6 +393,54 @@ function parseRequiredReviewHistoryEvent(
   }
 
   return reviewHistoryEvent
+}
+
+function parseRequiredFindingDecision(
+  value: unknown,
+  requestedBackendFindingId: string,
+  requestedDecisionType: PersistedAiFindingDecisionType,
+) {
+  const decision = parseBackendFindingDecision(value)
+
+  if (!decision) {
+    throw new Error("record_finding_decision did not return a decision row.")
+  }
+
+  if (decision.findingId !== requestedBackendFindingId) {
+    throw new Error(
+      "record_finding_decision returned a decision for another finding.",
+    )
+  }
+
+  if (decision.decisionType !== requestedDecisionType) {
+    throw new Error(
+      "record_finding_decision returned a different decision type.",
+    )
+  }
+
+  return decision
+}
+
+function parseRequiredDecisionFindingStatus(
+  value: unknown,
+  expectedStatus: AiFindingWorkflowStatus,
+) {
+  const findingStatus = typeof value === "string" ? value : null
+  const parsedFindingStatus = readAiFindingWorkflowStatus(findingStatus)
+
+  if (!parsedFindingStatus) {
+    throw new Error(
+      "record_finding_decision did not return a valid finding status.",
+    )
+  }
+
+  if (parsedFindingStatus !== expectedStatus) {
+    throw new Error(
+      "record_finding_decision returned a different finding status.",
+    )
+  }
+
+  return parsedFindingStatus
 }
 
 async function fetchBackendFindings(projectId: ProjectId) {
@@ -540,6 +624,101 @@ export async function createPersistedModelReviewIssue(
     issue: createModelReviewIssueFromBackend(backendIssue, sourceIssue),
     reviewHistoryEvent: parseReviewHistoryEvent(data.review_history_event),
   }
+}
+
+async function findBackendFinding(
+  projectId: ProjectId,
+  sourceIssue: ReviewIssue,
+) {
+  const backendFindings = await fetchBackendFindings(projectId)
+  const backendFinding = backendFindings.find(
+    (finding) => finding.fixtureFindingId === sourceIssue.id,
+  )
+
+  if (!backendFinding) {
+    throw new Error(`Persisted finding not found for ${sourceIssue.id}.`)
+  }
+
+  return backendFinding
+}
+
+async function recordPersistedAiFindingDecision(
+  projectId: ProjectId,
+  sourceIssue: ReviewIssue,
+  currentStatus: AiFindingWorkflowStatus,
+  decisionType: PersistedAiFindingDecisionType,
+): Promise<PersistedAiFindingDecisionUpdate> {
+  const expectedFindingStatus =
+    decisionType === "dismiss" ? "dismissed" : "active"
+  const decisionAllowed =
+    decisionType === "dismiss"
+      ? currentStatus === "active"
+      : currentStatus === "dismissed"
+
+  if (!decisionAllowed) {
+    return {
+      decisionChanged: false,
+      findingStatus: currentStatus,
+      reviewHistoryEvent: null,
+    }
+  }
+
+  const backendFinding = await findBackendFinding(projectId, sourceIssue)
+  const idempotencyKey = createIdempotencyKey()
+  const { data, error } = await supabase.rpc("record_finding_decision", {
+    decision_type: decisionType,
+    finding_id: backendFinding.id,
+    idempotency_key: idempotencyKey,
+    note: null,
+  })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  if (!isRecord(data)) {
+    throw new Error("Unexpected record_finding_decision response.")
+  }
+
+  parseRequiredFindingDecision(data.decision, backendFinding.id, decisionType)
+
+  return {
+    decisionChanged: true,
+    findingStatus: parseRequiredDecisionFindingStatus(
+      data.finding_status,
+      expectedFindingStatus,
+    ),
+    reviewHistoryEvent: parseRequiredReviewHistoryEvent(
+      data.review_history_event,
+      "record_finding_decision",
+    ),
+  }
+}
+
+export async function dismissPersistedAiFinding(
+  projectId: ProjectId,
+  sourceIssue: ReviewIssue,
+  currentStatus: AiFindingWorkflowStatus,
+) {
+  return recordPersistedAiFindingDecision(
+    projectId,
+    sourceIssue,
+    currentStatus,
+    "dismiss",
+  )
+}
+
+export async function restorePersistedAiFinding(
+  projectId: ProjectId,
+  sourceIssue: ReviewIssue,
+  currentStatus: AiFindingWorkflowStatus,
+) {
+  return recordPersistedAiFindingDecision(
+    projectId,
+    sourceIssue,
+    currentStatus,
+    "restore",
+  )
 }
 
 export async function removePersistedModelReviewIssue(issue: ModelReviewIssue) {

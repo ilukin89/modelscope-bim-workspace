@@ -67,8 +67,7 @@ export interface ReviewIssue {
   details: ObjectDetails
 }
 
-export type AiFindingWorkflowStatus =
-  "active" | "issue-created" | "dismissed" | "follow-up"
+export type AiFindingWorkflowStatus = "active" | "issue-created" | "dismissed"
 
 export type AiScanStatus = "not_scanned" | "scanning" | "scanned_with_findings"
 

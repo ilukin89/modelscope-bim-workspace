@@ -62,7 +62,7 @@ Relevant current concepts:
 - `ModelReviewIssue.sourceFindingId` links the created issue back to the
   source AI finding.
 - `ProjectAiReviewState.findingStatuses` tracks local AI finding workflow
-  states such as `active`, `issue-created`, `dismissed`, and `follow-up`.
+  states such as `active`, `issue-created`, and `dismissed`.
 - `ProjectAiReviewState.modelReviewIssues` stores locally created Model Review
   issues.
 - `ProjectAiReviewState.reviewHistory` stores local review history entries.
@@ -198,7 +198,6 @@ Finding status should reflect user decision state:
 - `active`: no durable user decision yet
 - `issue-created`: the user created an issue from the finding
 - `dismissed`: the user dismissed the finding
-- `follow-up`: the user marked it for later review
 
 The backend may store a denormalized current finding status for efficient
 queries, but the source of truth should be the latest recorded decision and any
@@ -215,13 +214,8 @@ Minimal decision types:
 
 - `create_issue`
 - `dismiss`
-- `mark_follow_up`
 - `restore`
 - `remove_issue_link`
-
-`mark_follow_up` is a reserved decision type. The current frontend has no
-visible UI action for it, and this PR must not add one. This decision type is
-reserved for a future spec that explicitly introduces the frontend action.
 
 Minimal decision fields:
 
@@ -315,7 +309,6 @@ Recommended persisted event types:
 - `finding_selected`, only if future product value requires it
 - `finding_dismissed`
 - `finding_restored`
-- `finding_marked_follow_up`
 - `issue_created`
 - `issue_status_changed`
 - `issue_removed_from_tracker`
@@ -375,7 +368,7 @@ A later backend implementation may expose operations equivalent to:
 | Read project review state | Load scan runs, findings, decisions, issues, and history for a project |
 | Start or seed AI scan run | Create a scan run record for the current mock scan flow |
 | List scan findings | Populate the AI Review Queue |
-| Record finding decision | Persist dismiss, follow-up, restore, or create issue intent |
+| Record finding decision | Persist dismiss, restore, or create issue intent |
 | Create issue from finding | Atomically create issue, decision, issue history, and review history |
 | Update issue status | Persist status change and append history |
 | Remove issue from tracker | Record a reversible or auditable removal outcome |

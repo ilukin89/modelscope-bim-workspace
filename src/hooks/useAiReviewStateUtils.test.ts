@@ -8,6 +8,7 @@ import type {
   ReviewIssue,
 } from "@/types"
 import {
+  applyAiFindingDecision,
   applyModelReviewIssueStatusUpdate,
   applyModelReviewIssueRemoval,
   getInitialProjectAiReviewState,
@@ -486,6 +487,124 @@ describe("applyModelReviewIssueStatusUpdate", () => {
   })
 })
 
+describe("applyAiFindingDecision", () => {
+  it("applies a confirmed dismiss, clears matching preview, and merges persisted history", () => {
+    const sourceIssue = createReviewIssue("finding-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+    const existingHistoryEvent = createHistoryEvent(
+      "history-existing",
+      "Finding selected",
+    )
+    const decisionHistoryEvent = createHistoryEvent(
+      "history-decision",
+      "Finding dismissed",
+    )
+    const state = createProjectAiReviewState(project, {
+      findingStatuses: {
+        [sourceIssue.id]: "active",
+      },
+      previewIssueId: sourceIssue.id,
+      reviewHistory: [existingHistoryEvent],
+    })
+
+    const nextState = applyAiFindingDecision(state, {
+      clearPreviewIssueId: true,
+      expectedCurrentStatus: "active",
+      findingStatus: "dismissed",
+      reviewHistoryEvent: decisionHistoryEvent,
+      sourceFindingId: sourceIssue.id,
+    })
+
+    expect(nextState.findingStatuses[sourceIssue.id]).toBe("dismissed")
+    expect(nextState.previewIssueId).toBeNull()
+    expect(nextState.reviewHistory).toEqual([
+      decisionHistoryEvent,
+      existingHistoryEvent,
+    ])
+  })
+
+  it("applies a confirmed restore without changing preview state", () => {
+    const restoredIssue = createReviewIssue("finding-1", "FND-001", "Finding 1")
+    const previewIssue = createReviewIssue("finding-2", "FND-002", "Finding 2")
+    const project = createProject([restoredIssue, previewIssue])
+    const decisionHistoryEvent = createHistoryEvent(
+      "history-decision",
+      "Finding restored",
+    )
+    const state = createProjectAiReviewState(project, {
+      findingStatuses: {
+        [restoredIssue.id]: "dismissed",
+        [previewIssue.id]: "active",
+      },
+      previewIssueId: previewIssue.id,
+    })
+
+    const nextState = applyAiFindingDecision(state, {
+      expectedCurrentStatus: "dismissed",
+      findingStatus: "active",
+      reviewHistoryEvent: decisionHistoryEvent,
+      sourceFindingId: restoredIssue.id,
+    })
+
+    expect(nextState.findingStatuses[restoredIssue.id]).toBe("active")
+    expect(nextState.previewIssueId).toBe(previewIssue.id)
+    expect(nextState.reviewHistory).toEqual([decisionHistoryEvent])
+  })
+
+  it("does not let a stale decision overwrite an issue-created finding", () => {
+    const sourceIssue = createReviewIssue("finding-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+    const state = createProjectAiReviewState(project, {
+      findingStatuses: {
+        [sourceIssue.id]: "issue-created",
+      },
+      previewIssueId: sourceIssue.id,
+      reviewHistory: [createHistoryEvent("history-existing", "Issue created")],
+    })
+
+    const nextState = applyAiFindingDecision(state, {
+      clearPreviewIssueId: true,
+      expectedCurrentStatus: "active",
+      findingStatus: "dismissed",
+      reviewHistoryEvent: createHistoryEvent(
+        "history-decision",
+        "Finding dismissed",
+      ),
+      sourceFindingId: sourceIssue.id,
+    })
+
+    expect(nextState).toBe(state)
+    expect(nextState.findingStatuses[sourceIssue.id]).toBe("issue-created")
+    expect(nextState.previewIssueId).toBe(sourceIssue.id)
+    expect(nextState.reviewHistory).toHaveLength(1)
+  })
+
+  it("does not append duplicate history when a confirmed decision is stale", () => {
+    const sourceIssue = createReviewIssue("finding-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+    const historyEvent = createHistoryEvent("history-existing", "Issue created")
+    const state = createProjectAiReviewState(project, {
+      findingStatuses: {
+        [sourceIssue.id]: "active",
+      },
+      reviewHistory: [historyEvent],
+    })
+
+    const nextState = applyAiFindingDecision(state, {
+      expectedCurrentStatus: "dismissed",
+      findingStatus: "active",
+      reviewHistoryEvent: createHistoryEvent(
+        "history-decision",
+        "Finding restored",
+      ),
+      sourceFindingId: sourceIssue.id,
+    })
+
+    expect(nextState).toBe(state)
+    expect(nextState.reviewHistory).toEqual([historyEvent])
+  })
+})
+
 describe("getModelReviewIssueFocusAfterRemoval", () => {
   it("clears focus state that references the removed issue", () => {
     const focusState = getModelReviewIssueFocusAfterRemoval({
@@ -631,15 +750,15 @@ describe("hasRestorableAiCandidateActivity", () => {
       "FND-001",
       "Active finding",
     )
-    const followUpIssue = {
+    const dismissedIssue = {
       ...createReviewIssue(
-        "finding-follow-up",
+        "finding-dismissed",
         "FND-002",
-        "Follow-up fixture finding",
+        "Dismissed fixture finding",
       ),
-      initialAiStatus: "follow-up",
+      initialAiStatus: "dismissed",
     } satisfies ReviewIssue
-    const project = createProject([activeIssue, followUpIssue])
+    const project = createProject([activeIssue, dismissedIssue])
 
     expect(
       hasRestorableAiCandidateActivity(
@@ -655,7 +774,7 @@ describe("hasRestorableAiCandidateActivity", () => {
       hasRestorableAiCandidateActivity(
         createPersistedReviewState({
           findingStatuses: {
-            [followUpIssue.id]: "active",
+            [dismissedIssue.id]: "active",
           },
         }),
         project,

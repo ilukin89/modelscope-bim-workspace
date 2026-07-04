@@ -183,7 +183,7 @@ issue.
 | `level` | `text` | Source floor/level. |
 | `location` | `text` | Human-readable model location. |
 | `source_payload` | `jsonb` | Structured source context needed to reconstruct frontend view models. |
-| `current_status` | `text` | Optional denormalized status: `active`, `issue-created`, `dismissed`, or `follow-up`. |
+| `current_status` | `text` | Optional denormalized status: `active`, `issue-created`, or `dismissed`. |
 | `created_at` | `timestamptz` | Insert time. |
 
 `source_payload` should store only the minimal structured source context needed
@@ -206,15 +206,13 @@ Append-only user decisions on findings.
 | `finding_id` | `uuid` | References `ai_findings.id`. |
 | `scan_run_id` | `uuid` | References `ai_scan_runs.id`. |
 | `user_id` | `uuid` | References `demo_users.id`. |
-| `decision_type` | `text` | `create_issue`, `dismiss`, `mark_follow_up`, `restore`, or `remove_issue_link`. |
+| `decision_type` | `text` | `create_issue`, `dismiss`, `restore`, or `remove_issue_link`. |
 | `created_issue_id` | `uuid` | Nullable reference to `model_review_issues.id`. |
 | `decision_note` | `text` | Nullable future rationale. |
 | `idempotency_key` | `uuid` | Nullable key for retry-safe mutations. |
 | `created_at` | `timestamptz` | Insert time. |
 
-Rows are appended, not overwritten. `mark_follow_up` is reserved until a visible
-frontend action exists. Runtime RPC functions should reject new
-`mark_follow_up` writes until a future spec enables that action.
+Rows are appended, not overwritten.
 
 ### `model_review_issues`
 
@@ -359,9 +357,7 @@ Mapping from current fixtures:
 | `ReviewIssue.details` | `ai_findings.source_payload` |
 
 `confidence` remains nullable because current `ReviewIssue` does not expose a
-confidence field. Seeded `follow-up` fixture state must not imply that runtime
-`mark_follow_up` is available; the write action remains reserved until a future
-frontend spec exposes it.
+confidence field.
 
 ## RPC and Transaction Boundaries
 
@@ -412,7 +408,7 @@ Transaction behavior:
 
 If any step fails, Postgres rolls back the whole transaction. The frontend must
 not show a confirmed issue, `issue-created` finding state, status history row,
-or review history event unless the RPC succeeds or a follow-up reload confirms
+or review history event unless the RPC succeeds or a later reload confirms
 that an idempotent request committed.
 
 ### `record_finding_decision`
@@ -424,8 +420,6 @@ Use for append-only decisions that do not create an issue, such as `dismiss`,
 - append `ai_finding_decisions`
 - update only the optional `ai_findings.current_status` cache
 - append `review_history_events`
-- reject `mark_follow_up` until a future frontend action is specified
-
 It must not delete the finding or overwrite prior decisions.
 
 ### `update_issue_status`

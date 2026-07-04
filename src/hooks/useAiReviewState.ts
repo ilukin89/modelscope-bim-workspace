@@ -3,9 +3,11 @@ import {
   createPersistedModelReviewIssue,
   fetchPersistedModelReviewState,
   removePersistedModelReviewIssue,
+  updatePersistedModelReviewIssueStatus,
 } from "@/data/modelReviewPersistence"
 import { getProject } from "@/data/projects"
 import {
+  applyModelReviewIssueStatusUpdate,
   applyModelReviewIssueRemoval,
   getInitialFindingStatuses,
   getInitialProjectAiReviewState,
@@ -320,15 +322,38 @@ export function useAiReviewState({
       return
     }
 
-    updateSelectedProjectAiReviewState((state) => ({
-      ...state,
-      modelReviewIssues: state.modelReviewIssues.map((modelReviewIssue) =>
-        modelReviewIssue.id === issueId
-          ? { ...modelReviewIssue, status: nextStatus }
-          : modelReviewIssue,
-      ),
-    }))
-    recordHistory(historyLabel, `${issue.id} · ${issue.title}`)
+    if (!issue.backendIssueId) {
+      updateSelectedProjectAiReviewState((state) => ({
+        ...state,
+        modelReviewIssues: state.modelReviewIssues.map((modelReviewIssue) =>
+          modelReviewIssue.id === issueId
+            ? { ...modelReviewIssue, status: nextStatus }
+            : modelReviewIssue,
+        ),
+      }))
+      recordHistory(historyLabel, `${issue.id} · ${issue.title}`)
+      return
+    }
+
+    const projectId = selectedProjectId
+
+    void updatePersistedModelReviewIssueStatus(issue, nextStatus, historyLabel)
+      .then((statusUpdate) => {
+        if (!statusUpdate.statusChanged) {
+          return
+        }
+
+        updateProjectAiReviewState(projectId, (state) =>
+          applyModelReviewIssueStatusUpdate(state, {
+            issue: statusUpdate.issue,
+            issueId,
+            reviewHistoryEvent: statusUpdate.reviewHistoryEvent,
+          }),
+        )
+      })
+      .catch((error) => {
+        console.error("Failed to update persisted Model Review issue", error)
+      })
   }
 
   const viewCreatedIssueDetails = () => {

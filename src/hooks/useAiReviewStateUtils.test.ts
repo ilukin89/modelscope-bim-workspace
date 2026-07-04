@@ -8,6 +8,7 @@ import type {
   ReviewIssue,
 } from "@/types"
 import {
+  applyModelReviewIssueStatusUpdate,
   applyModelReviewIssueRemoval,
   getInitialProjectAiReviewState,
   getNextIssueSequenceFromIssues,
@@ -64,6 +65,7 @@ const createModelReviewIssue = (
   sourceFindingId: string,
   sourceFindingCode: string,
   title: string,
+  overrides: Partial<ModelReviewIssue> = {},
 ): ModelReviewIssue => {
   const sourceIssue = createReviewIssue(
     sourceFindingId,
@@ -81,6 +83,7 @@ const createModelReviewIssue = (
     sourceFindingId,
     sourceFindingCode,
     sourceIssue,
+    ...overrides,
   }
 }
 
@@ -436,6 +439,53 @@ describe("applyModelReviewIssueRemoval", () => {
   })
 })
 
+describe("applyModelReviewIssueStatusUpdate", () => {
+  it("updates only the confirmed issue and merges persisted history", () => {
+    const sourceIssue = createReviewIssue("finding-1", "FND-001", "Finding 1")
+    const retainedSourceIssue = createReviewIssue(
+      "finding-2",
+      "FND-002",
+      "Finding 2",
+    )
+    const project = createProject([sourceIssue, retainedSourceIssue])
+    const issue = createModelReviewIssue(
+      "MRI-RES-0001",
+      sourceIssue.id,
+      sourceIssue.code,
+      sourceIssue.title,
+      { backendIssueId: "backend-issue-1", status: "In Review" },
+    )
+    const retainedIssue = createModelReviewIssue(
+      "MRI-RES-0002",
+      retainedSourceIssue.id,
+      retainedSourceIssue.code,
+      retainedSourceIssue.title,
+      { backendIssueId: "backend-issue-2", status: "Open" },
+    )
+    const statusHistoryEvent = createHistoryEvent(
+      "history-status",
+      "Issue status changed",
+    )
+    const state = createProjectAiReviewState(project, {
+      modelReviewIssues: [issue, retainedIssue],
+      reviewHistory: [createHistoryEvent("history-existing", "Issue created")],
+    })
+    const confirmedIssue = {
+      ...issue,
+      status: "Blocked",
+    } satisfies ModelReviewIssue
+
+    const nextState = applyModelReviewIssueStatusUpdate(state, {
+      issue: confirmedIssue,
+      issueId: issue.id,
+      reviewHistoryEvent: statusHistoryEvent,
+    })
+
+    expect(nextState.modelReviewIssues).toEqual([confirmedIssue, retainedIssue])
+    expect(nextState.reviewHistory[0]).toEqual(statusHistoryEvent)
+  })
+})
+
 describe("getModelReviewIssueFocusAfterRemoval", () => {
   it("clears focus state that references the removed issue", () => {
     const focusState = getModelReviewIssueFocusAfterRemoval({
@@ -722,6 +772,43 @@ describe("restorePersistedModelReviewState", () => {
     )
 
     expect(restoredState.scanStatus).toBe("not_scanned")
+  })
+
+  it("lets backend status win after rehydration and puts the issue in the matching category", () => {
+    const sourceIssue = createReviewIssue("finding-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+    const localIssue = createModelReviewIssue(
+      "MRI-RES-0001",
+      sourceIssue.id,
+      sourceIssue.code,
+      sourceIssue.title,
+      { backendIssueId: "backend-issue-1", status: "In Review" },
+    )
+    const persistedIssue = {
+      ...localIssue,
+      status: "Blocked",
+    } satisfies ModelReviewIssue
+
+    const restoredState = restorePersistedModelReviewState(
+      createProjectAiReviewState(project, {
+        modelReviewIssues: [localIssue],
+      }),
+      {
+        findingStatuses: {
+          [sourceIssue.id]: "issue-created",
+        },
+        modelReviewIssues: [persistedIssue],
+        reviewHistory: [],
+      },
+      project,
+    )
+
+    const blockedIssues = restoredState.modelReviewIssues.filter(
+      (issue) => issue.status === "Blocked",
+    )
+
+    expect(restoredState.modelReviewIssues[0]).toEqual(persistedIssue)
+    expect(blockedIssues).toEqual([persistedIssue])
   })
 })
 

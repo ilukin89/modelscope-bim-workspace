@@ -39,6 +39,20 @@ interface BackendIssueRecord {
   title: string
 }
 
+export interface BackendStatusHistoryRecord {
+  fromStatus: ModelReviewIssueStatus | null
+  id: string
+  issueId: string
+  toStatus: ModelReviewIssueStatus
+}
+
+export interface PersistedModelReviewIssueStatusUpdate {
+  issue: ModelReviewIssue
+  reviewHistoryEvent: ModelReviewHistoryEvent | null
+  statusChanged: boolean
+  statusHistory: BackendStatusHistoryRecord | null
+}
+
 const modelReviewIssueStatuses = [
   "Open",
   "In Review",
@@ -197,6 +211,33 @@ function parseReviewHistoryEvent(
   }
 }
 
+function parseBackendStatusHistory(
+  value: unknown,
+): BackendStatusHistoryRecord | null {
+  if (!isRecord(value)) {
+    return null
+  }
+
+  const id = readString(value, "id")
+  const issueId = readString(value, "issue_id")
+  const fromStatus = readModelReviewIssueStatus(
+    readString(value, "from_status"),
+  )
+  const rawFromStatus = readString(value, "from_status")
+  const toStatus = readModelReviewIssueStatus(readString(value, "to_status"))
+
+  if (!id || !issueId || !toStatus || (rawFromStatus && !fromStatus)) {
+    return null
+  }
+
+  return {
+    fromStatus,
+    id,
+    issueId,
+    toStatus,
+  }
+}
+
 function createModelReviewIssueFromBackend(
   backendIssue: BackendIssueRecord,
   sourceIssue: ReviewIssue,
@@ -223,6 +264,50 @@ function createIdempotencyKey() {
   }
 
   return randomUUID.call(globalThis.crypto)
+}
+
+function parseRequiredStatusHistory(
+  value: unknown,
+  requestedBackendIssueId: string,
+  requestedStatus: ModelReviewIssueStatus,
+) {
+  const statusHistory = parseBackendStatusHistory(value)
+
+  if (!statusHistory) {
+    throw new Error("update_issue_status did not return status history.")
+  }
+
+  if (statusHistory.issueId !== requestedBackendIssueId) {
+    throw new Error("update_issue_status returned history for another issue.")
+  }
+
+  if (statusHistory.toStatus !== requestedStatus) {
+    throw new Error("update_issue_status returned a different target status.")
+  }
+
+  return statusHistory
+}
+
+function parseUpdatedBackendIssue(
+  value: unknown,
+  requestedBackendIssueId: string,
+  requestedStatus: ModelReviewIssueStatus,
+) {
+  const backendIssue = parseBackendIssue(value)
+
+  if (!backendIssue) {
+    throw new Error("update_issue_status did not return an issue row.")
+  }
+
+  if (backendIssue.backendId !== requestedBackendIssueId) {
+    throw new Error("update_issue_status returned a different issue row.")
+  }
+
+  if (backendIssue.status !== requestedStatus) {
+    throw new Error("update_issue_status returned a different issue status.")
+  }
+
+  return backendIssue
 }
 
 function parseRemovedBackendIssue(
@@ -261,13 +346,14 @@ function parseRequiredFindingStatus(value: unknown) {
   return parsedFindingStatus
 }
 
-function parseRequiredReviewHistoryEvent(value: unknown) {
+function parseRequiredReviewHistoryEvent(
+  value: unknown,
+  operationName: string,
+) {
   const reviewHistoryEvent = parseReviewHistoryEvent(value)
 
   if (!reviewHistoryEvent) {
-    throw new Error(
-      "remove_issue_from_tracker did not return a review history event.",
-    )
+    throw new Error(`${operationName} did not return a review history event.`)
   }
 
   return reviewHistoryEvent
@@ -485,6 +571,63 @@ export async function removePersistedModelReviewIssue(issue: ModelReviewIssue) {
     issue: createModelReviewIssueFromBackend(backendIssue, issue.sourceIssue),
     reviewHistoryEvent: parseRequiredReviewHistoryEvent(
       data.review_history_event,
+      "remove_issue_from_tracker",
     ),
+  }
+}
+
+export async function updatePersistedModelReviewIssueStatus(
+  issue: ModelReviewIssue,
+  nextStatus: ModelReviewIssueStatus,
+  reason?: string,
+): Promise<PersistedModelReviewIssueStatusUpdate> {
+  if (issue.status === nextStatus) {
+    return {
+      issue,
+      reviewHistoryEvent: null,
+      statusChanged: false,
+      statusHistory: null,
+    }
+  }
+
+  if (!issue.backendIssueId) {
+    throw new Error(`Persisted issue ID not found for ${issue.id}.`)
+  }
+
+  const idempotencyKey = createIdempotencyKey()
+  const { data, error } = await supabase.rpc("update_issue_status", {
+    idempotency_key: idempotencyKey,
+    issue_id: issue.backendIssueId,
+    reason: reason ?? null,
+    to_status: nextStatus,
+  })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  if (!isRecord(data)) {
+    throw new Error("Unexpected update_issue_status response.")
+  }
+
+  const backendIssue = parseUpdatedBackendIssue(
+    data.issue,
+    issue.backendIssueId,
+    nextStatus,
+  )
+  const statusHistory = parseRequiredStatusHistory(
+    data.status_history,
+    issue.backendIssueId,
+    nextStatus,
+  )
+
+  return {
+    issue: createModelReviewIssueFromBackend(backendIssue, issue.sourceIssue),
+    reviewHistoryEvent: parseRequiredReviewHistoryEvent(
+      data.review_history_event,
+      "update_issue_status",
+    ),
+    statusChanged: true,
+    statusHistory,
   }
 }

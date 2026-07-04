@@ -41,7 +41,7 @@ interface ObjectInspectorProps {
   onGroupingModeChange: (mode: AiFindingGroupingMode) => void
   onHideIssueFromModel: (issue: ModelReviewIssue) => void
   onPreviewChange: () => void
-  onRemoveIssue: (issueId: ModelReviewIssue["id"]) => void
+  onRemoveIssue: (issueId: ModelReviewIssue["id"]) => void | Promise<unknown>
   onRescanAi: () => void
   onRestoreFinding: () => void
   onTabChange: (tab: InspectorTab) => void

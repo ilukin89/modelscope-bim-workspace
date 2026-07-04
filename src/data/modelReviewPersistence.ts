@@ -32,6 +32,7 @@ interface BackendIssueRecord {
   priority: IssueSeverity
   relatedLevel: string | null
   relatedObject: string | null
+  removedFromTrackerAt: string | null
   sourceFindingCode: string
   sourceFindingId: string
   status: ModelReviewIssueStatus
@@ -66,6 +67,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function readString(record: Record<string, unknown>, key: string) {
   const value = record[key]
   return typeof value === "string" ? value : null
+}
+
+function readValidTimestamp(value: string | null) {
+  if (!value || Number.isNaN(new Date(value).getTime())) {
+    return null
+  }
+
+  return value
 }
 
 function readIssueSeverity(value: string | null): IssueSeverity | null {
@@ -156,6 +165,7 @@ function parseBackendIssue(value: unknown): BackendIssueRecord | null {
     priority,
     relatedLevel: readString(value, "related_level"),
     relatedObject: readString(value, "related_object"),
+    removedFromTrackerAt: readString(value, "removed_from_tracker_at"),
     sourceFindingCode,
     sourceFindingId,
     status,
@@ -215,6 +225,54 @@ function createIdempotencyKey() {
   return randomUUID.call(globalThis.crypto)
 }
 
+function parseRemovedBackendIssue(
+  value: unknown,
+  requestedBackendIssueId: string,
+) {
+  const backendIssue = parseBackendIssue(value)
+
+  if (!backendIssue) {
+    throw new Error("remove_issue_from_tracker did not return an issue row.")
+  }
+
+  if (backendIssue.backendId !== requestedBackendIssueId) {
+    throw new Error("remove_issue_from_tracker returned a different issue row.")
+  }
+
+  if (!readValidTimestamp(backendIssue.removedFromTrackerAt)) {
+    throw new Error(
+      "remove_issue_from_tracker did not return a removed issue row.",
+    )
+  }
+
+  return backendIssue
+}
+
+function parseRequiredFindingStatus(value: unknown) {
+  const findingStatus = typeof value === "string" ? value : null
+  const parsedFindingStatus = readAiFindingWorkflowStatus(findingStatus)
+
+  if (!parsedFindingStatus) {
+    throw new Error(
+      "remove_issue_from_tracker did not return a valid finding status.",
+    )
+  }
+
+  return parsedFindingStatus
+}
+
+function parseRequiredReviewHistoryEvent(value: unknown) {
+  const reviewHistoryEvent = parseReviewHistoryEvent(value)
+
+  if (!reviewHistoryEvent) {
+    throw new Error(
+      "remove_issue_from_tracker did not return a review history event.",
+    )
+  }
+
+  return reviewHistoryEvent
+}
+
 async function fetchBackendFindings(projectId: ProjectId) {
   const { data, error } = await supabase
     .from("ai_findings")
@@ -239,9 +297,10 @@ async function fetchBackendIssues(projectId: ProjectId) {
   const { data, error } = await supabase
     .from("model_review_issues")
     .select(
-      "id, issue_code, source_finding_id, source_finding_code, title, related_object, related_level, priority, status, created_at",
+      "id, issue_code, source_finding_id, source_finding_code, title, related_object, related_level, priority, status, created_at, removed_from_tracker_at, removed_from_tracker_by_user_id",
     )
     .eq("project_id", projectId)
+    .is("removed_from_tracker_at", null)
     .order("created_at", { ascending: true })
 
   if (error) {
@@ -394,5 +453,38 @@ export async function createPersistedModelReviewIssue(
       "issue-created",
     issue: createModelReviewIssueFromBackend(backendIssue, sourceIssue),
     reviewHistoryEvent: parseReviewHistoryEvent(data.review_history_event),
+  }
+}
+
+export async function removePersistedModelReviewIssue(issue: ModelReviewIssue) {
+  if (!issue.backendIssueId) {
+    throw new Error(`Persisted issue ID not found for ${issue.id}.`)
+  }
+
+  const idempotencyKey = createIdempotencyKey()
+  const { data, error } = await supabase.rpc("remove_issue_from_tracker", {
+    idempotency_key: idempotencyKey,
+    issue_id: issue.backendIssueId,
+  })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  if (!isRecord(data)) {
+    throw new Error("Unexpected remove_issue_from_tracker response.")
+  }
+
+  const backendIssue = parseRemovedBackendIssue(
+    data.issue,
+    issue.backendIssueId,
+  )
+
+  return {
+    findingStatus: parseRequiredFindingStatus(data.finding_status),
+    issue: createModelReviewIssueFromBackend(backendIssue, issue.sourceIssue),
+    reviewHistoryEvent: parseRequiredReviewHistoryEvent(
+      data.review_history_event,
+    ),
   }
 }

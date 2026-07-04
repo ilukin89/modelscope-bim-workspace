@@ -14,6 +14,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { ModelReviewIssueRemovalDialog } from "@/features/object-inspector/components/ModelReviewIssueRemovalDialog"
 import { cn } from "@/lib/utils"
 import type {
   ModelReviewIssue,
@@ -27,7 +28,7 @@ interface ModelReviewIssuesPanelProps {
   issues: ModelReviewIssue[]
   selectedIssueId: ReviewIssue["id"]
   onHideIssueFromModel: (issue: ModelReviewIssue) => void
-  onRemoveIssue: (issueId: ModelReviewIssue["id"]) => void
+  onRemoveIssue: (issueId: ModelReviewIssue["id"]) => void | Promise<unknown>
   onUpdateIssueStatus: (
     id: ModelReviewIssue["id"],
     status: ModelReviewIssueStatus,
@@ -76,6 +77,8 @@ export function ModelReviewIssuesPanel({
     useState<ModelReviewIssueFilter>("All")
   const [issueSort, setIssueSort] =
     useState<ModelReviewIssueSort>("status-priority")
+  const [issuePendingRemoval, setIssuePendingRemoval] =
+    useState<ModelReviewIssue | null>(null)
   const issueCounts = useMemo(
     () =>
       issues.reduce(
@@ -138,6 +141,13 @@ export function ModelReviewIssuesPanel({
     issueStatusFilter === "All"
       ? "No issues."
       : `No ${issueStatusFilter.toLowerCase()} issues.`
+  const confirmPendingIssueRemoval = () => {
+    if (!issuePendingRemoval) {
+      return
+    }
+
+    void onRemoveIssue(issuePendingRemoval.id)
+  }
 
   return issues.length > 0 ? (
     <>
@@ -204,7 +214,7 @@ export function ModelReviewIssuesPanel({
               focusedInModel={focusedModelIssueId === issue.id}
               selected={issue.sourceFindingId === selectedIssueId}
               onHideFromModel={() => onHideIssueFromModel(issue)}
-              onRemoveIssue={() => onRemoveIssue(issue.id)}
+              onRemoveIssue={() => setIssuePendingRemoval(issue)}
               onUpdateIssueStatus={onUpdateIssueStatus}
               onViewInModel={() => onViewIssueInModel(issue)}
             />
@@ -215,6 +225,15 @@ export function ModelReviewIssuesPanel({
           {filteredIssueEmptyMessage}
         </div>
       )}
+      <ModelReviewIssueRemovalDialog
+        open={issuePendingRemoval !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIssuePendingRemoval(null)
+          }
+        }}
+        onConfirm={confirmPendingIssueRemoval}
+      />
     </>
   ) : (
     <div className="rounded-md border border-dashed border-border/18 bg-muted/8 p-3 text-[10px] text-muted-foreground dark:border-border dark:bg-transparent">
@@ -246,6 +265,7 @@ function ModelReviewIssueCard({
   onViewInModel: () => void
 }) {
   const cardRef = useRef<HTMLDivElement | null>(null)
+  const removeIssueRequestedRef = useRef(false)
   const lifecycleAction =
     issue.status === "Open"
       ? { label: "Send for Review", nextStatus: "In Review" as const }
@@ -255,6 +275,7 @@ function ModelReviewIssueCard({
           ? { label: "Return to review", nextStatus: "In Review" as const }
           : { label: "Reopen issue", nextStatus: "Open" as const }
   const canMarkOutcome = issue.status === "Open" || issue.status === "In Review"
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false)
 
   useEffect(() => {
     if (!focusedForDetails) {
@@ -264,6 +285,21 @@ function ModelReviewIssueCard({
     cardRef.current?.scrollIntoView({ block: "nearest" })
     cardRef.current?.focus({ preventScroll: true })
   }, [focusedForDetails, issue.id])
+
+  const requestIssueRemoval = () => {
+    removeIssueRequestedRef.current = true
+    setActionsMenuOpen(false)
+  }
+
+  const handleActionsMenuCloseAutoFocus = (event: Event) => {
+    if (!removeIssueRequestedRef.current) {
+      return
+    }
+
+    event.preventDefault()
+    removeIssueRequestedRef.current = false
+    onRemoveIssue()
+  }
 
   return (
     <div
@@ -308,7 +344,7 @@ function ModelReviewIssueCard({
         >
           {issue.status}
         </Badge>
-        <DropdownMenu>
+        <DropdownMenu open={actionsMenuOpen} onOpenChange={setActionsMenuOpen}>
           <Tooltip>
             <TooltipTrigger asChild>
               <DropdownMenuTrigger asChild>
@@ -325,7 +361,11 @@ function ModelReviewIssueCard({
             </TooltipTrigger>
             <TooltipContent side="left">Issue actions</TooltipContent>
           </Tooltip>
-          <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuContent
+            align="end"
+            className="w-52"
+            onCloseAutoFocus={handleActionsMenuCloseAutoFocus}
+          >
             {canMarkOutcome && (
               <>
                 <DropdownMenuItem
@@ -347,7 +387,7 @@ function ModelReviewIssueCard({
             )}
             <DropdownMenuItem
               className="text-[11px] text-destructive focus:bg-destructive/8 focus:text-destructive dark:focus:bg-destructive/10"
-              onClick={onRemoveIssue}
+              onSelect={requestIssueRemoval}
             >
               Remove issue
             </DropdownMenuItem>

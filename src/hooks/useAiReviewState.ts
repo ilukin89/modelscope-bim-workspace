@@ -2,12 +2,15 @@ import { useEffect, useRef, useState } from "react"
 import {
   createPersistedModelReviewIssue,
   fetchPersistedModelReviewState,
+  removePersistedModelReviewIssue,
 } from "@/data/modelReviewPersistence"
 import { getProject } from "@/data/projects"
 import {
+  applyModelReviewIssueRemoval,
   getInitialFindingStatuses,
   getInitialProjectAiReviewState,
   getInitialProjectAiReviewStates,
+  getModelReviewIssueFocusAfterRemoval,
   mergeReviewHistory,
   resetAiCandidateState,
   restorePersistedModelReviewState,
@@ -177,6 +180,25 @@ export function useAiReviewState({
     recordProjectHistory(selectedProjectId, label, detail)
   }
 
+  const clearModelReviewIssueFocus = (issueId: ModelReviewIssue["id"]) => {
+    setFocusedIssueCardId(
+      (current) =>
+        getModelReviewIssueFocusAfterRemoval({
+          focusedIssueCardId: current,
+          modelFocusRequest: null,
+          removedIssueId: issueId,
+        }).focusedIssueCardId,
+    )
+    setModelFocusRequest(
+      (current) =>
+        getModelReviewIssueFocusAfterRemoval({
+          focusedIssueCardId: null,
+          modelFocusRequest: current,
+          removedIssueId: issueId,
+        }).modelFocusRequest,
+    )
+  }
+
   const selectAiFinding = (issue: ReviewIssue) => {
     onIssueSelect(issue)
     updateSelectedProjectAiReviewState((state) => ({
@@ -326,35 +348,48 @@ export function useAiReviewState({
     )
   }
 
-  const removeModelReviewIssue = (issueId: ModelReviewIssue["id"]) => {
+  const removeModelReviewIssue = async (issueId: ModelReviewIssue["id"]) => {
     const existingIssue = selectedAiReviewState.modelReviewIssues.find(
       (issue) => issue.id === issueId,
     )
 
     if (!existingIssue) {
-      return
+      return false
     }
 
-    updateSelectedProjectAiReviewState((state) => ({
-      ...state,
-      findingStatuses: {
-        ...state.findingStatuses,
-        [existingIssue.sourceFindingId]: "active",
-      },
-      modelReviewIssues: state.modelReviewIssues.filter(
-        (issue) => issue.id !== existingIssue.id,
-      ),
-    }))
-    setFocusedIssueCardId((current) =>
-      current === existingIssue.id ? null : current,
-    )
-    setModelFocusRequest((current) =>
-      current?.modelReviewIssueId === existingIssue.id ? null : current,
-    )
-    recordHistory(
-      "Issue removed",
-      `${existingIssue.id} removed from ${existingIssue.sourceFindingCode}`,
-    )
+    if (!existingIssue.backendIssueId) {
+      updateSelectedProjectAiReviewState((state) =>
+        applyModelReviewIssueRemoval(state, {
+          findingStatus: "active",
+          issueId: existingIssue.id,
+          sourceFindingId: existingIssue.sourceFindingId,
+        }),
+      )
+      clearModelReviewIssueFocus(existingIssue.id)
+      recordHistory(
+        "Issue removed",
+        `${existingIssue.id} removed from ${existingIssue.sourceFindingCode}`,
+      )
+      return true
+    }
+
+    try {
+      const removal = await removePersistedModelReviewIssue(existingIssue)
+
+      updateSelectedProjectAiReviewState((state) =>
+        applyModelReviewIssueRemoval(state, {
+          findingStatus: removal.findingStatus,
+          issueId: existingIssue.id,
+          reviewHistoryEvent: removal.reviewHistoryEvent,
+          sourceFindingId: existingIssue.sourceFindingId,
+        }),
+      )
+      clearModelReviewIssueFocus(existingIssue.id)
+      return true
+    } catch (error) {
+      console.error("Failed to remove persisted Model Review issue", error)
+      return false
+    }
   }
 
   const dropModelReviewIssue = () => {
@@ -366,8 +401,11 @@ export function useAiReviewState({
       return
     }
 
-    removeModelReviewIssue(existingIssue.id)
-    setActiveInspectorTab("ai")
+    void removeModelReviewIssue(existingIssue.id).then((removed) => {
+      if (removed) {
+        setActiveInspectorTab("ai")
+      }
+    })
   }
 
   const dismissAiFinding = () => {

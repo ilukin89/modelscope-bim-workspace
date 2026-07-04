@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react"
 import {
   createPersistedModelReviewIssue,
+  dismissPersistedAiFinding,
   fetchPersistedModelReviewState,
   removePersistedModelReviewIssue,
+  restorePersistedAiFinding,
   updatePersistedModelReviewIssueStatus,
 } from "@/data/modelReviewPersistence"
 import { getProject } from "@/data/projects"
 import {
+  applyAiFindingDecision,
   applyModelReviewIssueStatusUpdate,
   applyModelReviewIssueRemoval,
   getInitialFindingStatuses,
@@ -434,33 +437,68 @@ export function useAiReviewState({
   }
 
   const dismissAiFinding = () => {
-    updateSelectedProjectAiReviewState((state) => ({
-      ...state,
-      findingStatuses: {
-        ...state.findingStatuses,
-        [selectedIssue.id]: "dismissed",
-      },
-      previewIssueId:
-        state.previewIssueId === selectedIssue.id ? null : state.previewIssueId,
-    }))
-    recordHistory(
-      "Finding dismissed",
-      `${selectedIssue.code} · ${selectedIssue.details.objectId}`,
+    if (selectedFindingStatus !== "active") {
+      return
+    }
+
+    const projectId = selectedProjectId
+    const sourceIssue = selectedIssue
+
+    void dismissPersistedAiFinding(
+      projectId,
+      sourceIssue,
+      selectedFindingStatus,
     )
+      .then((decision) => {
+        if (!decision.decisionChanged) {
+          return
+        }
+
+        updateProjectAiReviewState(projectId, (state) =>
+          applyAiFindingDecision(state, {
+            clearPreviewIssueId: true,
+            expectedCurrentStatus: selectedFindingStatus,
+            findingStatus: decision.findingStatus,
+            reviewHistoryEvent: decision.reviewHistoryEvent,
+            sourceFindingId: sourceIssue.id,
+          }),
+        )
+      })
+      .catch((error) => {
+        console.error("Failed to dismiss persisted AI finding", error)
+      })
   }
 
   const restoreAiFinding = () => {
-    updateSelectedProjectAiReviewState((state) => ({
-      ...state,
-      findingStatuses: {
-        ...state.findingStatuses,
-        [selectedIssue.id]: "active",
-      },
-    }))
-    recordHistory(
-      "Finding restored",
-      `${selectedIssue.code} · ${selectedIssue.details.objectId}`,
+    if (selectedFindingStatus !== "dismissed") {
+      return
+    }
+
+    const projectId = selectedProjectId
+    const sourceIssue = selectedIssue
+
+    void restorePersistedAiFinding(
+      projectId,
+      sourceIssue,
+      selectedFindingStatus,
     )
+      .then((decision) => {
+        if (!decision.decisionChanged) {
+          return
+        }
+
+        updateProjectAiReviewState(projectId, (state) =>
+          applyAiFindingDecision(state, {
+            expectedCurrentStatus: "dismissed",
+            findingStatus: decision.findingStatus,
+            reviewHistoryEvent: decision.reviewHistoryEvent,
+            sourceFindingId: sourceIssue.id,
+          }),
+        )
+      })
+      .catch((error) => {
+        console.error("Failed to restore persisted AI finding", error)
+      })
   }
 
   const closeInspectorOnCompact = () => {

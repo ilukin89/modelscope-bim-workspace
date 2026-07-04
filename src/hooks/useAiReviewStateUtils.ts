@@ -133,6 +133,14 @@ export interface ModelReviewIssueStatusUpdateResult {
   reviewHistoryEvent?: ModelReviewHistoryEvent | null
 }
 
+export interface AiFindingDecisionResult {
+  clearPreviewIssueId?: boolean
+  expectedCurrentStatus: AiFindingWorkflowStatus
+  findingStatus: AiFindingWorkflowStatus
+  reviewHistoryEvent?: ModelReviewHistoryEvent | null
+  sourceFindingId: ReviewIssue["id"]
+}
+
 export interface ModelFocusRequestState {
   issueId: ReviewIssue["id"]
   label: string
@@ -169,6 +177,34 @@ export const applyModelReviewIssueStatusUpdate = (
     ? mergeReviewHistory(state.reviewHistory, [statusUpdate.reviewHistoryEvent])
     : state.reviewHistory,
 })
+
+export const applyAiFindingDecision = (
+  state: ProjectAiReviewState,
+  decision: AiFindingDecisionResult,
+): ProjectAiReviewState => {
+  const currentStatus =
+    state.findingStatuses[decision.sourceFindingId] ?? "active"
+
+  if (currentStatus !== decision.expectedCurrentStatus) {
+    return state
+  }
+
+  return {
+    ...state,
+    findingStatuses: {
+      ...state.findingStatuses,
+      [decision.sourceFindingId]: decision.findingStatus,
+    },
+    previewIssueId:
+      decision.clearPreviewIssueId &&
+      state.previewIssueId === decision.sourceFindingId
+        ? null
+        : state.previewIssueId,
+    reviewHistory: decision.reviewHistoryEvent
+      ? mergeReviewHistory(state.reviewHistory, [decision.reviewHistoryEvent])
+      : state.reviewHistory,
+  }
+}
 
 export const getModelReviewIssueFocusAfterRemoval = ({
   focusedIssueCardId,

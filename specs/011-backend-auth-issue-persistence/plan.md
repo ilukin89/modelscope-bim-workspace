@@ -117,7 +117,6 @@ Finding status can be shown as:
 - `active`
 - `issue-created`
 - `dismissed`
-- `follow-up`
 
 The authoritative source should be decisions and linked issues. A denormalized
 current status may exist for query simplicity, but it must not erase decision
@@ -131,14 +130,8 @@ Every state-changing action on a finding should append a decision record:
 
 - create issue
 - dismiss
-- mark follow-up
 - restore finding
 - remove issue link or remove from tracker
-
-`mark_follow_up` is a reserved decision type. The current frontend has no
-visible UI action for it, and this PR must not add one. A future spec must
-explicitly introduce the frontend action before the UI can produce this
-decision.
 
 The first UI does not need to collect rationale text. The backend shape can
 allow a nullable note for a future confirmation screen.
@@ -186,7 +179,6 @@ Persist:
 - scan completed
 - finding dismissed
 - finding restored
-- finding marked follow-up
 - issue created
 - issue status changed
 - issue removed from tracker
@@ -332,7 +324,6 @@ Allowed first decision types:
 
 - `create_issue`
 - `dismiss`
-- `mark_follow_up`
 - `restore`
 - `remove_issue_link`
 
@@ -400,7 +391,7 @@ The future backend API can be designed around the existing UX:
 | Read project review state | Returns latest scan run, findings, decisions, created issues, and history |
 | Start or seed scan run | Creates or returns a scan run for the mock AI Review entry |
 | List findings | Returns findings for the selected project and scan run |
-| Record finding decision | Persists dismiss, follow-up, restore, or remove-link decisions |
+| Record finding decision | Persists dismiss, restore, or remove-link decisions |
 | Create issue from finding | Atomically creates issue, decision, initial status history, and review history |
 | Update issue status | Updates issue current status and appends status/history events |
 | Read source lineage | Returns source finding, scan run, decision, and issue chain |

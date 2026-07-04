@@ -18,8 +18,10 @@ vi.mock("@/lib/supabase", () => ({
 }))
 
 import {
+  dismissPersistedAiFinding,
   fetchPersistedModelReviewState,
   removePersistedModelReviewIssue,
+  restorePersistedAiFinding,
   updatePersistedModelReviewIssueStatus,
 } from "./modelReviewPersistence"
 
@@ -102,6 +104,31 @@ const createBackendIssueRow = (
   status,
   removed_from_tracker_at: null,
   removed_from_tracker_by_user_id: null,
+})
+
+const createBackendFindingDecisionResponse = ({
+  backendFindingId = "backend-finding-1",
+  decisionType,
+  findingStatus,
+}: {
+  backendFindingId?: string
+  decisionType: "dismiss" | "restore"
+  findingStatus: "active" | "dismissed"
+}) => ({
+  decision: {
+    id: "decision-1",
+    finding_id: backendFindingId,
+    decision_type: decisionType,
+  },
+  finding_status: findingStatus,
+  review_history_event: {
+    id: "history-1",
+    label:
+      decisionType === "dismiss" ? "Finding dismissed" : "Finding restored",
+    detail:
+      decisionType === "dismiss" ? "FND-001 dismissed" : "FND-001 restored",
+    created_at: "2026-07-04T10:10:00.000Z",
+  },
 })
 
 function createTableBuilder(rows: Array<Record<string, unknown>>) {
@@ -265,6 +292,387 @@ describe("fetchPersistedModelReviewState", () => {
       id: "MRI-RES-0001",
       status: "Blocked",
     })
+  })
+
+  it("hydrates dismissed finding status from persisted backend state", async () => {
+    const sourceIssue = createReviewIssue("fixture-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+
+    supabaseMock.from.mockImplementation((table: string) =>
+      createTableBuilder(
+        table === "ai_findings"
+          ? [
+              {
+                id: "backend-finding-1",
+                project_id: project.id,
+                fixture_finding_id: sourceIssue.id,
+                current_status: "dismissed",
+              },
+            ]
+          : [],
+      ),
+    )
+
+    const persistedState = await fetchPersistedModelReviewState(
+      project.id,
+      project.issues,
+    )
+
+    expect(persistedState.findingStatuses[sourceIssue.id]).toBe("dismissed")
+  })
+
+  it("hydrates restored active finding status from persisted backend state", async () => {
+    const sourceIssue = createReviewIssue("fixture-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+
+    supabaseMock.from.mockImplementation((table: string) =>
+      createTableBuilder(
+        table === "ai_findings"
+          ? [
+              {
+                id: "backend-finding-1",
+                project_id: project.id,
+                fixture_finding_id: sourceIssue.id,
+                current_status: "active",
+              },
+            ]
+          : [],
+      ),
+    )
+
+    const persistedState = await fetchPersistedModelReviewState(
+      project.id,
+      project.issues,
+    )
+
+    expect(persistedState.findingStatuses[sourceIssue.id]).toBe("active")
+  })
+})
+
+describe("persisted AI finding decisions", () => {
+  beforeEach(() => {
+    supabaseMock.from.mockReset()
+    supabaseMock.rpc.mockReset()
+    vi.stubGlobal("crypto", {
+      randomUUID: () => "00000000-0000-4000-8000-000000000007",
+    })
+  })
+
+  it("persists active to dismissed through record_finding_decision", async () => {
+    const sourceIssue = createReviewIssue("fixture-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+
+    supabaseMock.from.mockImplementation((table: string) =>
+      createTableBuilder(
+        table === "ai_findings"
+          ? [
+              {
+                id: "backend-finding-1",
+                project_id: project.id,
+                fixture_finding_id: sourceIssue.id,
+                current_status: "active",
+              },
+            ]
+          : [],
+      ),
+    )
+    supabaseMock.rpc.mockResolvedValue({
+      data: createBackendFindingDecisionResponse({
+        decisionType: "dismiss",
+        findingStatus: "dismissed",
+      }),
+      error: null,
+    })
+
+    const result = await dismissPersistedAiFinding(
+      project.id,
+      sourceIssue,
+      "active",
+    )
+
+    expect(supabaseMock.rpc).toHaveBeenCalledWith("record_finding_decision", {
+      decision_type: "dismiss",
+      finding_id: "backend-finding-1",
+      idempotency_key: "00000000-0000-4000-8000-000000000007",
+      note: null,
+    })
+    expect(supabaseMock.rpc).not.toHaveBeenCalledWith(
+      "record_finding_decision",
+      expect.objectContaining({ finding_id: sourceIssue.id }),
+    )
+    expect(result).toMatchObject({
+      decisionChanged: true,
+      findingStatus: "dismissed",
+      reviewHistoryEvent: {
+        id: "history-1",
+        label: "Finding dismissed",
+      },
+    })
+  })
+
+  it("persists dismissed to active through record_finding_decision", async () => {
+    const sourceIssue = createReviewIssue("fixture-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+
+    supabaseMock.from.mockImplementation((table: string) =>
+      createTableBuilder(
+        table === "ai_findings"
+          ? [
+              {
+                id: "backend-finding-1",
+                project_id: project.id,
+                fixture_finding_id: sourceIssue.id,
+                current_status: "dismissed",
+              },
+            ]
+          : [],
+      ),
+    )
+    supabaseMock.rpc.mockResolvedValue({
+      data: createBackendFindingDecisionResponse({
+        decisionType: "restore",
+        findingStatus: "active",
+      }),
+      error: null,
+    })
+
+    const result = await restorePersistedAiFinding(
+      project.id,
+      sourceIssue,
+      "dismissed",
+    )
+
+    expect(supabaseMock.rpc).toHaveBeenCalledWith("record_finding_decision", {
+      decision_type: "restore",
+      finding_id: "backend-finding-1",
+      idempotency_key: "00000000-0000-4000-8000-000000000007",
+      note: null,
+    })
+    expect(result).toMatchObject({
+      decisionChanged: true,
+      findingStatus: "active",
+      reviewHistoryEvent: {
+        id: "history-1",
+        label: "Finding restored",
+      },
+    })
+  })
+
+  it("propagates dismiss RPC errors without returning a local update", async () => {
+    const sourceIssue = createReviewIssue("fixture-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+
+    supabaseMock.from.mockImplementation((table: string) =>
+      createTableBuilder(
+        table === "ai_findings"
+          ? [
+              {
+                id: "backend-finding-1",
+                project_id: project.id,
+                fixture_finding_id: sourceIssue.id,
+                current_status: "active",
+              },
+            ]
+          : [],
+      ),
+    )
+    supabaseMock.rpc.mockResolvedValue({
+      data: null,
+      error: { message: "Project membership required" },
+    })
+
+    await expect(
+      dismissPersistedAiFinding(project.id, sourceIssue, "active"),
+    ).rejects.toThrow("Project membership required")
+  })
+
+  it("propagates restore RPC errors without returning a local update", async () => {
+    const sourceIssue = createReviewIssue("fixture-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+
+    supabaseMock.from.mockImplementation((table: string) =>
+      createTableBuilder(
+        table === "ai_findings"
+          ? [
+              {
+                id: "backend-finding-1",
+                project_id: project.id,
+                fixture_finding_id: sourceIssue.id,
+                current_status: "dismissed",
+              },
+            ]
+          : [],
+      ),
+    )
+    supabaseMock.rpc.mockResolvedValue({
+      data: null,
+      error: { message: "Project membership required" },
+    })
+
+    await expect(
+      restorePersistedAiFinding(project.id, sourceIssue, "dismissed"),
+    ).rejects.toThrow("Project membership required")
+  })
+
+  it("does not call the RPC when dismissing an already dismissed finding", async () => {
+    const sourceIssue = createReviewIssue("fixture-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+
+    const result = await dismissPersistedAiFinding(
+      project.id,
+      sourceIssue,
+      "dismissed",
+    )
+
+    expect(supabaseMock.rpc).not.toHaveBeenCalled()
+    expect(result).toEqual({
+      decisionChanged: false,
+      findingStatus: "dismissed",
+      reviewHistoryEvent: null,
+    })
+  })
+
+  it("does not call the RPC when restoring an already active finding", async () => {
+    const sourceIssue = createReviewIssue("fixture-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+
+    const result = await restorePersistedAiFinding(
+      project.id,
+      sourceIssue,
+      "active",
+    )
+
+    expect(supabaseMock.rpc).not.toHaveBeenCalled()
+    expect(result).toEqual({
+      decisionChanged: false,
+      findingStatus: "active",
+      reviewHistoryEvent: null,
+    })
+  })
+
+  it("does not call the RPC for issue-created findings", async () => {
+    const sourceIssue = createReviewIssue("fixture-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+
+    await expect(
+      dismissPersistedAiFinding(project.id, sourceIssue, "issue-created"),
+    ).resolves.toMatchObject({
+      decisionChanged: false,
+      findingStatus: "issue-created",
+    })
+    await expect(
+      restorePersistedAiFinding(project.id, sourceIssue, "issue-created"),
+    ).resolves.toMatchObject({
+      decisionChanged: false,
+      findingStatus: "issue-created",
+    })
+    expect(supabaseMock.rpc).not.toHaveBeenCalled()
+  })
+
+  it("rejects malformed record_finding_decision responses", async () => {
+    const sourceIssue = createReviewIssue("fixture-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+
+    supabaseMock.from.mockImplementation((table: string) =>
+      createTableBuilder(
+        table === "ai_findings"
+          ? [
+              {
+                id: "backend-finding-1",
+                project_id: project.id,
+                fixture_finding_id: sourceIssue.id,
+                current_status: "active",
+              },
+            ]
+          : [],
+      ),
+    )
+    supabaseMock.rpc.mockResolvedValue({
+      data: {
+        decision: null,
+        finding_status: "dismissed",
+        review_history_event: {
+          id: "history-1",
+          label: "Finding dismissed",
+          detail: "FND-001 dismissed",
+          created_at: "2026-07-04T10:10:00.000Z",
+        },
+      },
+      error: null,
+    })
+
+    await expect(
+      dismissPersistedAiFinding(project.id, sourceIssue, "active"),
+    ).rejects.toThrow("record_finding_decision did not return a decision row.")
+  })
+
+  it("rejects contradictory returned finding status", async () => {
+    const sourceIssue = createReviewIssue("fixture-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+
+    supabaseMock.from.mockImplementation((table: string) =>
+      createTableBuilder(
+        table === "ai_findings"
+          ? [
+              {
+                id: "backend-finding-1",
+                project_id: project.id,
+                fixture_finding_id: sourceIssue.id,
+                current_status: "active",
+              },
+            ]
+          : [],
+      ),
+    )
+    supabaseMock.rpc.mockResolvedValue({
+      data: createBackendFindingDecisionResponse({
+        decisionType: "dismiss",
+        findingStatus: "active",
+      }),
+      error: null,
+    })
+
+    await expect(
+      dismissPersistedAiFinding(project.id, sourceIssue, "active"),
+    ).rejects.toThrow(
+      "record_finding_decision returned a different finding status.",
+    )
+  })
+
+  it("rejects responses without a persisted review history event", async () => {
+    const sourceIssue = createReviewIssue("fixture-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+
+    supabaseMock.from.mockImplementation((table: string) =>
+      createTableBuilder(
+        table === "ai_findings"
+          ? [
+              {
+                id: "backend-finding-1",
+                project_id: project.id,
+                fixture_finding_id: sourceIssue.id,
+                current_status: "active",
+              },
+            ]
+          : [],
+      ),
+    )
+    supabaseMock.rpc.mockResolvedValue({
+      data: {
+        ...createBackendFindingDecisionResponse({
+          decisionType: "dismiss",
+          findingStatus: "dismissed",
+        }),
+        review_history_event: null,
+      },
+      error: null,
+    })
+
+    await expect(
+      dismissPersistedAiFinding(project.id, sourceIssue, "active"),
+    ).rejects.toThrow(
+      "record_finding_decision did not return a review history event.",
+    )
   })
 })
 
@@ -713,5 +1121,172 @@ describe("update_issue_status migration", () => {
     expect(rlsPoliciesMigration).not.toContain(
       "grant select, insert, update on table public.model_review_issues to authenticated;",
     )
+  })
+})
+
+describe("record_finding_decision migration", () => {
+  const rlsPoliciesMigration = readFileSync(
+    resolve("supabase/migrations/20260629000003_rls_policies.sql"),
+    "utf8",
+  )
+  const rpcFunctionsMigration = readFileSync(
+    resolve("supabase/migrations/20260629000004_rpc_functions.sql"),
+    "utf8",
+  )
+  const hardenedFindingDecisionMigration = readFileSync(
+    resolve(
+      "supabase/migrations/20260705000002_harden_record_finding_decision_transitions.sql",
+    ),
+    "utf8",
+  )
+
+  it("uses a SECURITY DEFINER RPC for atomic decisions, history, and finding status", () => {
+    expect(rpcFunctionsMigration).toContain(
+      "create or replace function public.record_finding_decision",
+    )
+    expect(rpcFunctionsMigration).toMatch(
+      /create or replace function public\.record_finding_decision[\s\S]*security definer/i,
+    )
+    expect(rpcFunctionsMigration).toMatch(
+      /insert into public\.ai_finding_decisions[\s\S]*update public\.ai_findings[\s\S]*insert into public\.review_history_events/i,
+    )
+  })
+
+  it("keeps project membership and idempotency protections in place", () => {
+    expect(rpcFunctionsMigration).toContain(
+      "if not public.app_is_project_member(finding_row.project_id) then",
+    )
+    expect(rpcFunctionsMigration).toContain("if decision_row.finding_id <> $1")
+    expect(rpcFunctionsMigration).toContain(
+      "or decision_row.decision_type <> $2 then",
+    )
+    expect(rpcFunctionsMigration).toContain(
+      "grant execute on function public.record_finding_decision(uuid, text, uuid, text) to authenticated, service_role;",
+    )
+    expect(rlsPoliciesMigration).toContain(
+      "grant select on table public.ai_finding_decisions to authenticated;",
+    )
+    expect(rlsPoliciesMigration).not.toContain(
+      "grant select, insert, update on table public.ai_finding_decisions to authenticated;",
+    )
+  })
+
+  it("serializes finding decisions and rejects duplicate dismiss before appending decisions or history", () => {
+    const lockIndex = hardenedFindingDecisionMigration.indexOf("for update")
+    const dismissGuardIndex = hardenedFindingDecisionMigration.indexOf(
+      "if $2 = 'dismiss' and finding_row.current_status <> 'active' then",
+    )
+    const decisionInsertIndex = hardenedFindingDecisionMigration.indexOf(
+      "insert into public.ai_finding_decisions",
+    )
+    const historyInsertIndex = hardenedFindingDecisionMigration.indexOf(
+      "insert into public.review_history_events",
+    )
+
+    expect(lockIndex).toBeGreaterThan(-1)
+    expect(dismissGuardIndex).toBeGreaterThan(lockIndex)
+    expect(decisionInsertIndex).toBeGreaterThan(dismissGuardIndex)
+    expect(historyInsertIndex).toBeGreaterThan(dismissGuardIndex)
+    expect(hardenedFindingDecisionMigration).toContain(
+      "raise exception 'Cannot dismiss finding with status: %'",
+    )
+  })
+
+  it("rejects restore from active and dismiss from dismissed without appending history", () => {
+    const restoreGuardIndex = hardenedFindingDecisionMigration.indexOf(
+      "if $2 = 'restore' and finding_row.current_status <> 'dismissed' then",
+    )
+    const dismissGuardIndex = hardenedFindingDecisionMigration.indexOf(
+      "if $2 = 'dismiss' and finding_row.current_status <> 'active' then",
+    )
+    const historyInsertIndex = hardenedFindingDecisionMigration.indexOf(
+      "insert into public.review_history_events",
+    )
+
+    expect(dismissGuardIndex).toBeGreaterThan(-1)
+    expect(restoreGuardIndex).toBeGreaterThan(-1)
+    expect(historyInsertIndex).toBeGreaterThan(dismissGuardIndex)
+    expect(historyInsertIndex).toBeGreaterThan(restoreGuardIndex)
+    expect(hardenedFindingDecisionMigration).toContain(
+      "raise exception 'Cannot restore finding with status: %'",
+    )
+  })
+
+  it("prevents dismiss or restore from overwriting issue-created findings", () => {
+    expect(hardenedFindingDecisionMigration).toContain(
+      "if $2 = 'dismiss' and finding_row.current_status <> 'active' then",
+    )
+    expect(hardenedFindingDecisionMigration).toContain(
+      "if $2 = 'restore' and finding_row.current_status <> 'dismissed' then",
+    )
+    expect(hardenedFindingDecisionMigration).not.toMatch(
+      /when 'dismiss'[\s\S]*current_status = 'issue-created'|when 'restore'[\s\S]*current_status = 'issue-created'/i,
+    )
+  })
+
+  it("redirects direct remove_issue_link decisions before appending decisions or history", () => {
+    const redirectIndex = hardenedFindingDecisionMigration.indexOf(
+      "if $2 = 'remove_issue_link' then",
+    )
+    const lockIndex = hardenedFindingDecisionMigration.indexOf("for update")
+    const decisionInsertIndex = hardenedFindingDecisionMigration.indexOf(
+      "insert into public.ai_finding_decisions",
+    )
+    const historyInsertIndex = hardenedFindingDecisionMigration.indexOf(
+      "insert into public.review_history_events",
+    )
+
+    expect(redirectIndex).toBeGreaterThan(-1)
+    expect(lockIndex).toBeGreaterThan(redirectIndex)
+    expect(decisionInsertIndex).toBeGreaterThan(redirectIndex)
+    expect(historyInsertIndex).toBeGreaterThan(redirectIndex)
+    expect(hardenedFindingDecisionMigration).toContain(
+      "raise exception 'Use remove_issue_from_tracker for remove_issue_link decisions'",
+    )
+    expect(hardenedFindingDecisionMigration).not.toContain(
+      "when 'remove_issue_link' then",
+    )
+  })
+
+  it("keeps remove_issue_from_tracker as the valid remove_issue_link writer", () => {
+    const removeIssueMigration = readFileSync(
+      resolve(
+        "supabase/migrations/20260704000001_remove_issue_from_tracker.sql",
+      ),
+      "utf8",
+    )
+
+    expect(removeIssueMigration).toContain(
+      "create or replace function public.remove_issue_from_tracker",
+    )
+    expect(removeIssueMigration).toContain("'remove_issue_link'")
+    expect(removeIssueMigration).toContain(
+      "grant execute on function public.remove_issue_from_tracker(uuid, uuid) to authenticated, service_role;",
+    )
+  })
+})
+
+describe("ai_findings status migration", () => {
+  const removeFollowUpStatusMigration = readFileSync(
+    resolve(
+      "supabase/migrations/20260705000001_remove_ai_finding_follow_up_status.sql",
+    ),
+    "utf8",
+  )
+
+  it("maps legacy follow-up finding statuses to active and removes the status from the constraint", () => {
+    expect(removeFollowUpStatusMigration).toMatch(
+      /update public\.ai_findings[\s\S]*set current_status = 'active'[\s\S]*where current_status = 'follow-up'/i,
+    )
+    expect(removeFollowUpStatusMigration).toContain(
+      "check (current_status in ('active', 'issue-created', 'dismissed'))",
+    )
+    expect(removeFollowUpStatusMigration).not.toContain(
+      "current_status in ('active', 'issue-created', 'dismissed', 'follow-up')",
+    )
+    expect(removeFollowUpStatusMigration).toContain(
+      "check (decision_type in ('create_issue', 'dismiss', 'restore', 'remove_issue_link'))",
+    )
+    expect(removeFollowUpStatusMigration).not.toContain("mark_follow_up")
   })
 })

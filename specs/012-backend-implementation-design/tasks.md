@@ -80,7 +80,7 @@ project IDs, finding mapping, and validation rules.
 - [x] T026 [US3] Document the three required project IDs exactly in `specs/012-backend-implementation-design/spec.md`.
 - [x] T027 [US3] Document seeded scan runs and findings derived from `src/data/projects.ts` in `docs/11-backend-implementation-design.md`.
 - [x] T028 [US3] Document seed validation against `src/types.ts` and `src/data/projects.ts` in `specs/012-backend-implementation-design/plan.md`.
-- [x] T029 [US3] Document nullable `confidence` and reserved `mark_follow_up` behavior in `docs/11-backend-implementation-design.md`.
+- [x] T029 [US3] Document nullable `confidence` behavior in `docs/11-backend-implementation-design.md`.
 
 ## Phase 5: User Story 4 - Define Atomic Mutations and Rollback (Priority: P1)
 

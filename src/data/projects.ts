@@ -234,8 +234,6 @@ const civicAdditionalIssues: ReviewIssue[] = [
     type: "Steel Single 900 × 2100",
     level: "Level 03",
     elevation: "+11.700 m",
-    initialAiStatus: "follow-up",
-    status: "Follow-up",
     fireRating: "EI60",
   }),
   createMockFinding({
@@ -444,8 +442,6 @@ const transitAdditionalIssues: ReviewIssue[] = [
     type: "Pipe DN125",
     level: "B2 Services",
     elevation: "-14.000 m",
-    initialAiStatus: "follow-up",
-    status: "Follow-up",
   }),
   createMockFinding({
     id: "transit-issue-11",
@@ -662,9 +658,8 @@ export const projects: ProjectData[] = [
         object: "Cable Tray CT-08C",
         location: "Level 08 · Zone C",
         severity: "warning",
-        status: "Follow-up",
+        status: "Open",
         findingType: "clearance",
-        initialAiStatus: "follow-up",
         discipline: "electrical",
         highlight: "duct",
         details: {
@@ -934,9 +929,8 @@ export const projects: ProjectData[] = [
         object: "Door D-0809",
         location: "Level 08 · West Corridor",
         severity: "warning",
-        status: "Follow-up",
+        status: "Open",
         findingType: "clearance",
-        initialAiStatus: "follow-up",
         discipline: "architecture",
         highlight: "door",
         details: {

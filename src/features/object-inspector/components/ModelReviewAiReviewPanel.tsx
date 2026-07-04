@@ -107,7 +107,6 @@ const statusGroups = [
   { id: "active", label: "Needs review" },
   { id: "issue-created", label: "Issue created" },
   { id: "dismissed", label: "Dismissed" },
-  { id: "follow-up", label: "Follow-up" },
 ] satisfies { id: AiFindingWorkflowStatus; label: string }[]
 
 const defaultOpenFindingGroups: Record<
@@ -125,7 +124,6 @@ const defaultOpenFindingGroups: Record<
     active: true,
     "issue-created": true,
     dismissed: false,
-    "follow-up": true,
   },
 }
 
@@ -133,7 +131,6 @@ const statusLabel: Record<AiFindingWorkflowStatus, string> = {
   active: "Needs review",
   "issue-created": "Issue created",
   dismissed: "Dismissed",
-  "follow-up": "Follow-up",
 }
 
 const AI_FINDING_BADGE_VARIANT_BY_STATUS: Partial<
@@ -141,7 +138,6 @@ const AI_FINDING_BADGE_VARIANT_BY_STATUS: Partial<
 > = {
   dismissed: "outline",
   "issue-created": "success",
-  "follow-up": "warning",
 }
 
 function getAiFindingBadgeVariant(
@@ -541,10 +537,7 @@ export function ModelReviewAiReviewPanel({
                             variant={getAiFindingBadgeVariant(aiFindingStatus)}
                             className={cn(
                               "shrink-0 px-1.5 py-0 text-[8px] uppercase",
-                              !findingDismissed &&
-                                !issueCreated &&
-                                aiFindingStatus !== "follow-up" &&
-                                "bg-ai/8",
+                              !findingDismissed && !issueCreated && "bg-ai/8",
                             )}
                           >
                             {statusLabel[aiFindingStatus]}

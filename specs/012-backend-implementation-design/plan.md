@@ -250,7 +250,7 @@ Unique: `(project_id, user_id)`.
 | `level` | `text` | Nullable. |
 | `location` | `text` | Nullable. |
 | `source_payload` | `jsonb` | Source context for reconstruction. |
-| `current_status` | `text` | Optional cache: `active`, `issue-created`, `dismissed`, `follow-up`. |
+| `current_status` | `text` | Optional cache: `active`, `issue-created`, `dismissed`. |
 | `created_at` | `timestamptz` | Required. |
 
 `source_payload` should store only the minimal structured source context needed
@@ -271,7 +271,7 @@ migration/API implementation PR.
 | `finding_id` | `uuid` | References `ai_findings.id`. |
 | `scan_run_id` | `uuid` | References `ai_scan_runs.id`. |
 | `user_id` | `uuid` | References `demo_users.id`. |
-| `decision_type` | `text` | `create_issue`, `dismiss`, `mark_follow_up`, `restore`, `remove_issue_link`. |
+| `decision_type` | `text` | `create_issue`, `dismiss`, `restore`, `remove_issue_link`. |
 | `created_issue_id` | `uuid` | Nullable reference to `model_review_issues.id`. |
 | `decision_note` | `text` | Nullable. |
 | `idempotency_key` | `uuid` | Nullable retry key. |
@@ -411,7 +411,7 @@ Reserved or future:
 
 - `remove_issue_from_tracker(...)` if the existing lifecycle keeps that action
   in a backend-backed workflow.
-- `mark_follow_up` writes until a visible frontend action exists.
+- Additional decision writes until a visible frontend action exists.
 
 ## Transaction Behavior
 

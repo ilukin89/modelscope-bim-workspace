@@ -121,8 +121,8 @@ runs, and findings mapped from current frontend fixtures.
    fixture findings and preserve fixture finding IDs as seed lineage.
 3. **Given** the frontend has no confidence field, **When** finding rows are
    seeded, **Then** `confidence` remains nullable.
-4. **Given** `mark_follow_up` has no visible frontend action, **When** runtime
-   decision writes are designed, **Then** that decision type remains reserved
+4. **Given** a decision type has no visible frontend action, **When** runtime
+   decision writes are designed, **Then** that decision type is not exposed
    until a future spec enables it.
 
 ---
@@ -194,8 +194,8 @@ management behavior is introduced.
 - A finding may be dismissed and later restored; both decisions remain in
   append-only history.
 - A scan may complete with zero findings; no issue rows are created.
-- A seeded fixture may contain follow-up display state, but runtime
-  `mark_follow_up` writes remain reserved until a future visible action exists.
+- Seeded fixtures should not use workflow states that imply unavailable user
+  actions.
 - A project may exist in fixtures but not be accessible to the authenticated
   user; RLS must deny access without relying on frontend filtering.
 - The service-role key may be available to seed scripts, but it must never be
@@ -259,8 +259,8 @@ management behavior is introduced.
   optimistic frontend issue creation and other pending mutations.
 - **FR-024**: The design MUST define frontend load, send, and receive
   boundaries without adding runtime code.
-- **FR-025**: The design MUST explicitly keep `mark_follow_up` reserved until a
-  visible frontend action exists.
+- **FR-025**: The design MUST avoid exposing decision types without a visible
+  frontend action.
 - **FR-026**: The design MUST keep `confidence` nullable until frontend support
   exists.
 - **FR-027**: The design MUST preserve full lineage:

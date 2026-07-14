@@ -2,10 +2,14 @@
 
 ## Purpose
 
-This plan defines the documentation-only implementation design for a future
+This plan began as the documentation-only implementation design for a future
 Supabase backend slice that persists the existing Model Review issue workflow.
+It now also records the implemented status of later, narrowly scoped backend
+integration slices where the repository provides direct evidence.
 
-No runtime behavior is implemented in this phase.
+The current `fix/model-review-scan-state-persistence` branch persists stable
+Model Review scan-result visibility. Broader backend, auth, seeding, and
+frontend-integration tasks remain future work unless separately evidenced.
 
 ## Documents and Source Reviewed
 
@@ -16,6 +20,12 @@ No runtime behavior is implemented in this phase.
 - `.specify/memory/constitution.md`
 - `src/types.ts`
 - `src/data/projects.ts`
+- `supabase/migrations/20260705000003_model_review_scan_state.sql`
+- `src/data/modelReviewPersistence.ts`
+- `src/data/modelReviewPersistence.test.ts`
+- `src/hooks/useAiReviewState.ts`
+- `src/hooks/useAiReviewStateUtils.ts`
+- `src/hooks/useAiReviewStateUtils.test.ts`
 
 ## Summary
 
@@ -28,21 +38,22 @@ Supabase Auth seeded demo user
   -> projects
   -> ai_scan_runs
   -> ai_findings
+  -> model_review_scan_states
   -> ai_finding_decisions
   -> model_review_issues
   -> issue_status_history
   -> review_history_events
 ```
 
-The design is intentionally narrow. It documents Supabase Auth, app profile
-identity, table shapes, role permissions, RLS, seed data, RPC functions,
-transaction behavior, optimistic failure behavior, and frontend integration
-boundaries.
+The original design is intentionally narrow. It documents Supabase Auth, app
+profile identity, table shapes, role permissions, RLS, seed data, RPC
+functions, transaction behavior, optimistic failure behavior, and frontend
+integration boundaries.
 
-It does not install packages, add a Supabase client, add environment variables,
-add migrations, add auth UI, add runtime backend code, change React components,
-change renderer logic, change AI Review behavior, change Drawing Triage
-behavior, or change issue lifecycle runtime behavior.
+Subsequent implementation work has added approved Supabase and frontend
+persistence slices. This branch adds only Model Review scan-state persistence;
+it does not add auth UI, change renderer logic, change Drawing Triage behavior,
+or expand the issue lifecycle.
 
 ## Technical Context
 
@@ -51,22 +62,22 @@ behavior, or change issue lifecycle runtime behavior.
 | Backend platform | Supabase |
 | Database | Supabase Postgres |
 | Auth | Supabase Auth seeded email/password demo user |
-| Browser database access | Supabase client in a later PR, constrained by RLS |
+| Browser database access | Supabase client constrained by RLS; the scan-state read boundary is implemented. |
 | Elevated access | `service_role` for migrations/seeds/admin only; never browser |
 | Multi-table writes | Supabase RPC/Postgres functions |
-| Runtime code in this phase | None |
+| Runtime status | Incremental Supabase persistence is present; this branch adds stable Model Review scan-state persistence. |
 | Project IDs | Existing fixture IDs exactly |
 | Permanent issue identity | Backend UUID plus backend-generated display `issue_code` |
 
 ## Constitution Check
 
-- **Spec-driven development**: Pass. This is a documentation/design phase before
-  any backend implementation.
+- **Spec-driven development**: Pass. The backend design preceded implementation,
+  and the current branch stays within its documented persistence boundaries.
 - **Viewport as source of truth**: Pass. Source lineage remains tied to model
   context through findings, issues, and scan runs; no viewport behavior changes.
-- **Prototype honesty**: Pass. The design documents future Supabase behavior but
-  does not add backend services, auth UI, storage, upload, parsing, real AI, or
-  runtime persistence.
+- **Prototype honesty**: Pass. The current branch adds explicit Supabase-backed
+  scan visibility but does not claim upload, parsing, real AI, or broader
+  collaboration capabilities.
 - **Separation of concerns**: Pass. Auth, RLS, schema, RPC, seed data, frontend
   integration, and product scope boundaries are separated.
 - **Controlled AI assistance**: Pass. AI findings remain provisional review
@@ -181,6 +192,27 @@ Writes that append history or update multiple tables must use RPC:
 Direct browser INSERT/UPDATE on those tables would risk missing decision,
 status history, or review history rows.
 
+### 7. Persist Stable Scan-Result Visibility Separately
+
+The transient frontend `scanning` state is not durable. Stable Model Review
+result visibility is stored per project in `model_review_scan_states` as either
+`not_scanned` or `scanned_with_findings`.
+
+The implemented boundary is:
+
+1. `begin_model_review_scan(project_id, scan_token)` records a pending token and
+   resets stable visibility to `not_scanned`.
+2. `complete_model_review_scan(project_id, scan_token)` accepts only the current
+   pending token, exposes the seeded findings, and appends the persisted
+   `AI scan completed` review-history event in the same transaction.
+3. `clear_model_review_scan_results(project_id)` hides stable result visibility
+   and cancels any pending token without deleting findings, decisions, created
+   issues, or review history.
+
+The frontend also tracks the active project, scan token, and operation nonce so
+late completion or clear responses from stale, cancelled, or superseded scan
+attempts cannot overwrite the selected project's current state.
+
 ## Table Definitions
 
 ### `demo_users`
@@ -261,6 +293,21 @@ reference metadata when available. It must not store the full `ReviewIssue`
 object, UI state, selected tab, preview state, rendered marker state, or other
 frontend-only data. The exact payload schema should be finalized in the
 migration/API implementation PR.
+
+### `model_review_scan_states`
+
+| Column | Type | Rule |
+| --- | --- | --- |
+| `project_id` | `text` | Primary key referencing `projects.id`. |
+| `status` | `text` | Stable visibility: `not_scanned` or `scanned_with_findings`. |
+| `pending_scan_token` | `uuid` | Nullable token for the currently accepted scan attempt. |
+| `updated_by_user_id` | `uuid` | Nullable reference to `demo_users.id`. |
+| `last_completed_at` | `timestamptz` | Nullable timestamp of the last accepted completion. |
+| `created_at` | `timestamptz` | Required. |
+| `updated_at` | `timestamptz` | Required. |
+
+Authenticated project members may read the row through RLS. Direct
+authenticated writes are disabled; the three scan RPCs own mutations.
 
 ### `ai_finding_decisions`
 
@@ -344,6 +391,7 @@ Append-only.
 | `project_memberships` | No table SELECT, INSERT, or UPDATE. | SELECT own membership rows only. No direct INSERT or UPDATE. | SELECT, INSERT, UPDATE for seed/admin only. |
 | `ai_scan_runs` | No table SELECT, INSERT, or UPDATE. | SELECT only for member projects. No direct INSERT or UPDATE in this slice. | SELECT, INSERT, UPDATE for seed/admin only. |
 | `ai_findings` | No table SELECT, INSERT, or UPDATE. | SELECT only for member projects. No direct INSERT or UPDATE. | SELECT, INSERT, UPDATE for seed/admin only. |
+| `model_review_scan_states` | No table SELECT, INSERT, UPDATE, or DELETE. | SELECT only for member projects. No direct writes. | SELECT, INSERT, UPDATE, and DELETE for seed/admin only. |
 | `ai_finding_decisions` | No table SELECT, INSERT, or UPDATE. | SELECT for member projects. INSERT only through RPC. No direct UPDATE. | SELECT, INSERT, UPDATE for seed/admin correction only. |
 | `model_review_issues` | No table SELECT, INSERT, or UPDATE. | SELECT for member projects. INSERT and UPDATE only through RPC. | SELECT, INSERT, UPDATE for seed/admin correction only. |
 | `issue_status_history` | No table SELECT, INSERT, or UPDATE. | SELECT for member projects. INSERT only through RPC. No direct UPDATE. | SELECT, INSERT, UPDATE for seed/admin correction only. |
@@ -388,12 +436,14 @@ Seed validation rules:
 
 ### Direct RLS Reads
 
-Allowed through Supabase client in a later integration PR:
+Allowed through the RLS-constrained Supabase client. The scan-state read is
+implemented; broader list items remain governed by their own task status:
 
 - current `demo_users` profile
 - accessible `projects`
 - project `ai_scan_runs`
 - project `ai_findings`
+- project `model_review_scan_states`
 - project `ai_finding_decisions`
 - project `model_review_issues`
 - project `issue_status_history`
@@ -406,6 +456,12 @@ Required:
 - `create_issue_from_finding(finding_id, idempotency_key, optional_display_overrides)`
 - `record_finding_decision(finding_id, decision_type, idempotency_key, optional_note)`
 - `update_issue_status(issue_id, to_status, idempotency_key, optional_reason)`
+
+Implemented scan-state RPCs:
+
+- `begin_model_review_scan(project_id, scan_token)`
+- `complete_model_review_scan(project_id, scan_token)`
+- `clear_model_review_scan_results(project_id)`
 
 Reserved or future:
 
@@ -447,6 +503,19 @@ the historical source of truth.
 `issue_status_history` and `review_history_events`. Direct browser UPDATE is
 not allowed because it would bypass history.
 
+### Model Review Scan State
+
+`begin_model_review_scan` verifies authentication and project membership, then
+upserts the project's pending scan token. `complete_model_review_scan` locks the
+scan-state row and rejects a missing, stale, cancelled, or replaced token before
+changing stable visibility. A successful completion selects the latest eligible
+completed seeded or mock scan with findings, updates the scan-state row, and
+inserts the `scan_completed` review-history event atomically.
+
+`clear_model_review_scan_results` sets stable visibility to `not_scanned` and
+clears the pending token. It does not append a history event or reset persisted
+finding decisions and created issues.
+
 ## Optimistic UI Failure Plan
 
 Future frontend integration should:
@@ -464,7 +533,24 @@ commit.
 
 ## Frontend Integration Boundary
 
-Future frontend loads:
+Implemented for scan-state persistence on the current branch:
+
+- `fetchPersistedModelReviewState` loads `model_review_scan_states.status` with
+  findings, issues, and review history, defaulting a missing row to
+  `not_scanned`.
+- `restorePersistedModelReviewState` treats the persisted stable status as the
+  source of truth for scan-result visibility while preserving a matching local
+  in-flight scan.
+- scan begin, completion, and clear operations use the scan-state RPC boundary.
+- project changes, clear actions, operation nonces, and scan tokens invalidate
+  stale local attempts and ignore late backend responses.
+- successful completion merges the persisted `AI scan completed` event returned
+  by the backend into local review history.
+
+Remaining future frontend integration includes the following planned
+boundaries.
+
+### Remaining Future Loads
 
 - demo profile
 - accessible projects
@@ -476,14 +562,14 @@ Future frontend loads:
 - review history
 - source lineage records
 
-Future frontend sends:
+### Remaining Future Sends
 
 - project/finding/issue IDs
 - enabled decision types
 - status transitions
 - idempotency keys
 
-Future frontend receives:
+### Remaining Future Receives
 
 - permanent backend IDs
 - display issue codes
@@ -491,19 +577,10 @@ Future frontend receives:
 - appended decision/history rows
 - updated current status fields
 
-No runtime code is changed in this design phase.
+## Explicitly Out Of Scope for the Current Scan-State Branch
 
-## Explicitly Out Of Scope
-
-- install packages
-- add Supabase client
-- add environment variables
-- add migrations
 - add auth UI
-- add runtime backend code
-- change React components
 - change renderer logic
-- change AI Review behavior
 - change Drawing Triage behavior
 - change issue lifecycle runtime behavior
 - add upload
@@ -522,7 +599,27 @@ No runtime code is changed in this design phase.
 
 ## Validation
 
-This documentation phase is complete when:
+The current scan-state persistence implementation is covered by tests that
+verify:
+
+- explicit persisted scan visibility and the missing-row `not_scanned`
+  fallback;
+- begin, complete, and clear RPC request/response parsing;
+- the required completion history event and malformed-response rejection;
+- migration table shape, RLS/write boundaries, pending-token locking, and
+  atomic scan-history append;
+- hiding scan results without resetting persisted finding decisions or issues;
+- persisted scan visibility as the restore source of truth.
+
+Validation completed on the current branch:
+
+- targeted persistence and utility tests: 82 passed;
+- full test suite: 85 passed;
+- `npm run build`: passed;
+- `npm run lint`: passed;
+- `git diff --check`: passed.
+
+The original documentation phase was complete when:
 
 - `docs/11-backend-implementation-design.md` exists.
 - `specs/012-backend-implementation-design/spec.md` exists.
@@ -535,5 +632,4 @@ This documentation phase is complete when:
 - Schema, RLS, seed strategy, RPC boundaries, transaction behavior, optimistic
   failure behavior, and frontend integration boundaries are documented.
 - Product rules from 011 remain intact.
-- No runtime, package, env, or migration files are changed.
 - `npm run build` passes.

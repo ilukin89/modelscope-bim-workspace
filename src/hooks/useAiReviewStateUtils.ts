@@ -10,6 +10,7 @@ import type {
   ProjectId,
   ReviewIssue,
 } from "@/types"
+import type { PersistedAiScanStatus } from "@/data/modelReviewPersistence"
 
 export const initialAiScanStatus: AiScanStatus = "not_scanned"
 
@@ -63,6 +64,15 @@ export const resetAiCandidateState = (
 ): ProjectAiReviewState => ({
   ...state,
   findingStatuses: getInitialFindingStatuses(project),
+  previewIssueId: null,
+  scanStatus: initialAiScanStatus,
+  selectedFindingId: null,
+})
+
+export const hideAiScanResults = (
+  state: ProjectAiReviewState,
+): ProjectAiReviewState => ({
+  ...state,
   previewIssueId: null,
   scanStatus: initialAiScanStatus,
   selectedFindingId: null,
@@ -251,21 +261,13 @@ export const restorePersistedModelReviewState = (
     findingStatuses: Partial<Record<ReviewIssue["id"], AiFindingWorkflowStatus>>
     modelReviewIssues: ModelReviewIssue[]
     reviewHistory: ModelReviewHistoryEvent[]
+    scanStatus: PersistedAiScanStatus
   },
-  project: ProjectData,
 ): ProjectAiReviewState => {
   const modelReviewIssues = mergeModelReviewIssues(
     previous.modelReviewIssues,
     persistedState.modelReviewIssues,
   )
-  const restorableAiCandidateActivity = hasRestorableAiCandidateActivity(
-    persistedState,
-    project,
-  )
-  const restoredScanStatus =
-    previous.scanStatus === "scanning"
-      ? initialAiScanStatus
-      : previous.scanStatus
   const restoredFindingStatuses = { ...previous.findingStatuses }
 
   Object.entries(persistedState.findingStatuses).forEach(
@@ -278,9 +280,7 @@ export const restorePersistedModelReviewState = (
 
   return {
     ...previous,
-    findingStatuses: restorableAiCandidateActivity
-      ? restoredFindingStatuses
-      : previous.findingStatuses,
+    findingStatuses: restoredFindingStatuses,
     modelReviewIssues,
     nextIssueSequence: Math.max(
       previous.nextIssueSequence,
@@ -290,9 +290,6 @@ export const restorePersistedModelReviewState = (
       previous.reviewHistory,
       persistedState.reviewHistory,
     ),
-    scanStatus:
-      restorableAiCandidateActivity && restoredScanStatus === "not_scanned"
-        ? "scanned_with_findings"
-        : restoredScanStatus,
+    scanStatus: persistedState.scanStatus,
   }
 }

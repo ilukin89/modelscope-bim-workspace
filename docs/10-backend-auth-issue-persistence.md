@@ -66,7 +66,9 @@ Relevant current concepts:
 - `ProjectAiReviewState.modelReviewIssues` stores locally created Model Review
   issues.
 - `ProjectAiReviewState.reviewHistory` stores local review history entries.
-- `ProjectAiReviewState.scanStatus` stores local scan state.
+- `ProjectAiReviewState.scanStatus` stores the transient frontend scan state.
+  Stable result visibility is persisted separately as project-scoped Model
+  Review scan state.
 - `ProjectAiReviewState.nextIssueSequence` generates local issue IDs.
 
 This document preserves those product concepts but moves permanent identity,

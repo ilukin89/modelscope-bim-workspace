@@ -2,12 +2,14 @@
 
 ## Purpose
 
-This task list records the documentation work for a future Supabase backend
-implementation design and a safe sequence for later implementation.
+This task list records the original documentation work, the safe sequence for
+later implementation, and narrowly scoped implementation slices that are
+directly evidenced in the repository.
 
-The current PR is planning/design-only.
+Unchecked broad future tasks remain incomplete even when a later branch
+implements a smaller related slice.
 
-## Non-Negotiable Rules
+## Original Documentation-Phase Non-Negotiable Rules
 
 - Do not modify runtime source code.
 - Do not modify React components.
@@ -119,7 +121,8 @@ boundaries exist and no runtime files changed.
 
 ## Separate Future PR: Supabase Setup and Migrations
 
-These tasks are not authorized in this documentation PR.
+These broad tasks were not authorized in the original documentation PR and
+remain unchecked unless their complete scope is separately evidenced.
 
 - [ ] T044 Add Supabase dependencies only after the implementation PR is approved.
 - [ ] T045 Add environment variables only after the implementation PR is approved.
@@ -131,7 +134,8 @@ These tasks are not authorized in this documentation PR.
 
 ## Separate Future PR: Seeded Backend Persistence
 
-These tasks are not authorized in this documentation PR.
+These broad tasks were not authorized in the original documentation PR and
+remain unchecked unless their complete scope is separately evidenced.
 
 - [ ] T051 Seed the Supabase Auth demo user and linked `demo_users` profile.
 - [ ] T052 Seed `residential-tower-a`, `civic-center-east`, and `transit-hub-02`.
@@ -142,7 +146,8 @@ These tasks are not authorized in this documentation PR.
 
 ## Separate Future PR: Frontend Backend Integration
 
-These tasks are not authorized in this documentation PR.
+These broad tasks were not authorized in the original documentation PR and
+remain unchecked unless their complete scope is separately evidenced.
 
 - [ ] T057 Authenticate as the seeded demo user through the approved frontend boundary.
 - [ ] T058 Load accessible projects through Supabase RLS.
@@ -153,6 +158,36 @@ These tasks are not authorized in this documentation PR.
 - [ ] T063 Route status changes through `update_issue_status`.
 - [ ] T064 Implement optimistic rollback and idempotent retry behavior.
 - [ ] T065 Regression-test Model Review, Drawing Triage, and renderer behavior.
+
+## Implemented Slice: Model Review Scan State Persistence
+
+The following tasks are complete on
+`fix/model-review-scan-state-persistence`. They do not complete unrelated auth,
+seeding, issue workflow, or full frontend-integration tasks above.
+
+- [x] T066 Add project-scoped `model_review_scan_states` with stable
+  `not_scanned` and `scanned_with_findings` visibility states.
+- [x] T067 Restrict authenticated access to member-project reads and keep scan
+  state mutations behind RPC functions.
+- [x] T068 Implement `begin_model_review_scan`,
+  `complete_model_review_scan`, and `clear_model_review_scan_results` RPC
+  boundaries.
+- [x] T069 Load persisted scan visibility with the project Model Review state
+  and default a missing scan-state row to `not_scanned`.
+- [x] T070 Restore persisted scan-result visibility from Supabase as the stable
+  frontend source of truth.
+- [x] T071 Protect scan state from stale, cancelled, replaced, and
+  project-switched scan attempts with pending tokens and local operation
+  invalidation.
+- [x] T072 Persist the `AI scan completed` review-history event atomically with
+  accepted scan completion and merge the returned event into frontend history.
+- [x] T073 Cover scan-state fetching, RPC parsing, required completion history,
+  RLS/write boundaries, token locking, and atomic history behavior in
+  persistence tests.
+- [x] T074 Cover result hiding and persisted visibility restoration in utility
+  tests without resetting persisted finding decisions or created issues.
+- [x] T075 Validate the implementation with 82 targeted tests, the 85-test full
+  suite, `npm run build`, `npm run lint`, and `git diff --check`.
 
 ## Dependencies and Execution Order
 

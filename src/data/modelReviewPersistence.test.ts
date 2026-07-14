@@ -1341,8 +1341,8 @@ describe("update_issue_status migration", () => {
     expect(rpcFunctionsMigration).toContain(
       "if not public.app_is_project_member(issue_row.project_id) then",
     )
-    expect(rpcFunctionsMigration).toContain(
-      "grant execute on function public.update_issue_status(uuid, text, uuid, text) to authenticated, service_role;",
+    expect(rpcFunctionsMigration).toMatch(
+      /grant execute on function public\.update_issue_status\(uuid, text, uuid, text\) to authenticated\b/,
     )
     expect(rlsPoliciesMigration).toContain(
       "grant select on table public.model_review_issues to authenticated;",
@@ -1389,8 +1389,8 @@ describe("record_finding_decision migration", () => {
     expect(rpcFunctionsMigration).toContain(
       "or decision_row.decision_type <> $2 then",
     )
-    expect(rpcFunctionsMigration).toContain(
-      "grant execute on function public.record_finding_decision(uuid, text, uuid, text) to authenticated, service_role;",
+    expect(rpcFunctionsMigration).toMatch(
+      /grant execute on function public\.record_finding_decision\(uuid, text, uuid, text\) to authenticated\b/,
     )
     expect(rlsPoliciesMigration).toContain(
       "grant select on table public.ai_finding_decisions to authenticated;",
@@ -1489,8 +1489,153 @@ describe("record_finding_decision migration", () => {
       "create or replace function public.remove_issue_from_tracker",
     )
     expect(removeIssueMigration).toContain("'remove_issue_link'")
+    expect(removeIssueMigration).toMatch(
+      /grant execute on function public\.remove_issue_from_tracker\(uuid, uuid\) to authenticated\b/,
+    )
+  })
+})
+
+describe("SECURITY DEFINER execute privilege hardening migration", () => {
+  const hardeningMigration = readFileSync(
+    resolve(
+      "supabase/migrations/20260714000001_harden_security_definer_execute_privileges.sql",
+    ),
+    "utf8",
+  )
+  const rlsHelpersMigration = readFileSync(
+    resolve("supabase/migrations/20260629000002_rls_helpers.sql"),
+    "utf8",
+  )
+  const rlsPoliciesMigration = readFileSync(
+    resolve("supabase/migrations/20260629000003_rls_policies.sql"),
+    "utf8",
+  )
+  const rpcFunctionsMigration = readFileSync(
+    resolve("supabase/migrations/20260629000004_rpc_functions.sql"),
+    "utf8",
+  )
+  const removeIssueMigration = readFileSync(
+    resolve(
+      "supabase/migrations/20260704000001_remove_issue_from_tracker.sql",
+    ),
+    "utf8",
+  )
+  const scanStateMigration = readFileSync(
+    resolve("supabase/migrations/20260705000003_model_review_scan_state.sql"),
+    "utf8",
+  )
+
+  it("conditionally hardens the remote-only RLS event-trigger helper", () => {
+    expect(hardeningMigration).toContain("do $$")
+    expect(hardeningMigration).toContain(
+      "if to_regprocedure('public.rls_auto_enable()') is not null then",
+    )
+    expect(hardeningMigration).toContain(
+      "execute 'revoke execute on function public.rls_auto_enable() from public, anon, authenticated, service_role';",
+    )
+    expect(hardeningMigration).not.toMatch(
+      /create or replace function public\.rls_auto_enable|drop function public\.rls_auto_enable|(?:create|alter|drop) event trigger/i,
+    )
+  })
+
+  it("removes explicit service-role execution from audited application functions", () => {
+    const signatures = [
+      "public.app_current_demo_user_id()",
+      "public.app_is_project_member(text)",
+      "public.app_next_issue_code(text)",
+      "public.create_issue_from_finding(uuid, uuid, jsonb)",
+      "public.record_finding_decision(uuid, text, uuid, text)",
+      "public.update_issue_status(uuid, text, uuid, text)",
+      "public.remove_issue_from_tracker(uuid, uuid)",
+    ]
+
+    for (const signature of signatures) {
+      expect(hardeningMigration).toContain(
+        `revoke execute on function ${signature} from service_role;`,
+      )
+    }
+
+    expect(hardeningMigration).not.toContain("grant execute")
+  })
+
+  it("preserves authenticated helper and frontend RPC execution", () => {
+    expect(rlsPoliciesMigration).toMatch(
+      /grant execute on function public\.app_current_demo_user_id\(\) to authenticated\b/,
+    )
+    expect(rlsPoliciesMigration).toMatch(
+      /grant execute on function public\.app_is_project_member\(text\) to authenticated\b/,
+    )
+    expect(rpcFunctionsMigration).toMatch(
+      /grant execute on function public\.create_issue_from_finding\(uuid, uuid, jsonb\) to authenticated\b/,
+    )
+    expect(rpcFunctionsMigration).toMatch(
+      /grant execute on function public\.record_finding_decision\(uuid, text, uuid, text\) to authenticated\b/,
+    )
+    expect(rpcFunctionsMigration).toMatch(
+      /grant execute on function public\.update_issue_status\(uuid, text, uuid, text\) to authenticated\b/,
+    )
+    expect(removeIssueMigration).toMatch(
+      /grant execute on function public\.remove_issue_from_tracker\(uuid, uuid\) to authenticated\b/,
+    )
+
+    for (const signature of [
+      "public.app_current_demo_user_id()",
+      "public.app_is_project_member(text)",
+      "public.create_issue_from_finding(uuid, uuid, jsonb)",
+      "public.record_finding_decision(uuid, text, uuid, text)",
+      "public.update_issue_status(uuid, text, uuid, text)",
+      "public.remove_issue_from_tracker(uuid, uuid)",
+    ]) {
+      expect(hardeningMigration).not.toContain(
+        `revoke execute on function ${signature} from authenticated;`,
+      )
+    }
+  })
+
+  it("keeps app_next_issue_code owner-only after the migration chain", () => {
+    expect(rlsHelpersMigration).toContain(
+      "revoke all on function public.app_next_issue_code(text) from public, anon, authenticated;",
+    )
+    expect(rlsPoliciesMigration).toContain(
+      "grant execute on function public.app_next_issue_code(text) to service_role;",
+    )
+    expect(hardeningMigration).toContain(
+      "revoke execute on function public.app_next_issue_code(text) from service_role;",
+    )
+  })
+
+  it("preserves existing PUBLIC and anonymous revocations", () => {
+    for (const revoke of [
+      "revoke all on function public.app_current_demo_user_id() from public, anon;",
+      "revoke all on function public.app_is_project_member(text) from public, anon;",
+    ]) {
+      expect(rlsHelpersMigration).toContain(revoke)
+    }
+
+    for (const revoke of [
+      "revoke all on function public.create_issue_from_finding(uuid, uuid, jsonb) from public, anon;",
+      "revoke all on function public.record_finding_decision(uuid, text, uuid, text) from public, anon;",
+      "revoke all on function public.update_issue_status(uuid, text, uuid, text) from public, anon;",
+    ]) {
+      expect(rpcFunctionsMigration).toContain(revoke)
+    }
+
     expect(removeIssueMigration).toContain(
-      "grant execute on function public.remove_issue_from_tracker(uuid, uuid) to authenticated, service_role;",
+      "revoke all on function public.remove_issue_from_tracker(uuid, uuid) from public, anon;",
+    )
+  })
+
+  it("leaves scan-state RPC ACLs unchanged", () => {
+    for (const grant of [
+      "grant execute on function public.begin_model_review_scan(text, uuid) to authenticated;",
+      "grant execute on function public.complete_model_review_scan(text, uuid) to authenticated;",
+      "grant execute on function public.clear_model_review_scan_results(text) to authenticated;",
+    ]) {
+      expect(scanStateMigration).toContain(grant)
+    }
+
+    expect(hardeningMigration).not.toMatch(
+      /(?:begin_model_review_scan|complete_model_review_scan|clear_model_review_scan_results)/,
     )
   })
 })

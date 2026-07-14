@@ -18,6 +18,9 @@ vi.mock("@/lib/supabase", () => ({
 }))
 
 import {
+  beginPersistedModelReviewScan,
+  clearPersistedModelReviewScanResults,
+  completePersistedModelReviewScan,
   dismissPersistedAiFinding,
   fetchPersistedModelReviewState,
   removePersistedModelReviewIssue,
@@ -133,6 +136,7 @@ const createBackendFindingDecisionResponse = ({
 
 function createTableBuilder(rows: Array<Record<string, unknown>>) {
   let resultRows = [...rows]
+  let singleResult = false
   const builder = {
     select: vi.fn(() => builder),
     eq: vi.fn((column: string, value: unknown) => {
@@ -145,12 +149,20 @@ function createTableBuilder(rows: Array<Record<string, unknown>>) {
     }),
     order: vi.fn(() => builder),
     limit: vi.fn(() => builder),
+    maybeSingle: vi.fn(() => {
+      singleResult = true
+      return builder
+    }),
     then: (
       resolve: (value: {
-        data: Array<Record<string, unknown>>
+        data: Array<Record<string, unknown>> | Record<string, unknown> | null
         error: null
       }) => unknown,
-    ) => Promise.resolve({ data: resultRows, error: null }).then(resolve),
+    ) =>
+      Promise.resolve({
+        data: singleResult ? (resultRows[0] ?? null) : resultRows,
+        error: null,
+      }).then(resolve),
   }
 
   return builder
@@ -243,6 +255,7 @@ describe("fetchPersistedModelReviewState", () => {
       id: "MRI-RES-0001",
       sourceFindingId: sourceIssue.id,
     })
+    expect(persistedState.scanStatus).toBe("not_scanned")
   })
 
   it("hydrates issues with the persisted backend status", async () => {
@@ -346,6 +359,161 @@ describe("fetchPersistedModelReviewState", () => {
     )
 
     expect(persistedState.findingStatuses[sourceIssue.id]).toBe("active")
+  })
+
+  it("hydrates explicit persisted scan visibility state", async () => {
+    const sourceIssue = createReviewIssue("fixture-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+
+    supabaseMock.from.mockImplementation((table: string) =>
+      createTableBuilder(
+        table === "model_review_scan_states"
+          ? [
+              {
+                project_id: project.id,
+                status: "scanned_with_findings",
+              },
+            ]
+          : [],
+      ),
+    )
+
+    const persistedState = await fetchPersistedModelReviewState(
+      project.id,
+      project.issues,
+    )
+
+    expect(persistedState.scanStatus).toBe("scanned_with_findings")
+  })
+
+  it("falls back to not_scanned when no scan-state row exists", async () => {
+    const sourceIssue = createReviewIssue("fixture-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+
+    supabaseMock.from.mockImplementation(() => createTableBuilder([]))
+
+    const persistedState = await fetchPersistedModelReviewState(
+      project.id,
+      project.issues,
+    )
+
+    expect(persistedState.scanStatus).toBe("not_scanned")
+  })
+})
+
+describe("persisted Model Review scan state", () => {
+  beforeEach(() => {
+    supabaseMock.from.mockReset()
+    supabaseMock.rpc.mockReset()
+  })
+
+  it("begins a scan with the project and token", async () => {
+    supabaseMock.rpc.mockResolvedValue({
+      data: {
+        scan_state: {
+          project_id: "residential-tower-a",
+          status: "not_scanned",
+        },
+        review_history_event: null,
+      },
+      error: null,
+    })
+
+    const result = await beginPersistedModelReviewScan(
+      "residential-tower-a",
+      "00000000-0000-4000-8000-000000000111",
+    )
+
+    expect(supabaseMock.rpc).toHaveBeenCalledWith("begin_model_review_scan", {
+      project_id: "residential-tower-a",
+      scan_token: "00000000-0000-4000-8000-000000000111",
+    })
+    expect(result.scanStatus).toBe("not_scanned")
+  })
+
+  it("completes a scan and requires the backend history event", async () => {
+    supabaseMock.rpc.mockResolvedValue({
+      data: {
+        scan_state: {
+          project_id: "residential-tower-a",
+          status: "scanned_with_findings",
+        },
+        review_history_event: {
+          id: "history-1",
+          label: "AI scan completed",
+          detail: "18 coordination findings available",
+          created_at: "2026-07-05T10:10:00.000Z",
+        },
+      },
+      error: null,
+    })
+
+    const result = await completePersistedModelReviewScan(
+      "residential-tower-a",
+      "00000000-0000-4000-8000-000000000111",
+    )
+
+    expect(supabaseMock.rpc).toHaveBeenCalledWith(
+      "complete_model_review_scan",
+      {
+        project_id: "residential-tower-a",
+        scan_token: "00000000-0000-4000-8000-000000000111",
+      },
+    )
+    expect(result).toMatchObject({
+      reviewHistoryEvent: {
+        id: "history-1",
+        label: "AI scan completed",
+      },
+      scanStatus: "scanned_with_findings",
+    })
+  })
+
+  it("clears scan visibility without requiring history", async () => {
+    supabaseMock.rpc.mockResolvedValue({
+      data: {
+        scan_state: {
+          project_id: "residential-tower-a",
+          status: "not_scanned",
+        },
+        review_history_event: null,
+      },
+      error: null,
+    })
+
+    const result = await clearPersistedModelReviewScanResults(
+      "residential-tower-a",
+    )
+
+    expect(supabaseMock.rpc).toHaveBeenCalledWith(
+      "clear_model_review_scan_results",
+      {
+        project_id: "residential-tower-a",
+      },
+    )
+    expect(result.scanStatus).toBe("not_scanned")
+  })
+
+  it("rejects scan completion without a persisted history event", async () => {
+    supabaseMock.rpc.mockResolvedValue({
+      data: {
+        scan_state: {
+          project_id: "residential-tower-a",
+          status: "scanned_with_findings",
+        },
+        review_history_event: null,
+      },
+      error: null,
+    })
+
+    await expect(
+      completePersistedModelReviewScan(
+        "residential-tower-a",
+        "00000000-0000-4000-8000-000000000111",
+      ),
+    ).rejects.toThrow(
+      "complete_model_review_scan did not return a review history event.",
+    )
   })
 })
 
@@ -1083,6 +1251,67 @@ describe("remove_issue_from_tracker migration", () => {
     expect(removeIssueMigration).toContain(
       "raise exception 'Removed issue is missing its removal history event",
     )
+  })
+})
+
+describe("model_review_scan_states migration", () => {
+  const scanStateMigration = readFileSync(
+    resolve("supabase/migrations/20260705000003_model_review_scan_state.sql"),
+    "utf8",
+  )
+
+  it("creates an explicit stable scan-state table initialized to not_scanned", () => {
+    expect(scanStateMigration).toContain(
+      "create table public.model_review_scan_states",
+    )
+    expect(scanStateMigration).toContain(
+      "status text not null check (status in ('not_scanned', 'scanned_with_findings'))",
+    )
+    expect(scanStateMigration).toContain("select p.id, 'not_scanned'")
+    expect(scanStateMigration).not.toContain("alter table public.ai_scan_runs")
+  })
+
+  it("keeps direct authenticated writes disabled and exposes authenticated RPCs", () => {
+    expect(scanStateMigration).toContain(
+      "grant select on table public.model_review_scan_states to authenticated;",
+    )
+    expect(scanStateMigration).not.toContain(
+      "grant select, insert, update on table public.model_review_scan_states to authenticated;",
+    )
+    expect(scanStateMigration).toContain(
+      "grant execute on function public.begin_model_review_scan(text, uuid) to authenticated;",
+    )
+    expect(scanStateMigration).toContain(
+      "grant execute on function public.complete_model_review_scan(text, uuid) to authenticated;",
+    )
+    expect(scanStateMigration).toContain(
+      "grant execute on function public.clear_model_review_scan_results(text) to authenticated;",
+    )
+  })
+
+  it("locks scan-state completion by pending token and appends scan history atomically", () => {
+    const tokenCheckIndex = scanStateMigration.indexOf(
+      "scan_state_row.pending_scan_token <> $2",
+    )
+    const scanRunLookupIndex = scanStateMigration.indexOf(
+      "from public.ai_scan_runs sr",
+    )
+    const stateUpdateIndex = scanStateMigration.indexOf(
+      "set status = 'scanned_with_findings'",
+    )
+    const historyInsertIndex = scanStateMigration.indexOf(
+      "insert into public.review_history_events",
+    )
+
+    expect(scanStateMigration).toMatch(
+      /create or replace function public\.complete_model_review_scan[\s\S]*security definer/i,
+    )
+    expect(scanStateMigration).toContain("for update;")
+    expect(tokenCheckIndex).toBeGreaterThan(-1)
+    expect(scanRunLookupIndex).toBeGreaterThan(tokenCheckIndex)
+    expect(stateUpdateIndex).toBeGreaterThan(scanRunLookupIndex)
+    expect(historyInsertIndex).toBeGreaterThan(stateUpdateIndex)
+    expect(scanStateMigration).toContain("'scan_completed'")
   })
 })
 

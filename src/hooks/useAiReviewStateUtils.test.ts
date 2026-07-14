@@ -15,6 +15,7 @@ import {
   getNextIssueSequenceFromIssues,
   getModelReviewIssueFocusAfterRemoval,
   hasRestorableAiCandidateActivity,
+  hideAiScanResults,
   mergeModelReviewIssues,
   mergeReviewHistory,
   modelReviewIssueStatusTransitionLabels,
@@ -116,6 +117,7 @@ const createPersistedReviewState = (
   findingStatuses: {},
   modelReviewIssues: [],
   reviewHistory: [],
+  scanStatus: "not_scanned",
   ...overrides,
 })
 
@@ -343,6 +345,36 @@ describe("resetAiCandidateState", () => {
     expect(resetState.previewIssueId).toBeNull()
     expect(resetState.scanStatus).toBe("not_scanned")
     expect(resetState.selectedFindingId).toBeNull()
+  })
+})
+
+describe("hideAiScanResults", () => {
+  it("hides AI results without resetting persisted finding decisions or issues", () => {
+    const sourceIssue = createReviewIssue("finding-1", "FND-001", "Finding 1")
+    const project = createProject([sourceIssue])
+    const modelReviewIssue = createModelReviewIssue(
+      "MR-001",
+      sourceIssue.id,
+      sourceIssue.code,
+      sourceIssue.title,
+    )
+    const state = createProjectAiReviewState(project, {
+      findingStatuses: {
+        [sourceIssue.id]: "issue-created",
+      },
+      modelReviewIssues: [modelReviewIssue],
+      previewIssueId: sourceIssue.id,
+      scanStatus: "scanned_with_findings",
+      selectedFindingId: sourceIssue.id,
+    })
+
+    const hiddenState = hideAiScanResults(state)
+
+    expect(hiddenState.findingStatuses[sourceIssue.id]).toBe("issue-created")
+    expect(hiddenState.modelReviewIssues).toEqual([modelReviewIssue])
+    expect(hiddenState.previewIssueId).toBeNull()
+    expect(hiddenState.scanStatus).toBe("not_scanned")
+    expect(hiddenState.selectedFindingId).toBeNull()
   })
 })
 
@@ -784,7 +816,7 @@ describe("hasRestorableAiCandidateActivity", () => {
 })
 
 describe("restorePersistedModelReviewState", () => {
-  it("restores persisted candidate scan state when candidate statuses differ from fixture defaults", () => {
+  it("uses persisted scan visibility as the source of truth", () => {
     const activeIssue = createReviewIssue(
       "finding-active",
       "FND-001",
@@ -793,33 +825,22 @@ describe("restorePersistedModelReviewState", () => {
     const project = createProject([activeIssue])
     const previous = createProjectAiReviewState(project)
 
-    const restoredState = restorePersistedModelReviewState(
-      previous,
-      {
-        findingStatuses: {
-          [activeIssue.id]: "dismissed",
-        },
-        modelReviewIssues: [],
-        reviewHistory: [],
+    const restoredState = restorePersistedModelReviewState(previous, {
+      findingStatuses: {
+        [activeIssue.id]: "dismissed",
       },
-      project,
-    )
+      modelReviewIssues: [],
+      reviewHistory: [],
+      scanStatus: "not_scanned",
+    })
 
     expect(restoredState.findingStatuses[activeIssue.id]).toBe("dismissed")
-    expect(restoredState.scanStatus).toBe("scanned_with_findings")
+    expect(restoredState.scanStatus).toBe("not_scanned")
   })
 
-  it("lets cleared AI candidate state win over persisted issues and history during restore", () => {
+  it("restores scanned visibility only when the explicit persisted state says so", () => {
     const sourceIssue = createReviewIssue("finding-1", "FND-001", "Finding 1")
     const project = createProject([sourceIssue])
-    const previous = resetAiCandidateState(
-      createProjectAiReviewState(project, {
-        modelReviewIssues: [],
-        reviewHistory: [],
-        scanStatus: "scanned_with_findings",
-      }),
-      project,
-    )
     const modelReviewIssue = createModelReviewIssue(
       "MR-001",
       sourceIssue.id,
@@ -829,19 +850,19 @@ describe("restorePersistedModelReviewState", () => {
     const historyEvent = createHistoryEvent("event-1", "Issue created")
 
     const restoredState = restorePersistedModelReviewState(
-      previous,
+      createProjectAiReviewState(project),
       {
         findingStatuses: {
           [sourceIssue.id]: "issue-created",
         },
         modelReviewIssues: [modelReviewIssue],
         reviewHistory: [historyEvent],
+        scanStatus: "scanned_with_findings",
       },
-      project,
     )
 
-    expect(restoredState.scanStatus).toBe("not_scanned")
-    expect(restoredState.findingStatuses[sourceIssue.id]).toBe("active")
+    expect(restoredState.scanStatus).toBe("scanned_with_findings")
+    expect(restoredState.findingStatuses[sourceIssue.id]).toBe("issue-created")
     expect(restoredState.modelReviewIssues).toEqual([modelReviewIssue])
     expect(restoredState.reviewHistory).toEqual([historyEvent])
   })
@@ -857,17 +878,14 @@ describe("restorePersistedModelReviewState", () => {
       project,
     )
 
-    const restoredState = restorePersistedModelReviewState(
-      previous,
-      {
-        findingStatuses: {
-          [sourceIssue.id]: "active",
-        },
-        modelReviewIssues: [],
-        reviewHistory: [createHistoryEvent("event-1", "Issue removed")],
+    const restoredState = restorePersistedModelReviewState(previous, {
+      findingStatuses: {
+        [sourceIssue.id]: "active",
       },
-      project,
-    )
+      modelReviewIssues: [],
+      reviewHistory: [createHistoryEvent("event-1", "Issue removed")],
+      scanStatus: "not_scanned",
+    })
 
     expect(restoredState.scanStatus).toBe("not_scanned")
     expect(restoredState.findingStatuses[sourceIssue.id]).toBe("active")
@@ -886,8 +904,8 @@ describe("restorePersistedModelReviewState", () => {
         findingStatuses: {},
         modelReviewIssues: [],
         reviewHistory: [],
+        scanStatus: "not_scanned",
       },
-      project,
     )
 
     expect(restoredState.scanStatus).toBe("not_scanned")
@@ -918,8 +936,8 @@ describe("restorePersistedModelReviewState", () => {
         },
         modelReviewIssues: [persistedIssue],
         reviewHistory: [],
+        scanStatus: "scanned_with_findings",
       },
-      project,
     )
 
     const blockedIssues = restoredState.modelReviewIssues.filter(

@@ -8,6 +8,7 @@ import type {
   ProjectData,
   ProjectId,
   ReviewIssue,
+  AiScanStatus,
 } from "@/types"
 
 export interface DemoUserProfile {
@@ -18,6 +19,14 @@ export interface PersistedModelReviewState {
   findingStatuses: Partial<Record<ReviewIssue["id"], AiFindingWorkflowStatus>>
   modelReviewIssues: ModelReviewIssue[]
   reviewHistory: ModelReviewHistoryEvent[]
+  scanStatus: PersistedAiScanStatus
+}
+
+export type PersistedAiScanStatus = Exclude<AiScanStatus, "scanning">
+
+export interface PersistedModelReviewScanStateUpdate {
+  reviewHistoryEvent?: ModelReviewHistoryEvent | null
+  scanStatus: PersistedAiScanStatus
 }
 
 interface BackendFindingRecord {
@@ -88,6 +97,11 @@ const aiFindingWorkflowStatuses = [
   "dismissed",
 ] satisfies readonly AiFindingWorkflowStatus[]
 
+const persistedAiScanStatuses = [
+  "not_scanned",
+  "scanned_with_findings",
+] satisfies readonly PersistedAiScanStatus[]
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
@@ -119,6 +133,12 @@ function readAiFindingWorkflowStatus(
   value: string | null,
 ): AiFindingWorkflowStatus | null {
   return aiFindingWorkflowStatuses.find((status) => status === value) ?? null
+}
+
+function readPersistedAiScanStatus(
+  value: string | null,
+): PersistedAiScanStatus | null {
+  return persistedAiScanStatuses.find((status) => status === value) ?? null
 }
 
 function formatHistoryTime(createdAt: string) {
@@ -247,6 +267,16 @@ function parseReviewHistoryEvent(
   }
 }
 
+function parsePersistedModelReviewScanState(
+  value: unknown,
+): PersistedAiScanStatus | null {
+  if (!isRecord(value)) {
+    return null
+  }
+
+  return readPersistedAiScanStatus(readString(value, "status"))
+}
+
 function parseBackendStatusHistory(
   value: unknown,
 ): BackendStatusHistoryRecord | null {
@@ -300,6 +330,10 @@ function createIdempotencyKey() {
   }
 
   return randomUUID.call(globalThis.crypto)
+}
+
+export function createScanToken() {
+  return createIdempotencyKey()
 }
 
 function parseRequiredStatusHistory(
@@ -487,6 +521,22 @@ async function fetchBackendIssues(projectId: ProjectId) {
   })
 }
 
+async function fetchPersistedModelReviewScanStatus(
+  projectId: ProjectId,
+): Promise<PersistedAiScanStatus> {
+  const { data, error } = await supabase
+    .from("model_review_scan_states")
+    .select("status")
+    .eq("project_id", projectId)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return parsePersistedModelReviewScanState(data) ?? "not_scanned"
+}
+
 export async function fetchDemoUserProfile() {
   const {
     data: { user },
@@ -540,11 +590,13 @@ export async function fetchPersistedModelReviewState(
   projectId: ProjectId,
   projectIssues: ProjectData["issues"],
 ): Promise<PersistedModelReviewState> {
-  const [backendFindings, backendIssues, reviewHistory] = await Promise.all([
-    fetchBackendFindings(projectId),
-    fetchBackendIssues(projectId),
-    fetchReviewHistoryEvents(projectId),
-  ])
+  const [backendFindings, backendIssues, reviewHistory, scanStatus] =
+    await Promise.all([
+      fetchBackendFindings(projectId),
+      fetchBackendIssues(projectId),
+      fetchReviewHistoryEvents(projectId),
+      fetchPersistedModelReviewScanStatus(projectId),
+    ])
   const sourceIssueByFixtureId = new Map(
     projectIssues.map((issue) => [issue.id, issue]),
   )
@@ -575,7 +627,102 @@ export async function fetchPersistedModelReviewState(
     findingStatuses,
     modelReviewIssues,
     reviewHistory,
+    scanStatus,
   }
+}
+
+function parseModelReviewScanStateRpcResponse(
+  value: unknown,
+  operationName: string,
+  expectedStatus: PersistedAiScanStatus,
+): PersistedModelReviewScanStateUpdate {
+  if (!isRecord(value)) {
+    throw new Error(`Unexpected ${operationName} response.`)
+  }
+
+  const scanStatus = parsePersistedModelReviewScanState(value.scan_state)
+
+  if (!scanStatus) {
+    throw new Error(`${operationName} did not return a scan state.`)
+  }
+
+  if (scanStatus !== expectedStatus) {
+    throw new Error(`${operationName} returned a different scan status.`)
+  }
+
+  return {
+    reviewHistoryEvent: parseReviewHistoryEvent(value.review_history_event),
+    scanStatus,
+  }
+}
+
+export async function beginPersistedModelReviewScan(
+  projectId: ProjectId,
+  scanToken: string,
+): Promise<PersistedModelReviewScanStateUpdate> {
+  const { data, error } = await supabase.rpc("begin_model_review_scan", {
+    project_id: projectId,
+    scan_token: scanToken,
+  })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return parseModelReviewScanStateRpcResponse(
+    data,
+    "begin_model_review_scan",
+    "not_scanned",
+  )
+}
+
+export async function completePersistedModelReviewScan(
+  projectId: ProjectId,
+  scanToken: string,
+): Promise<PersistedModelReviewScanStateUpdate> {
+  const { data, error } = await supabase.rpc("complete_model_review_scan", {
+    project_id: projectId,
+    scan_token: scanToken,
+  })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  const result = parseModelReviewScanStateRpcResponse(
+    data,
+    "complete_model_review_scan",
+    "scanned_with_findings",
+  )
+
+  if (!result.reviewHistoryEvent) {
+    throw new Error(
+      "complete_model_review_scan did not return a review history event.",
+    )
+  }
+
+  return result
+}
+
+export async function clearPersistedModelReviewScanResults(
+  projectId: ProjectId,
+): Promise<PersistedModelReviewScanStateUpdate> {
+  const { data, error } = await supabase.rpc(
+    "clear_model_review_scan_results",
+    {
+      project_id: projectId,
+    },
+  )
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return parseModelReviewScanStateRpcResponse(
+    data,
+    "clear_model_review_scan_results",
+    "not_scanned",
+  )
 }
 
 export async function createPersistedModelReviewIssue(

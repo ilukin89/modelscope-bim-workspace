@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react"
 import {
+  beginPersistedModelReviewScan,
+  clearPersistedModelReviewScanResults,
+  completePersistedModelReviewScan,
   createPersistedModelReviewIssue,
+  createScanToken,
   dismissPersistedAiFinding,
   fetchPersistedModelReviewState,
   removePersistedModelReviewIssue,
@@ -12,12 +16,11 @@ import {
   applyAiFindingDecision,
   applyModelReviewIssueStatusUpdate,
   applyModelReviewIssueRemoval,
-  getInitialFindingStatuses,
   getInitialProjectAiReviewState,
   getInitialProjectAiReviewStates,
   getModelReviewIssueFocusAfterRemoval,
+  hideAiScanResults,
   mergeReviewHistory,
-  resetAiCandidateState,
   restorePersistedModelReviewState,
   modelReviewIssueStatusTransitionLabels,
 } from "@/hooks/useAiReviewStateUtils"
@@ -64,7 +67,14 @@ export function useAiReviewState({
     ModelReviewIssue["id"] | null
   >(null)
   const aiScanTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const activeAiScanAttempt = useRef<{
+    projectId: ProjectId
+    scanToken: string
+  } | null>(null)
+  const scanOperationNonce = useRef(0)
+  const selectedProjectIdRef = useRef(selectedProjectId)
   const modelFocusRequestNonce = useRef(0)
+  selectedProjectIdRef.current = selectedProjectId
 
   const selectedAiReviewState =
     projectAiReviewStates[selectedProjectId] ??
@@ -94,13 +104,30 @@ export function useAiReviewState({
     Boolean(selectedAiFindingId) &&
     previewIssueId === selectedAiFindingId
 
+  const cancelLocalAiScanTimeout = () => {
+    if (aiScanTimeout.current) {
+      clearTimeout(aiScanTimeout.current)
+      aiScanTimeout.current = null
+    }
+  }
+
   useEffect(
     () => () => {
       if (aiScanTimeout.current) {
         clearTimeout(aiScanTimeout.current)
       }
+      activeAiScanAttempt.current = null
     },
     [],
+  )
+
+  useEffect(
+    () => () => {
+      cancelLocalAiScanTimeout()
+      activeAiScanAttempt.current = null
+      scanOperationNonce.current += 1
+    },
+    [selectedProjectId],
   )
 
   const updateProjectAiReviewState = (
@@ -137,13 +164,19 @@ export function useAiReviewState({
             current[selectedProjectId] ??
             getInitialProjectAiReviewState(selectedProject)
 
+          const restoredState = restorePersistedModelReviewState(
+            previous,
+            persistedState,
+          )
+          const activeScanIsInFlight =
+            previous.scanStatus === "scanning" &&
+            activeAiScanAttempt.current?.projectId === selectedProjectId
+
           return {
             ...current,
-            [selectedProjectId]: restorePersistedModelReviewState(
-              previous,
-              persistedState,
-              selectedProject,
-            ),
+            [selectedProjectId]: activeScanIsInFlight
+              ? { ...restoredState, scanStatus: "scanning" }
+              : restoredState,
           }
         })
       })
@@ -537,29 +570,60 @@ export function useAiReviewState({
   }
 
   const clearAiScanResults = () => {
-    if (aiScanTimeout.current) {
-      clearTimeout(aiScanTimeout.current)
-      aiScanTimeout.current = null
-    }
+    const projectId = selectedProjectId
+    const operationNonce = (scanOperationNonce.current += 1)
+    const fallbackStatus =
+      aiScanStatus === "scanning" ? "not_scanned" : aiScanStatus
 
-    updateSelectedProjectAiReviewState((state) =>
-      resetAiCandidateState(state, selectedProject),
-    )
-    setFocusedIssueCardId(null)
-    setModelFocusRequest(null)
-    setActiveInspectorTab("ai")
+    cancelLocalAiScanTimeout()
+    activeAiScanAttempt.current = null
+
+    void clearPersistedModelReviewScanResults(projectId)
+      .then((result) => {
+        if (scanOperationNonce.current !== operationNonce) {
+          return
+        }
+
+        updateProjectAiReviewState(projectId, (state) => ({
+          ...hideAiScanResults(state),
+          scanStatus: result.scanStatus,
+        }))
+        setFocusedIssueCardId(null)
+        setModelFocusRequest(null)
+
+        if (selectedProjectIdRef.current === projectId) {
+          setActiveInspectorTab("ai")
+        }
+      })
+      .catch((error) => {
+        if (
+          scanOperationNonce.current === operationNonce &&
+          fallbackStatus === "not_scanned"
+        ) {
+          updateProjectAiReviewState(projectId, (state) => ({
+            ...state,
+            scanStatus: fallbackStatus,
+          }))
+        }
+
+        console.error(
+          "Failed to clear persisted Model Review scan results",
+          error,
+        )
+      })
   }
 
   const prepareProjectChange = () => {
-    if (aiScanTimeout.current) {
-      clearTimeout(aiScanTimeout.current)
-      aiScanTimeout.current = null
-      updateSelectedProjectAiReviewState((state) =>
-        state.scanStatus === "scanning"
-          ? { ...state, scanStatus: "not_scanned" }
-          : state,
-      )
-    }
+    const projectId = selectedProjectId
+
+    cancelLocalAiScanTimeout()
+    activeAiScanAttempt.current = null
+    scanOperationNonce.current += 1
+    updateProjectAiReviewState(projectId, (state) =>
+      state.scanStatus === "scanning"
+        ? { ...state, scanStatus: "not_scanned" }
+        : state,
+    )
     setFocusedIssueCardId(null)
     setModelFocusRequest(null)
   }
@@ -592,44 +656,113 @@ export function useAiReviewState({
   }
 
   const scanWithAi = () => {
-    if (aiScanStatus === "scanning") {
+    if (
+      aiScanStatus === "scanning" ||
+      activeAiScanAttempt.current?.projectId === selectedProjectId
+    ) {
       openAiReview()
       return
     }
 
-    if (aiScanTimeout.current) {
-      clearTimeout(aiScanTimeout.current)
-    }
+    const projectId = selectedProjectId
+    const project = selectedProject
+    const scanToken = createScanToken()
+    const operationNonce = (scanOperationNonce.current += 1)
 
+    cancelLocalAiScanTimeout()
+    activeAiScanAttempt.current = { projectId, scanToken }
     openAiReview()
-    updateSelectedProjectAiReviewState((state) => ({
-      ...state,
-      previewIssueId: null,
-      scanStatus: "scanning",
-    }))
 
-    aiScanTimeout.current = setTimeout(() => {
-      updateProjectAiReviewState(selectedProject.id, (state) => {
-        const nextFindingStatuses = getInitialFindingStatuses(selectedProject)
-        state.modelReviewIssues.forEach((issue) => {
-          nextFindingStatuses[issue.sourceFindingId] = "issue-created"
-        })
-
-        return {
-          ...state,
-          findingStatuses: nextFindingStatuses,
-          previewIssueId: null,
-          scanStatus: "scanned_with_findings",
-          selectedFindingId: null,
+    void beginPersistedModelReviewScan(projectId, scanToken)
+      .then(() => {
+        if (
+          scanOperationNonce.current !== operationNonce ||
+          activeAiScanAttempt.current?.projectId !== projectId ||
+          activeAiScanAttempt.current.scanToken !== scanToken
+        ) {
+          return
         }
+
+        updateProjectAiReviewState(projectId, (state) => ({
+          ...state,
+          previewIssueId: null,
+          scanStatus: "scanning",
+          selectedFindingId: null,
+        }))
+
+        aiScanTimeout.current = setTimeout(() => {
+          void completePersistedModelReviewScan(projectId, scanToken)
+            .then((result) => {
+              if (
+                scanOperationNonce.current !== operationNonce ||
+                activeAiScanAttempt.current?.projectId !== projectId ||
+                activeAiScanAttempt.current.scanToken !== scanToken
+              ) {
+                return
+              }
+
+              updateProjectAiReviewState(projectId, (state) => ({
+                ...state,
+                previewIssueId: null,
+                reviewHistory: result.reviewHistoryEvent
+                  ? mergeReviewHistory(state.reviewHistory, [
+                      result.reviewHistoryEvent,
+                    ])
+                  : state.reviewHistory,
+                scanStatus: result.scanStatus,
+                selectedFindingId: null,
+              }))
+
+              if (selectedProjectIdRef.current === projectId) {
+                openAiReview()
+              }
+
+              activeAiScanAttempt.current = null
+              aiScanTimeout.current = null
+            })
+            .catch((error) => {
+              if (
+                scanOperationNonce.current === operationNonce &&
+                activeAiScanAttempt.current?.projectId === projectId &&
+                activeAiScanAttempt.current.scanToken === scanToken
+              ) {
+                updateProjectAiReviewState(projectId, (state) => ({
+                  ...state,
+                  previewIssueId: null,
+                  scanStatus: "not_scanned",
+                  selectedFindingId: null,
+                }))
+                activeAiScanAttempt.current = null
+              }
+
+              aiScanTimeout.current = null
+              console.error(
+                "Failed to complete persisted Model Review scan",
+                error,
+              )
+            })
+        }, 1250)
       })
-      openAiReview()
-      recordHistory(
-        "AI scan completed",
-        `${selectedProject.issues.length} coordination findings available`,
-      )
-      aiScanTimeout.current = null
-    }, 1250)
+      .catch((error) => {
+        if (
+          scanOperationNonce.current === operationNonce &&
+          activeAiScanAttempt.current?.projectId === projectId &&
+          activeAiScanAttempt.current.scanToken === scanToken
+        ) {
+          updateProjectAiReviewState(projectId, (state) => ({
+            ...state,
+            previewIssueId: null,
+            scanStatus: "not_scanned",
+            selectedFindingId: null,
+          }))
+          activeAiScanAttempt.current = null
+        }
+
+        console.error(
+          `Failed to begin persisted Model Review scan for ${project.name}`,
+          error,
+        )
+      })
   }
 
   return {

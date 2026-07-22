@@ -1315,6 +1315,68 @@ describe("model_review_scan_states migration", () => {
   })
 })
 
+describe("model review scan RPC ambiguity fix migration", () => {
+  const ambiguityFixMigration = readFileSync(
+    resolve(
+      "supabase/migrations/20260722000001_fix_model_review_scan_rpc_ambiguity.sql",
+    ),
+    "utf8",
+  )
+
+  it("replaces all three functions without changing their public RPC arguments", () => {
+    expect(ambiguityFixMigration).toMatch(
+      /create or replace function public\.begin_model_review_scan\(\s*project_id text,\s*scan_token uuid\s*\)/i,
+    )
+    expect(ambiguityFixMigration).toMatch(
+      /create or replace function public\.complete_model_review_scan\(\s*project_id text,\s*scan_token uuid\s*\)/i,
+    )
+    expect(ambiguityFixMigration).toMatch(
+      /create or replace function public\.clear_model_review_scan_results\(\s*project_id text\s*\)/i,
+    )
+    expect(
+      ambiguityFixMigration.match(/#variable_conflict error/g),
+    ).toHaveLength(3)
+    expect(ambiguityFixMigration).toContain("p_project_id alias for $1;")
+    expect(ambiguityFixMigration).toContain("p_scan_token alias for $2;")
+  })
+
+  it("qualifies project columns and removes ambiguous conflict and where clauses", () => {
+    expect(ambiguityFixMigration).toContain(
+      "on conflict on constraint model_review_scan_states_pkey do update",
+    )
+    expect(ambiguityFixMigration).toContain(
+      "where scan_states.project_id = p_project_id",
+    )
+    expect(ambiguityFixMigration).toContain(
+      "where scan_runs.project_id = p_project_id",
+    )
+    expect(ambiguityFixMigration).toContain(
+      "where findings.project_id = scan_runs.project_id",
+    )
+    expect(ambiguityFixMigration).not.toMatch(/on conflict \(project_id\)/i)
+    expect(ambiguityFixMigration).not.toMatch(/where project_id\s*=/i)
+  })
+
+  it("preserves security settings and authenticated execution permissions", () => {
+    expect(ambiguityFixMigration.match(/security definer/g)).toHaveLength(3)
+    expect(
+      ambiguityFixMigration.match(/set search_path = public, auth, pg_temp/g),
+    ).toHaveLength(3)
+    expect(ambiguityFixMigration).toContain(
+      "revoke all on function public.begin_model_review_scan(text, uuid) from public, anon;",
+    )
+    expect(ambiguityFixMigration).toContain(
+      "grant execute on function public.begin_model_review_scan(text, uuid) to authenticated;",
+    )
+    expect(ambiguityFixMigration).toContain(
+      "grant execute on function public.complete_model_review_scan(text, uuid) to authenticated;",
+    )
+    expect(ambiguityFixMigration).toContain(
+      "grant execute on function public.clear_model_review_scan_results(text) to authenticated;",
+    )
+  })
+})
+
 describe("update_issue_status migration", () => {
   const rlsPoliciesMigration = readFileSync(
     resolve("supabase/migrations/20260629000003_rls_policies.sql"),

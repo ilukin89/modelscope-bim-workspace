@@ -345,6 +345,12 @@ The persistence layer is intended to support:
 
 The backend boundary is deliberately narrower than a full BIM platform. It supports the portfolio prototype's review workflows without claiming production-grade BIM processing, real AI inference, or enterprise collaboration.
 
+The real Supabase scan RPC path has a separate, opt-in smoke test because it
+requires dedicated credentials and permanently writes review history. See
+[`docs/supabase-model-review-smoke-test.md`](docs/supabase-model-review-smoke-test.md)
+for its required environment variables, safety prerequisites, persistent side
+effects, and `npm run test:supabase-smoke` command.
+
 ---
 
 ### Drawing Triage session and persistence boundary

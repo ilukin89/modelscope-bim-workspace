@@ -5,6 +5,7 @@ import type {
   ModelReviewHistoryEvent,
   ModelReviewIssue,
   ModelReviewIssueStatus,
+  ModelReviewScanFailureReason,
   ProjectData,
   ProjectId,
   ReviewIssue,
@@ -104,6 +105,66 @@ const persistedAiScanStatuses = [
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+const networkFailurePatterns = [
+  "failed to fetch",
+  "networkerror",
+  "network request failed",
+  "load failed",
+]
+
+const sessionFailureCodes = new Set(["28000", "PGRST301"])
+
+export function classifyModelReviewScanFailure(
+  error: unknown,
+): ModelReviewScanFailureReason {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    return "network"
+  }
+
+  const errorRecord = isRecord(error) ? error : null
+  const message =
+    error instanceof Error
+      ? error.message
+      : errorRecord && typeof errorRecord.message === "string"
+        ? errorRecord.message
+        : ""
+  const normalizedMessage = message.toLowerCase()
+  const code =
+    errorRecord && typeof errorRecord.code === "string"
+      ? errorRecord.code
+      : null
+  const status =
+    errorRecord && typeof errorRecord.status === "number"
+      ? errorRecord.status
+      : null
+
+  if (
+    (error instanceof TypeError || errorRecord?.name === "TypeError") &&
+    networkFailurePatterns.some((pattern) =>
+      normalizedMessage.includes(pattern),
+    )
+  ) {
+    return "network"
+  }
+
+  if (
+    (code && sessionFailureCodes.has(code)) ||
+    status === 401 ||
+    errorRecord?.name === "AuthSessionMissingError" ||
+    normalizedMessage.includes("jwt expired") ||
+    normalizedMessage.includes("invalid jwt") ||
+    normalizedMessage.includes("auth session missing")
+  ) {
+    return "session"
+  }
+
+  if ((code && code.length > 0) || (status !== null && status >= 400)) {
+    return "server"
+  }
+
+  return "unknown"
 }
 
 function readString(record: Record<string, unknown>, key: string) {
@@ -484,7 +545,7 @@ async function fetchBackendFindings(projectId: ProjectId) {
     .eq("project_id", projectId)
 
   if (error) {
-    throw new Error(error.message)
+    throw error
   }
 
   if (!Array.isArray(data)) {
@@ -508,7 +569,7 @@ async function fetchBackendIssues(projectId: ProjectId) {
     .order("created_at", { ascending: true })
 
   if (error) {
-    throw new Error(error.message)
+    throw error
   }
 
   if (!Array.isArray(data)) {

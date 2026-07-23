@@ -182,10 +182,13 @@ function WorkspaceApp() {
     hideModelReviewIssue,
     modelFocusRequest,
     modelReviewIssues,
+    modelReviewScanError,
+    modelReviewScanFailureReason,
     openAiReview,
     prepareProjectChange,
     previewActive,
     reviewHistory,
+    retryModelReviewScanOperation,
     scanWithAi,
     selectAiFinding,
     selectedAiFinding,
@@ -387,6 +390,8 @@ function WorkspaceApp() {
               aiGroupingMode={aiFindingGroupingMode}
               aiFindingStatus={selectedFindingStatus}
               aiScanStatus={aiScanStatus}
+              modelReviewScanError={modelReviewScanError}
+              modelReviewScanFailureReason={modelReviewScanFailureReason}
               focusedIssueCardId={focusedIssueCardId}
               focusedModelIssueId={focusedModelIssueId}
               modelReviewIssues={modelReviewIssues}
@@ -401,6 +406,7 @@ function WorkspaceApp() {
               onPreviewChange={togglePreviewChange}
               onRemoveIssue={removeModelReviewIssue}
               onRescanAi={scanWithAi}
+              onRetryScanError={retryModelReviewScanOperation}
               onRestoreFinding={restoreAiFinding}
               onTabChange={setActiveInspectorTab}
               onUpdateIssueStatus={updateModelReviewIssueStatus}
@@ -479,6 +485,8 @@ function WorkspaceApp() {
                 aiGroupingMode={aiFindingGroupingMode}
                 aiFindingStatus={selectedFindingStatus}
                 aiScanStatus={aiScanStatus}
+                modelReviewScanError={modelReviewScanError}
+                modelReviewScanFailureReason={modelReviewScanFailureReason}
                 focusedIssueCardId={focusedIssueCardId}
                 focusedModelIssueId={focusedModelIssueId}
                 modelReviewIssues={modelReviewIssues}
@@ -493,6 +501,7 @@ function WorkspaceApp() {
                 onPreviewChange={togglePreviewChange}
                 onRemoveIssue={removeModelReviewIssue}
                 onRescanAi={scanWithAi}
+                onRetryScanError={retryModelReviewScanOperation}
                 onRestoreFinding={restoreAiFinding}
                 onTabChange={setActiveInspectorTab}
                 onUpdateIssueStatus={updateModelReviewIssueStatus}

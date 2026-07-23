@@ -14,6 +14,8 @@ import type {
   ModelReviewHistoryEvent,
   ModelReviewIssue,
   ModelReviewIssueStatus,
+  ModelReviewScanError,
+  ModelReviewScanFailureReason,
   ReviewIssue,
 } from "@/types"
 
@@ -24,6 +26,8 @@ interface ObjectInspectorProps {
   aiGroupingMode: AiFindingGroupingMode
   aiFindingStatus: AiFindingWorkflowStatus
   aiScanStatus: AiScanStatus
+  modelReviewScanError: ModelReviewScanError | null
+  modelReviewScanFailureReason: ModelReviewScanFailureReason
   focusedIssueCardId: ModelReviewIssue["id"] | null
   focusedModelIssueId: ModelReviewIssue["id"] | null
   modelReviewIssues: ModelReviewIssue[]
@@ -43,6 +47,7 @@ interface ObjectInspectorProps {
   onPreviewChange: () => void
   onRemoveIssue: (issueId: ModelReviewIssue["id"]) => void | Promise<unknown>
   onRescanAi: () => void
+  onRetryScanError: () => void
   onRestoreFinding: () => void
   onTabChange: (tab: InspectorTab) => void
   onUpdateIssueStatus: (
@@ -62,6 +67,8 @@ export function ObjectInspector({
   aiGroupingMode,
   aiFindingStatus,
   aiScanStatus,
+  modelReviewScanError,
+  modelReviewScanFailureReason,
   focusedIssueCardId,
   focusedModelIssueId,
   modelReviewIssues,
@@ -81,6 +88,7 @@ export function ObjectInspector({
   onPreviewChange,
   onRemoveIssue,
   onRescanAi,
+  onRetryScanError,
   onRestoreFinding,
   onTabChange,
   onUpdateIssueStatus,
@@ -257,6 +265,8 @@ export function ObjectInspector({
             aiFindingStatus={aiFindingStatus}
             aiGroupingMode={aiGroupingMode}
             aiScanStatus={aiScanStatus}
+            modelReviewScanError={modelReviewScanError}
+            modelReviewScanFailureReason={modelReviewScanFailureReason}
             modelReviewIssues={modelReviewIssues}
             previewActive={previewActive}
             selectedFindingId={selectedFindingId}
@@ -268,6 +278,7 @@ export function ObjectInspector({
             onGroupingModeChange={onGroupingModeChange}
             onPreviewChange={onPreviewChange}
             onRescanAi={onRescanAi}
+            onRetryScanError={onRetryScanError}
             onRestoreFinding={onRestoreFinding}
             onViewCreatedIssueDetails={onViewCreatedIssueDetails}
             onViewFindingInModel={onViewFindingInModel}

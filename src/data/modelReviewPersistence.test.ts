@@ -19,6 +19,7 @@ vi.mock("@/lib/supabase", () => ({
 
 import {
   beginPersistedModelReviewScan,
+  classifyModelReviewScanFailure,
   clearPersistedModelReviewScanResults,
   completePersistedModelReviewScan,
   dismissPersistedAiFinding,
@@ -27,6 +28,38 @@ import {
   restorePersistedAiFinding,
   updatePersistedModelReviewIssueStatus,
 } from "./modelReviewPersistence"
+
+describe("Model Review scan failure classification", () => {
+  it("classifies clear pre-response fetch failures as network errors", () => {
+    expect(
+      classifyModelReviewScanFailure(new TypeError("Failed to fetch")),
+    ).toBe("network")
+  })
+
+  it("classifies confirmed authentication responses as session errors", () => {
+    expect(
+      classifyModelReviewScanFailure({
+        code: "28000",
+        message: "Authenticated user required",
+      }),
+    ).toBe("session")
+  })
+
+  it("classifies confirmed Supabase responses as server errors", () => {
+    expect(
+      classifyModelReviewScanFailure({
+        code: "P0002",
+        message: "Backend prerequisite missing",
+      }),
+    ).toBe("server")
+  })
+
+  it("uses the generic fallback when the cause is not confirmed", () => {
+    expect(
+      classifyModelReviewScanFailure(new Error("Something went wrong")),
+    ).toBe("unknown")
+  })
+})
 
 const createReviewIssue = (
   id: string,
@@ -1577,9 +1610,7 @@ describe("SECURITY DEFINER execute privilege hardening migration", () => {
     "utf8",
   )
   const removeIssueMigration = readFileSync(
-    resolve(
-      "supabase/migrations/20260704000001_remove_issue_from_tracker.sql",
-    ),
+    resolve("supabase/migrations/20260704000001_remove_issue_from_tracker.sql"),
     "utf8",
   )
   const scanStateMigration = readFileSync(

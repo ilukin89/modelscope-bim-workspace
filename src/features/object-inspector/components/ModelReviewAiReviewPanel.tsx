@@ -44,6 +44,8 @@ import type {
   AiFindingWorkflowStatus,
   AiScanStatus,
   ModelReviewIssue,
+  ModelReviewScanError,
+  ModelReviewScanFailureReason,
   ReviewIssue,
 } from "@/types"
 
@@ -53,6 +55,8 @@ interface ModelReviewAiReviewPanelProps {
   aiFindingStatus: AiFindingWorkflowStatus
   aiGroupingMode: AiFindingGroupingMode
   aiScanStatus: AiScanStatus
+  modelReviewScanError: ModelReviewScanError | null
+  modelReviewScanFailureReason: ModelReviewScanFailureReason
   modelReviewIssues: ModelReviewIssue[]
   previewActive: boolean
   selectedFindingId: ReviewIssue["id"] | null
@@ -65,6 +69,7 @@ interface ModelReviewAiReviewPanelProps {
   onPreviewChange: () => void
   onRescanAi: () => void
   onRestoreFinding: () => void
+  onRetryScanError: () => void
   onViewCreatedIssueDetails: () => void
   onViewFindingInModel: () => void
 }
@@ -277,6 +282,8 @@ export function ModelReviewAiReviewPanel({
   aiFindingStatus,
   aiGroupingMode,
   aiScanStatus,
+  modelReviewScanError,
+  modelReviewScanFailureReason,
   modelReviewIssues,
   previewActive,
   selectedFindingId,
@@ -289,6 +296,7 @@ export function ModelReviewAiReviewPanel({
   onPreviewChange,
   onRescanAi,
   onRestoreFinding,
+  onRetryScanError,
   onViewCreatedIssueDetails,
   onViewFindingInModel,
 }: ModelReviewAiReviewPanelProps) {
@@ -358,6 +366,39 @@ export function ModelReviewAiReviewPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      {modelReviewScanError && (
+        <div
+          role="alert"
+          className="m-2.5 mb-0 flex shrink-0 items-start gap-2 rounded-md border border-destructive/30 bg-destructive/8 p-2.5 text-destructive dark:border-destructive/40 dark:bg-destructive/10"
+        >
+          <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-medium leading-snug">
+              {modelReviewScanError === "clear"
+                ? "The scan results could not be cleared. Please try again."
+                : modelReviewScanError === "load"
+                  ? "The saved scan state could not be loaded. Please try again."
+                  : modelReviewScanFailureReason === "network"
+                    ? "The AI scan could not be completed because the network connection was lost. Please reconnect and try again."
+                    : modelReviewScanFailureReason === "session"
+                      ? "Your session may have expired. Please sign in again and retry the scan."
+                      : modelReviewScanFailureReason === "server"
+                        ? "The AI scan could not be completed due to a server error. Please try again."
+                        : "The AI scan could not be completed. Please try again."}
+            </p>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              className="mt-3 w-full justify-center text-[11px] font-semibold shadow-sm"
+              onClick={onRetryScanError}
+            >
+              <RefreshCw className="size-3.5" />
+              Try again
+            </Button>
+          </div>
+        </div>
+      )}
       {hasAiFindings ? (
         <>
           <div className="shrink-0 border-b border-border/25 p-2.5 dark:border-border">
@@ -379,21 +420,23 @@ export function ModelReviewAiReviewPanel({
                 >
                   Clear AI candidates
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="compact"
-                  className="h-6 border-ai/35 bg-ai/10 px-1.5 text-[9px] text-ai-foreground hover:border-ai/45 hover:bg-ai/16 hover:text-ai-foreground"
-                  onClick={onRescanAi}
-                  disabled={aiScanning}
-                >
-                  {aiScanning ? (
-                    <Loader2 className="size-3 animate-spin" />
-                  ) : (
-                    <RefreshCw className="size-3" />
-                  )}
-                  Rescan
-                </Button>
+                {modelReviewScanError !== "scan" && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="compact"
+                    className="h-6 border-ai/35 bg-ai/10 px-1.5 text-[9px] text-ai-foreground hover:border-ai/45 hover:bg-ai/16 hover:text-ai-foreground"
+                    onClick={onRescanAi}
+                    disabled={aiScanning}
+                  >
+                    {aiScanning ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <RefreshCw className="size-3" />
+                    )}
+                    Rescan
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -734,21 +777,23 @@ export function ModelReviewAiReviewPanel({
                   AI findings, issue actions, and review history appear after
                   the mock scan completes.
                 </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="compact"
-                  className="mt-2 w-full justify-center border-ai/35 bg-ai/10 text-ai-foreground hover:border-ai/45 hover:bg-ai/16 hover:text-ai-foreground"
-                  onClick={onRescanAi}
-                  disabled={aiScanning}
-                >
-                  {aiScanning ? (
-                    <Loader2 className="size-3 animate-spin" />
-                  ) : (
-                    <ScanSearch className="size-3" />
-                  )}
-                  {aiScanning ? "Scanning..." : "Scan with AI"}
-                </Button>
+                {modelReviewScanError !== "scan" && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="compact"
+                    className="mt-2 w-full justify-center border-ai/35 bg-ai/10 text-ai-foreground hover:border-ai/45 hover:bg-ai/16 hover:text-ai-foreground"
+                    onClick={onRescanAi}
+                    disabled={aiScanning}
+                  >
+                    {aiScanning ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <ScanSearch className="size-3" />
+                    )}
+                    {aiScanning ? "Scanning..." : "Scan with AI"}
+                  </Button>
+                )}
               </div>
             </div>
           </div>

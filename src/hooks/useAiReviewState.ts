@@ -3,6 +3,7 @@ import {
   beginPersistedModelReviewScan,
   clearPersistedModelReviewScanResults,
   completePersistedModelReviewScan,
+  classifyModelReviewScanFailure,
   createPersistedModelReviewIssue,
   createScanToken,
   dismissPersistedAiFinding,
@@ -27,6 +28,8 @@ import {
 import type {
   ModelReviewIssue,
   ModelReviewIssueStatus,
+  ModelReviewScanError,
+  ModelReviewScanFailureReason,
   ProjectAiReviewState,
   ProjectData,
   ProjectId,
@@ -66,12 +69,19 @@ export function useAiReviewState({
   const [focusedIssueCardId, setFocusedIssueCardId] = useState<
     ModelReviewIssue["id"] | null
   >(null)
+  const [modelReviewScanErrors, setModelReviewScanErrors] = useState<
+    Partial<Record<ProjectId, ModelReviewScanError | null>>
+  >({})
+  const [modelReviewScanFailureReasons, setModelReviewScanFailureReasons] =
+    useState<Partial<Record<ProjectId, ModelReviewScanFailureReason>>>({})
+  const [persistedStateLoadAttempt, setPersistedStateLoadAttempt] = useState(0)
   const aiScanTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
   const activeAiScanAttempt = useRef<{
     projectId: ProjectId
     scanToken: string
   } | null>(null)
   const scanOperationNonce = useRef(0)
+  const persistedStateLoadNonce = useRef(0)
   const selectedProjectIdRef = useRef(selectedProjectId)
   const modelFocusRequestNonce = useRef(0)
   selectedProjectIdRef.current = selectedProjectId
@@ -150,12 +160,43 @@ export function useAiReviewState({
     updater: (state: ProjectAiReviewState) => ProjectAiReviewState,
   ) => updateProjectAiReviewState(selectedProjectId, updater)
 
+  const setProjectScanError = (
+    projectId: ProjectId,
+    error: ModelReviewScanError | null,
+    failureReason: ModelReviewScanFailureReason = "unknown",
+  ) => {
+    setModelReviewScanErrors((current) => ({
+      ...current,
+      [projectId]: error,
+    }))
+    setModelReviewScanFailureReasons((current) => ({
+      ...current,
+      [projectId]: error === "scan" ? failureReason : "unknown",
+    }))
+  }
+
+  const clearProjectScanError = (
+    projectId: ProjectId,
+    expectedError?: ModelReviewScanError,
+  ) => {
+    setModelReviewScanErrors((current) => {
+      if (expectedError && current[projectId] !== expectedError) {
+        return current
+      }
+
+      return { ...current, [projectId]: null }
+    })
+  }
+
   useEffect(() => {
     let active = true
+    const loadNonce = (persistedStateLoadNonce.current += 1)
+
+    clearProjectScanError(selectedProjectId, "load")
 
     fetchPersistedModelReviewState(selectedProjectId, selectedProject.issues)
       .then((persistedState) => {
-        if (!active) {
+        if (!active || persistedStateLoadNonce.current !== loadNonce) {
           return
         }
 
@@ -179,15 +220,21 @@ export function useAiReviewState({
               : restoredState,
           }
         })
+        clearProjectScanError(selectedProjectId, "load")
       })
-      .catch(() => {
-        // Local demo state remains available when Supabase persistence is absent.
+      .catch((error) => {
+        if (!active || persistedStateLoadNonce.current !== loadNonce) {
+          return
+        }
+
+        setProjectScanError(selectedProjectId, "load")
+        console.error("Failed to load persisted Model Review state", error)
       })
 
     return () => {
       active = false
     }
-  }, [selectedProject, selectedProjectId])
+  }, [persistedStateLoadAttempt, selectedProject, selectedProjectId])
 
   const recordProjectHistory = (
     projectId: ProjectId,
@@ -577,6 +624,7 @@ export function useAiReviewState({
 
     cancelLocalAiScanTimeout()
     activeAiScanAttempt.current = null
+    clearProjectScanError(projectId)
 
     void clearPersistedModelReviewScanResults(projectId)
       .then((result) => {
@@ -594,16 +642,19 @@ export function useAiReviewState({
         if (selectedProjectIdRef.current === projectId) {
           setActiveInspectorTab("ai")
         }
+
+        clearProjectScanError(projectId)
       })
       .catch((error) => {
-        if (
-          scanOperationNonce.current === operationNonce &&
-          fallbackStatus === "not_scanned"
-        ) {
-          updateProjectAiReviewState(projectId, (state) => ({
-            ...state,
-            scanStatus: fallbackStatus,
-          }))
+        if (scanOperationNonce.current === operationNonce) {
+          if (fallbackStatus === "not_scanned") {
+            updateProjectAiReviewState(projectId, (state) => ({
+              ...state,
+              scanStatus: fallbackStatus,
+            }))
+          }
+
+          setProjectScanError(projectId, "clear")
         }
 
         console.error(
@@ -670,7 +721,9 @@ export function useAiReviewState({
     const operationNonce = (scanOperationNonce.current += 1)
 
     cancelLocalAiScanTimeout()
+    persistedStateLoadNonce.current += 1
     activeAiScanAttempt.current = { projectId, scanToken }
+    clearProjectScanError(projectId)
     openAiReview()
 
     void beginPersistedModelReviewScan(projectId, scanToken)
@@ -719,6 +772,7 @@ export function useAiReviewState({
 
               activeAiScanAttempt.current = null
               aiScanTimeout.current = null
+              clearProjectScanError(projectId)
             })
             .catch((error) => {
               if (
@@ -733,6 +787,11 @@ export function useAiReviewState({
                   selectedFindingId: null,
                 }))
                 activeAiScanAttempt.current = null
+                setProjectScanError(
+                  projectId,
+                  "scan",
+                  classifyModelReviewScanFailure(error),
+                )
               }
 
               aiScanTimeout.current = null
@@ -756,6 +815,11 @@ export function useAiReviewState({
             selectedFindingId: null,
           }))
           activeAiScanAttempt.current = null
+          setProjectScanError(
+            projectId,
+            "scan",
+            classifyModelReviewScanFailure(error),
+          )
         }
 
         console.error(
@@ -763,6 +827,24 @@ export function useAiReviewState({
           error,
         )
       })
+  }
+
+  const retryModelReviewScanOperation = () => {
+    const error = modelReviewScanErrors[selectedProjectId]
+
+    clearProjectScanError(selectedProjectId)
+
+    if (error === "load") {
+      setPersistedStateLoadAttempt((attempt) => attempt + 1)
+      return
+    }
+
+    if (error === "clear") {
+      clearAiScanResults()
+      return
+    }
+
+    scanWithAi()
   }
 
   return {
@@ -778,10 +860,14 @@ export function useAiReviewState({
     hideModelReviewIssue,
     modelFocusRequest,
     modelReviewIssues,
+    modelReviewScanError: modelReviewScanErrors[selectedProjectId] ?? null,
+    modelReviewScanFailureReason:
+      modelReviewScanFailureReasons[selectedProjectId] ?? "unknown",
     openAiReview,
     prepareProjectChange,
     previewActive,
     reviewHistory,
+    retryModelReviewScanOperation,
     scanWithAi,
     selectAiFinding,
     selectedAiFinding,

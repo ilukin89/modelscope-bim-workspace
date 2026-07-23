@@ -71,6 +71,11 @@ export type AiFindingWorkflowStatus = "active" | "issue-created" | "dismissed"
 
 export type AiScanStatus = "not_scanned" | "scanning" | "scanned_with_findings"
 
+export type ModelReviewScanError = "scan" | "clear" | "load"
+
+export type ModelReviewScanFailureReason =
+  "network" | "session" | "server" | "unknown"
+
 export type ModelReviewIssueStatus =
   "Open" | "In Review" | "Resolved" | "Blocked" | "Closed as not actionable"
 
